@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>croc model check</title>
+<style>
+  html, body { margin: 0; height: 100%; background: linear-gradient(#bfe3ec, #d9eef0 55%, #efe6da 56%, #f4ece2); overflow: hidden; }
+  canvas { width: 100%; height: 100%; display: block; }
+  #info { position: fixed; left: 8px; bottom: 6px; font: 12px monospace; color: #234; }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="info"></div>
+<script src="../vendor/three.iife.js"></script>
+<script src="../js/sdf.js"></script>
+<script src="../js/croc.js"></script>
+<script src="../js/stage.js"></script>
+<script>
+  const q = new URLSearchParams(location.search);
+  Stage.init(document.getElementById('gl'), { preserve: true });
+  const croc = Croc.build(Stage.scene);
+  Stage.setCroc(croc);
+  Stage.setFrame({ y: +(q.get('fy') || 0.55), h: +(q.get('fh') || 0.7), el: +(q.get('el') || 20) });
+  if (q.has('az')) { const az = +q.get('az') * Math.PI / 180; croc.root.rotation.y = az; }
+  if (q.has('open')) croc.setOpen(+q.get('open'), true);
+  if (q.has('squint')) { croc.squint(+q.get('squint')); }
+  if (q.has('press')) q.get('press').split(',').forEach(i => croc.press(+i));
+  if (q.has('glow')) croc.glow(+q.get('glow'), 1);
+  document.getElementById('info').textContent = `build ${croc.buildMs} ms · ${Math.round(croc.tris / 1000)}k tris`;
+  window.__ready = true;
+  if (q.has('still')) { Stage.step(1 / 60, 90); } else Stage.start();
+</script>
+</body>
+</html>

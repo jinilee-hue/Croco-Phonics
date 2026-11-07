@@ -1,0 +1,4 @@
+.DS_Store
+__pycache__/
+design/*.png
+assets/img/logo.png
