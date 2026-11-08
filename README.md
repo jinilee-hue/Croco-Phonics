@@ -56,6 +56,9 @@ man, map, meat, milk, mirror, mitt, monkey, moon, mop, mouse, mug, mushroom
   모을 때는 다시 들려 포물선으로 날아가 카드 더미 위에 사뿐히 놓인다(`flyer().fly`).
   긴 단어(mushroom 등)는 카드 안쪽 폭에 맞춰 글자를 줄인다(`wordFit`: 게임 글꼴로 실측, 말하기 강조 1.12배까지 여유). `js/audio.js` — 음성·효과음·배경음·마이크.
 - `js/fx.js` — 반짝이·별·색종이·보라 폭발.
+- 배경음악: 직접 합성한 신나는 루프(`tools/make_bgm.py` → `assets/audio/bgm.mp3` + `js/bgm-data.js`): F장조 132 BPM 16마디 약 29초.
+  스틸드럼 멜로디, 통통 튀는 베이스, 엇박 우쿨렐레 코드, 킥·박수·하이햇·봉고, 8마디마다 필인. 매직블록과는 다른 곡과 코드.
+  루프 이음매 없음. 게임 안 음량은 예전 곡과 같은 수준(-22.7 dBFS, 예전 -23.2)이고 목소리가 나올 때는 줄어든다.
 - 에셋: `assets/img/logo.webp`·`bg.webp`(다운로드의 `croco_logo.png`·`croco_bg.png` → `tools/import_art.py`로 다시 가져옴), `hand.webp`(다른 파닉스 게임의 장갑 손, 대기 힌트), `crown.webp`(매직블록의 3D 왕관, 이긴 사람 머리 위), `p1/p2.webp`(게임 화면 레퍼런스의 아바타 · `tools/crop_avatars.py`), `assets/cards/`, `assets/voice/`.
 - 레퍼런스(사용자 Gemini 이미지)는 `design/*.png` — 용량 때문에 git 제외.
 

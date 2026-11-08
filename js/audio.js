@@ -1,5 +1,5 @@
 /* Croco Phonics — sound: pre-made voice clips (company TTS boy voice + the official FPR K /m/ recording),
- * synthesized effects, a small looping tune, and a microphone "did they say it?" voice detector.
+ * synthesized effects, an upbeat music loop (tools/make_bgm.py), and a microphone "did they say it?" voice detector.
  * No device speechSynthesis (the user rejected it: the voice differs per device).
  * Clips play from base64 (js/voice-data.js) so the game also works when index.html is opened from disk.
  */
@@ -144,45 +144,25 @@
     }
   };
 
-  // ── a light looping tune (pentatonic marimba + bass + shaker), ducked under voice, muted while listening ──
-  const BPM = 108, STEP = 60 / BPM / 2;
-  const MEL = [72, 0, 76, 79, 0, 76, 74, 0, 72, 0, 74, 76, 79, 0, 81, 0, 79, 0, 76, 0, 74, 72, 74, 0, 76, 0, 74, 0, 72, 0, 0, 0];
-  const BASS = [48, 0, 0, 0, 43, 0, 0, 0, 45, 0, 0, 0, 43, 0, 0, 0, 41, 0, 0, 0, 43, 0, 0, 0, 48, 0, 0, 0, 43, 0, 48, 0];
-  const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
-  function pluck(f, t, dur, peak) {
-    const o = A.ctx.createOscillator(), o2 = A.ctx.createOscillator(), g = A.ctx.createGain(), g2 = A.ctx.createGain();
-    o.type = 'sine'; o.frequency.value = f; o2.type = 'sine'; o2.frequency.value = f * 4;
-    g2.gain.value = 0.12;
-    o.connect(g); o2.connect(g2); g2.connect(g); g.connect(A.bgm);
-    env(g, t, 0.004, dur, peak);
-    o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
-  }
-  function step(i, t) {
-    if (MEL[i]) pluck(mtof(MEL[i]), t, 0.32, 0.32);
-    if (BASS[i]) {
-      const o = A.ctx.createOscillator(), g = A.ctx.createGain();
-      o.type = 'triangle'; o.frequency.value = mtof(BASS[i]);
-      env(g, t, 0.01, 0.42, 0.5);
-      o.connect(g); g.connect(A.bgm); o.start(t); o.stop(t + 0.5);
-    }
-    if (i % 2 === 1) {
-      const s = A.ctx.createBufferSource(), f = A.ctx.createBiquadFilter(), g = A.ctx.createGain();
-      if (!noiseBuf) noise(t, 0.001, 0.0002, 1000, 1);
-      s.buffer = noiseBuf; f.type = 'highpass'; f.frequency.value = 6000;
-      env(g, t, 0.003, 0.05, 0.12);
-      s.connect(f); f.connect(g); g.connect(A.bgm); s.start(t, Math.random() * 0.5, 0.08);
-    }
-  }
+  // ── music: an original upbeat loop (tools/make_bgm.py: steel drum + bass + chops + drums, 132 BPM, 16 bars ≈ 29.1 s;
+  //    user: "배경음악 좀더 신나는걸로"). Ducked under voice, muted while listening. Played from base64 (js/bgm-data.js)
+  //    so it also plays when index.html is opened from disk. The file is mastered at −17 dBFS RMS; MUSIC_GAIN puts it
+  //    where the old live tune sat in the mix (−23 dBFS at level 1) plus 1 dB, as it is meant to feel livelier.
+  const MUSIC = window.CROCO_BGM || null, MUSIC_GAIN = 0.56;
+  let music = null;
   A.startBgm = function (level) {
     if (!A.ctx) return;
     if (level != null) A.bgmLevel = level;
     A.bgmOn = true; duck();
-    if (A.seq) return;
-    let i = 0, next = A.ctx.currentTime + 0.15;
-    A.seq = setInterval(() => {
-      if (!A.ctx) return;
-      while (next < A.ctx.currentTime + 0.3) { step(i, next); i = (i + 1) % MEL.length; next += STEP; }
-    }, 70);
+    if (music || !MUSIC) return;
+    music = 'loading';
+    A.ctx.decodeAudioData(b64(MUSIC.data)).then(buf => {
+      const s = A.ctx.createBufferSource(), g = A.ctx.createGain();
+      s.buffer = buf; s.loop = true; s.loopStart = 0; s.loopEnd = Math.min(buf.duration, MUSIC.loop);  // mp3 pads its last frame
+      g.gain.value = MUSIC_GAIN;
+      s.connect(g); g.connect(A.bgm); s.start();
+      music = s;
+    }).catch(e => { console.warn('music', e); music = null; });
   };
   A.stopBgm = function () { A.bgmOn = false; duck(); };
   A.setBgmLevel = function (v) { A.bgmLevel = v; duck(); };
