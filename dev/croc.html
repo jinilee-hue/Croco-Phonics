@@ -28,6 +28,9 @@
   if (q.has('squint')) { croc.squint(+q.get('squint')); }
   if (q.has('press')) q.get('press').split(',').forEach(i => croc.press(+i));
   if (q.has('glow')) croc.glow(+q.get('glow'), 1);
+  if (q.has('happy')) croc.happy(1);
+  if (q.has('surp')) croc.surprise(1);
+  if (q.has('rest')) croc.rest(+q.get('rest'));
   document.getElementById('info').textContent = `build ${croc.buildMs} ms · ${Math.round(croc.tris / 1000)}k tris`;
   window.__ready = true;
   if (q.has('still')) { Stage.step(1 / 60, 90); } else Stage.start();

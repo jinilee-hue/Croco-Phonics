@@ -4,7 +4,7 @@
 
 ## 규칙
 1. 라운드가 시작되면 m 단어 하나가 **지시 단어**로 나온다(화면 위 카드 · 빨간 '깨물기' 배지). 음가 /m/ + 단어를 들려준다.
-2. 이빨 8개에 Lesson 1 m 단어가 하나씩 숨어 있고, 그중 하나가 지시 단어다.
+2. 이빨 10개(앞 4 + 양옆 3)에 Lesson 1 m 단어가 하나씩 숨어 있고, 그중 하나가 지시 단어다.
 3. 이빨을 누르면 → 그림카드가 튀어나오고 → **/m/ 음가 + 단어**를 들려주고 → "Now say the word." → 마이크로 아이 목소리가 들리면 칭찬 → 카드는 누른 사람 쪽에 쌓이고 → 상대 턴.
 4. 지시 단어가 숨은 이빨을 누르면 이빨이 보라색으로 빛나고 악어가 **덥석!** 그 사람이 지고, 상대가 이긴다.
 5. Play Again → 새 지시 단어로 다음 판(진 사람이 먼저).
@@ -21,11 +21,14 @@ man, map, meat, milk, mirror, mitt, monkey, moon, mop, mouse, mug, mushroom
 - 테스트 훅: `window.__test = { mic:false | heard:true, target:'moon', teeth:[...] }`, `window.__croco`.
 
 ## 구성
-- `js/croc.js` — 3D 악어(three.js). SDF로 만든 클레이 질감 모델: 윗턱(경첩) 덥석, 이빨 눌림, 눈 깜빡/찡그림/시선.
+- `js/croc.js` — 3D 악어 "Croco"(three.js). 캐릭터 시트(`design/character_sheet.png`)를 따라 SDF로 만든 무광 클레이 모델:
+  머리(볼의 경첩 핀 기준) 덥석, 이빨 눌림, 눈 깜빡/시선(눈은 Phonics Match 튜터처럼 갈색 홍채 + 반짝이),
+  시트의 표정 — 안전한 이빨이면 신난 표정(눈 ^^, 팔 번쩍), 지시 단어 이빨이면 놀란 표정(손을 볼에).
+  게임 화면에서는 카메라가 위로 올라가고 입을 더 벌려 이빨 10개가 다 보인다.
 - `js/sdf.js` — SDF + Surface Nets 메셔. `js/stage.js` — 카메라·조명·그림자·피킹.
 - `js/game.js` — 진행(지시 단어 → 턴 → 공개/말하기/수집 → 덥석/결과). `js/audio.js` — 음성·효과음·배경음·마이크.
 - `js/fx.js` — 반짝이·별·색종이·보라 폭발.
-- 에셋: `assets/img/logo.webp`(사용자 인트로 이미지에서 로고만 오려냄 · `tools/cut_logo.py`), `p1/p2.webp`(게임 화면 레퍼런스의 아바타 · `tools/crop_avatars.py`), `assets/cards/`, `assets/voice/`.
+- 에셋: `assets/img/logo.webp`·`bg.webp`(다운로드의 `croco_logo.png`·`croco_bg.png` → `tools/import_art.py`로 다시 가져옴), `hand.webp`(다른 파닉스 게임의 장갑 손, 대기 힌트), `p1/p2.webp`(게임 화면 레퍼런스의 아바타 · `tools/crop_avatars.py`), `assets/cards/`, `assets/voice/`.
 - 레퍼런스(사용자 Gemini 이미지)는 `design/*.png` — 용량 때문에 git 제외.
 
 ## 음성
