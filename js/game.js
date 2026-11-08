@@ -25,6 +25,7 @@
   const OPEN_REST = { title: 1, game: 1.32 };          // the game opens the mouth wider: the back teeth clear the upper jaw
   const portrait = () => window.innerWidth < window.innerHeight;
   const u = () => Math.min(window.innerHeight / 100, window.innerWidth * (portrait() ? 0.0095 : 0.0062));
+  const CARD_W = { reveal: 34, bite: 40 };          // card widths in u (user: "카드가 너무 작아" — were 27)
   const SVG_SPK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9.5v5a1 1 0 0 0 1 1h3l4.4 3.7a.8.8 0 0 0 1.3-.6V5.4a.8.8 0 0 0-1.3-.6L7 8.5H4a1 1 0 0 0-1 1z"/><path d="M15.6 8.2a5 5 0 0 1 0 7.6M18.3 5.6a8.6 8.6 0 0 1 0 12.8" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>';
   const SVG_MIC = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0" fill="none" stroke="#ff7d2e" stroke-width="2.2" stroke-linecap="round"/><path d="M12 17.5V21" stroke="#ff7d2e" stroke-width="2.2" stroke-linecap="round"/></svg>';
   const SVG_OK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg>';
@@ -152,7 +153,7 @@
     return f;
   }
   function revealSlot(p) {
-    const W = window.innerWidth, H = window.innerHeight, cw = 27 * u();
+    const W = window.innerWidth, H = window.innerHeight, cw = CARD_W.reveal * u();
     if (portrait()) return { x: W / 2 + (p ? 1 : -1) * Math.min(W * 0.22, cw * 0.62), y: H * 0.42, r: p ? 6 : -6 };
     const box = croc.screenBox(), left = box.left, right = box.right;
     const x = p === 0 ? Math.max(cw * 0.5 + 2 * u(), Math.min(left - cw * 0.45, left * 0.52)) : Math.min(W - cw * 0.5 - 2 * u(), Math.max(right + cw * 0.45, right + (W - right) * 0.48));
@@ -331,7 +332,7 @@
     FX.burst(from.x, from.y, { kind: 'sparkle', n: 30 });
     FX.burst(from.x, from.y, { kind: 'dots', n: 14, speed: 0.8 });
     const card = makeCard(word, { sound: true, mic: true });
-    card.style.setProperty('--cw', 27 * u() + 'px');
+    card.style.setProperty('--cw', CARD_W.reveal * u() + 'px');
     const f = flyer(card).set(from.x, from.y, 0.2, 0, true);
     const slot = revealSlot(p);
     A.sfxPlay('card');
@@ -429,7 +430,7 @@
     if (tok !== G.token) return;
     // the target card bursts out of the closed mouth
     const card = makeCard(G.target, { cls: 'boom', edge: '#b98cff' });
-    card.style.setProperty('--cw', 27 * u() + 'px');
+    card.style.setProperty('--cw', CARD_W.bite * u() + 'px');
     const f = flyer(card).set(m.x, m.y + 4 * u(), 0.15, -20, true);
     const rays = document.createElement('div');
     rays.className = 'rays';

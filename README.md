@@ -17,6 +17,7 @@ man, map, meat, milk, mirror, mitt, monkey, moon, mop, mouse, mug, mushroom
 
 ## 실행
 - `실행.command` 더블클릭 → http://127.0.0.1:5211/ (마이크는 http(s) 또는 파일에서 허용 필요)
+  서버는 `tools/serve.py`(캐시 안 함: 고친 뒤 그냥 새로고침해도 최신 파일이 보임).
 - `index.html` 더블클릭(file://)도 동작 (음성·폰트는 js/css에 내장).
 - 테스트 훅: `window.__test = { mic:false | heard:true, target:'moon', teeth:[...] }`, `window.__croco`.
 
