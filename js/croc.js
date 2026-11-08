@@ -120,7 +120,6 @@
     let f = smax(hoodSolid(x, y, z), -hoodCavity(x, y, z), 0.06);
     f = smax(f, -above(y, z), 0.06);
     f = smin(f, fFlaps(x, y, z), 0.1);
-    f = smax(f, -sphere(ax, y, z, EYE.x, EYE.y, EYE.z, EYE.r - 0.006), 0.02);                       // eyeball seats
     return smax(f, -ellipsoid(ax, y, z, NOSTRIL.x, NOSTRIL.y, NOSTRIL.z, 0.062, 0.05, 0.062), 0.035);
   }
   // where the lip's outer edge is at a given x: walk the underside plane from the front until inside the hood
@@ -320,7 +319,7 @@
     // a dark ∩ arc on the shut lid for the happy face
     const eyes = [];
     const eyeGeo = new THREE.SphereGeometry(EYE.r, 64, 48);
-    const lidCapGeo = new THREE.SphereGeometry(EYE.r * 1.04, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2);
+    const lidCapGeo = new THREE.SphereGeometry(EYE.r * 1.04, 64, 32, 0, Math.PI * 2, 0, Math.PI * 0.62);
     const arcGeo = new THREE.TorusGeometry(EYE.r * 0.5, EYE.r * 0.075, 10, 28, Math.PI);
     for (const sx of [-1, 1]) {
       const g = new THREE.Group();
