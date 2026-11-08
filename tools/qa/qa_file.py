@@ -18,7 +18,7 @@ with sync_playwright() as p:
     ctx = pg.evaluate("Sound.ctx && Sound.ctx.state")
     pg.evaluate("() => { __croco.onTooth(0); }")
     pg.wait_for_function("__croco.G.got[0].length === 1", timeout=25000)
-    pg.wait_for_function("document.querySelector('#turn .t').textContent.includes('2')", timeout=20000)
+    pg.wait_for_function("document.querySelector('#app').dataset.turn === '1' && document.querySelector('#turn').classList.contains('show')", timeout=20000)
     pg.evaluate("() => { __croco.onTooth(1); }")
     pg.wait_for_function("__croco.G.screen === 'result'", timeout=20000)
     time.sleep(1.5)

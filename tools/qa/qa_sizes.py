@@ -35,7 +35,7 @@ with sync_playwright() as p:
         pg.wait_for_function("document.querySelector('#mic').classList.contains('nomic')", timeout=20000)
         time.sleep(0.9)
         pg.screenshot(path=str(out / f'{tag}_3nomic.png'))
-        pg.wait_for_function("document.querySelector('#turn .t').textContent.includes('2')", timeout=20000)
+        pg.wait_for_function("document.querySelector('#app').dataset.turn === '1' && document.querySelector('#turn').classList.contains('show')", timeout=20000)
         time.sleep(0.6)
         pg.evaluate('() => { __croco.onTooth(2); }')   # moon = target
         time.sleep(4.6)

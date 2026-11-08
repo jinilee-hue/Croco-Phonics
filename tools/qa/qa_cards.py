@@ -62,7 +62,7 @@ with sync_playwright() as p:
     pg.wait_for_function("!document.querySelector('.flyer .card.busy')", polling=5, timeout=20000)
     pg.wait_for_function("(() => { const f = document.querySelector('.flyer'); return f && f.getAnimations({subtree: true}).some(a => a.playState === 'running'); })()", polling=5, timeout=5000)
     steps(pg, 'dock', 680, 10, (0, 0, 640, 520))
-    pg.wait_for_function("document.querySelector('#turn .t').textContent.includes('2')", timeout=20000)
+    pg.wait_for_function("document.querySelector('#app').dataset.turn === '1' && document.querySelector('#turn').classList.contains('show')", timeout=20000)
     pg.wait_for_timeout(700)
     pos = pg.evaluate('__croco.toothScreen(2)')
     pg.mouse.click(pos['x'], pos['y'])

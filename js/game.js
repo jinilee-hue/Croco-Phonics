@@ -299,6 +299,8 @@
     t.classList.remove('show');
     void t.offsetWidth;
     t.classList.add('show');
+    // pops up out of the active player's avatar (the tag's tail is the origin)
+    t.animate([{ scale: 0.3, opacity: 0 }, { scale: 1.12, opacity: 1, offset: 0.6 }, { scale: 1, opacity: 1 }], { duration: 480, easing: 'ease-out' });
     G.busy = false;
     A.say(p ? 't:turn2' : 't:turn1');
     croc.look(avatarPoint(p));
@@ -529,9 +531,9 @@
   const LANG_KEY = 'croco.lang.v1';
   let LANG = (() => { try { return localStorage.getItem(LANG_KEY) === 'ko' ? 'ko' : 'en'; } catch (e) { return 'en'; } })();
   const UI = {
-    en: { p1: 'Player 1', p2: 'Player 2', turn: "Player {n}'s Turn!", wins: 'Player {n} Wins!', again: 'Play Again', skip: 'Skip',
+    en: { p1: 'Player 1', p2: 'Player 2', turn: 'Your turn!', wins: 'Player {n} Wins!', again: 'Play Again', skip: 'Skip',
       a_skip: 'Skip the explanation', a_lang: 'Language: English or Korean', a_sound: 'Sound on/off', a_home: 'Home' },
-    ko: { p1: '플레이어 1', p2: '플레이어 2', turn: '플레이어 {n} 차례!', wins: '플레이어 {n} 승리!', again: '다시 하기', skip: '건너뛰기',
+    ko: { p1: '플레이어 1', p2: '플레이어 2', turn: '네 차례!', wins: '플레이어 {n} 승리!', again: '다시 하기', skip: '건너뛰기',
       a_skip: '설명 건너뛰기', a_lang: '언어: 영어 또는 한국어', a_sound: '소리 켜기/끄기', a_home: '처음으로' },
   };
   const tr = (k, v = {}) => (UI[LANG][k] || UI.en[k] || k).replace(/\{(\w+)\}/g, (_, x) => (v[x] != null ? v[x] : ''));

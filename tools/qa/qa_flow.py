@@ -40,7 +40,7 @@ with sync_playwright() as p:
     time.sleep(1.0); shot('06_reveal')
     pg.wait_for_function("document.querySelector('#mic').classList.contains('listen')", timeout=15000)
     time.sleep(0.3); shot('07_sayit')
-    pg.wait_for_function("document.querySelector('#turn .t').textContent.includes('2')", timeout=20000)
+    pg.wait_for_function("document.querySelector('#app').dataset.turn === '1' && document.querySelector('#turn').classList.contains('show')", timeout=20000)
     time.sleep(0.9); shot('08_docked_turn2')
     pos = pg.evaluate(f'__croco.toothScreen({bad})')
     pg.mouse.click(pos['x'], pos['y'])
