@@ -1,10 +1,12 @@
-"""QA: the intro like Magic Block's (the croc explains as the page opens, SKIP instead of START, then the title with
-START, START = game), EN | 한, the bottom-corner players / top bar, the mic on the croc's lower jaw, long words.
+"""QA: the intro like Magic Block's (the page opens on the title with START; a moment later the croc explains with SKIP
+instead of START; then the title with START again; START = game), EN | 한, the bottom-corner players / top bar, the mic
+on the croc's lower jaw, long words.
 usage: uv run --with playwright --with pillow python tools/qa/qa_tutor.py <outdir> [WxH ...]   (default 1180x820)
-  0  the page opens: frames 0–3.5 s (the croc grows in and starts explaining; START hidden, SKIP shown)
-  1  each size: the explanation from the page load, a frame per line; the bubble must stay on screen and off cards /
-     avatars / logo / buttons; it ends on the TITLE with START (nothing left over); START → the game with its trap word
-  2  Home → the title with START at once (no explanation) → START = game; a reload explains again
+  0  the page opens: frames 0–6 s (the title's entrance with START up, then START gives way to SKIP as the croc explains)
+  1  each size: the explanation, a frame per line; the bubble must stay on screen and off cards / avatars / logo /
+     buttons; it ends on the TITLE with START (nothing left over); START → the game with its trap word
+  2  Home → the title with START at once (no explanation) → START = game; a reload explains again; START pressed in
+     the first moment (before the explanation) → the game at once, no explanation later
   3  한 + SKIP: Korean bubbles; switching EN | 한 mid-line re-says the line; SKIP → the title with START, then the game
   4  the say-it mic sits on the croc's lower jaw (no-mic countdown), players at the bottom, top bar
   5  every word on every kind of card: text width / inside width (must stay under .9: room for the say-it glow)
@@ -101,17 +103,18 @@ with sync_playwright() as p:
         pg.goto(BASE + '?shot&target=map')
         pg.wait_for_function('window.__ready === true', timeout=60000)
         if n == 0:
-            # ── 0. the page opens: the croc grows in and starts explaining; SKIP, no START ──
+            # ── 0. the page opens on the title (START up), then START gives way to SKIP as the croc explains ──
             fr, t0, st0 = [], time.time(), []
-            for k in range(8):
-                f = out / f'open_{k}.png'
+            for k in range(12):
+                f = out / f'open_{k:02d}.png'
                 pg.screenshot(path=str(f))
                 st = pg.evaluate(STATE)
                 st0.append((round(time.time() - t0, 1), round(st['start'], 2), round(st['logo'], 2), st['skip'], st['show']))
                 fr.append((f"{round(time.time() - t0, 2)}s start {st['start']:.1f} skip {st['skip']}", f))
-                time.sleep(0.45)
+                time.sleep(0.42)
             sheet(fr, 'open.png', W, H, cols=4)
             print('0 open (t, START opacity, logo opacity, SKIP, bubble):', st0)
+        pg.wait_for_function('__croco.T.on === true', timeout=15000)
         # ── 1. the explanation from the page load → the title with START → START = game ──
         frames, bad, secs = run_tutorial(pg, f'tut_{W}x{H}', W, H)
         time.sleep(0.3)
@@ -129,10 +132,19 @@ with sync_playwright() as p:
             h2 = pg.evaluate(AFTER)
             g2 = start_game(pg)
             pg.goto(BASE + '?shot')
-            pg.wait_for_function('window.__ready === true', timeout=60000)
-            pg.wait_for_function("document.querySelector('#bubble').classList.contains('show')", timeout=10000)
+            pg.wait_for_function('window.__ready === true && window.__intro === true', timeout=60000)
+            r0 = pg.evaluate(AFTER)
+            pg.wait_for_function("document.querySelector('#bubble').classList.contains('show')", timeout=15000)
             r = pg.evaluate(AFTER)
-            print('2 Home: on', h['on'], 'skip', h['skip'], '→ START up', h2['start'], '| START →', g2['screen'], '| reload: explaining', r['on'], 'skip', r['skip'], 'START', r['start'])
+            print('2 Home: on', h['on'], 'skip', h['skip'], '→ START up', h2['start'], '| START →', g2['screen'],
+                  '| reload: title first START', r0['start'], 'on', r0['on'], '→ explaining', r['on'], 'skip', r['skip'], 'START', r['start'])
+            # START in the first moment, before the explanation began: the game at once, and no explanation later
+            pg.goto(BASE + '?shot')
+            pg.wait_for_function('window.__ready === true && window.__intro === true', timeout=60000)
+            g4 = start_game(pg)
+            time.sleep(2.5)
+            q = pg.evaluate(AFTER)
+            print('  early START →', g4['screen'], '| 2.5 s later: on', q['on'], 'howto', q['howto'], 'skip', q['skip'], 'screen', q['screen'])
         ctx.close()
 
     W, H = SIZES[0]
@@ -142,7 +154,7 @@ with sync_playwright() as p:
     pg.evaluate("localStorage.setItem('croco.lang.v1', 'ko')")
     pg.goto(BASE + '?shot&target=mitt')
     pg.wait_for_function('window.__ready === true', timeout=60000)
-    pg.wait_for_function("document.querySelector('#bubble').classList.contains('show')", timeout=10000)
+    pg.wait_for_function("document.querySelector('#bubble').classList.contains('show')", timeout=15000)
     time.sleep(0.5)
     t1 = pg.evaluate("document.querySelector('#bubble p').textContent")
     pg.screenshot(path=str(out / 'ko_1_hello.png'))

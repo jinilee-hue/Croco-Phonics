@@ -12,13 +12,9 @@
   const $ = s => document.querySelector(s);
   const app = $('#app');
   const Q = new URLSearchParams(location.search);
-  // the croc explains the game on the intro BEFORE START, like Magic Block's intro film before its title (?nohowto: not —
-  // the QA scripts). Its logo, cards and START stay out (#app.howto) from the start, under the loading screen.
+  // the croc explains the game on the intro before START (?nohowto: not — the QA scripts open straight on the title)
   const HOWTO_FIRST = !Q.has('nohowto');
-  if (HOWTO_FIRST) {
-    app.classList.add('howto', 'snap');                  // no fade out of the title's look: it was never meant to show
-    requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove('snap')));
-  }
+  const HOWTO_AFTER = 550 + 2250 + 1000;               // ms: the title's entrance (START up at 2.8 s), a moment, then explain
   const A = window.Sound, Mic = window.Mic;
   const DATA = window.CROCO_WORDS, WORDS = DATA.words, BY = Object.fromEntries(WORDS.map(w => [w.w, w]));
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -570,9 +566,11 @@
 
   // ── the croc explains the game on the INTRO (title) screen, before START (user: "인트로에서 스타트 버튼 누르기 전에
   //    게임설명이 나오면서 스타트 버튼 대신에 skip버튼 나오다가 설명끝나면 다시 스타트 버튼 나오고 스타트 버튼 누르면
-  //    게임시작하는 젠가와 같은 인트로"). Like Magic Block's intro film: it plays as the page opens (every visit) with SKIP
-  //    at the bottom right and no START; when it ends, or on SKIP, the title comes in with START; START starts the game.
-  //    Home → the title with START at once (no explanation). ?nohowto opens straight on the title.
+  //    게임시작하는 젠가와 같은 인트로" → "마지막 화면이 처음에도 있다가 시작해야지"). The page opens on the title (its
+  //    entrance, START up); a moment later the croc explains — START gives way to SKIP (bottom right), the screen goes
+  //    plain — and when it ends, or on SKIP, the title with START comes back; START starts the game. Every visit; Home →
+  //    the title with START (no explanation). START during that first moment starts the game straight away.
+  //    ?nohowto opens on the title without it.
   const TUT = {
     en: {
       tut1: "Hi, friends! I'm Croco!",
@@ -699,6 +697,8 @@
     const t = $('#target');
     T.on = true;
     G.busy = true;
+    window.__intro = false;
+    A.stopVoice();
     app.classList.add('howto');
     $('#skip').classList.add('show');
     // the first round's trap word is picked now: the croc explains with it and the game starts with it
@@ -711,7 +711,7 @@
     t.classList.add('hidden');
     const fr = croc.frontTeeth.length ? croc.frontTeeth : [0, 1, 2, 3];
     const pressI = fr[Math.min(1, fr.length - 1)], biteI = fr[Math.min(2, fr.length - 1)] !== pressI ? fr[Math.min(2, fr.length - 1)] : fr[0];
-    if (lead) { await pause(lead); if (!live()) return false; }       // the croc grows in first (page load)
+    if (lead) { await pause(lead); if (!live()) return false; }       // the title steps out first
     // 1 · hello: the croc beams and says hi
     croc.cheer(1700);
     await pause(350);
@@ -855,12 +855,12 @@
     titleIn(d0);
     if (first) setTimeout(() => { if (G.screen === 'title' && !T.on) croc.cheer(1300); }, d0 + 1250);
   }
-  /* the page opens: the croc grows in and explains the game at once; START waits until the explanation is over */
+  /* the page opens on the title (the croc grows in, the logo drops, the cards are dealt, START pops); a moment later the
+     croc explains the game, START giving way to SKIP; then the title with START again */
   function bootIntro() {
-    if (!HOWTO_FIRST) { introMotion(true); return; }
-    window.__intro = false;
-    croc.enter(1150);
-    runTutorial(1500);
+    introMotion(true);
+    if (!HOWTO_FIRST) return;
+    G.bootHowto = setTimeout(() => { G.bootHowto = null; if (G.screen === 'title' && !T.on && !howtoSeen) runTutorial(700); }, HOWTO_AFTER);
   }
   /* the title's own entrance: the logo drops in, the cards are dealt, the letters pop, START pops last
      (__intro = true once START is up) */
@@ -899,6 +899,9 @@
     A.sfxPlay('pop');
     Mic.init();
     A.startBgm(0.1);
+    clearTimeout(G.bootHowto);                   // pressed before the explanation began: straight into the game
+    G.bootHowto = null;
+    howtoDone();
     goGame();
   });
   $('#again').addEventListener('click', () => {
@@ -930,7 +933,7 @@
     if (!greeted && G.screen === 'title') {
       greeted = true;
       A.startBgm(0.1);
-      setTimeout(() => { if (G.screen === 'title' && !T.on) say(A.has('t:hello') ? 't:hello' : 't:pressstart'); }, 250);
+      setTimeout(() => { if (G.screen === 'title' && !T.on && !G.bootHowto) say(A.has('t:hello') ? 't:hello' : 't:pressstart'); }, 250);
     }
   }, true);
 
