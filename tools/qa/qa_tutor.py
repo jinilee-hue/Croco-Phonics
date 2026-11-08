@@ -139,7 +139,7 @@ with sync_playwright() as p:
     t3 = pg.evaluate("document.querySelector('#bubble p').textContent")
     stored = pg.evaluate("localStorage.getItem('croco.lang.v1')")
     print(f'3 lang: ko "{t1}" → en "{t2}" → ko "{t3}", stored {stored}')
-    pg.wait_for_function("document.querySelector('#target').classList.contains('side')", timeout=40000)
+    pg.wait_for_function("!!document.querySelector('.flyer.demo')", timeout=60000)
     time.sleep(1.2)
     pg.screenshot(path=str(out / 'ko_3_before_skip.png'))
     pg.click('#skip')

@@ -240,7 +240,7 @@
     A.stopVoice();
     $('#cards').innerHTML = '';
     $('#mic').classList.remove('listen', 'nomic');
-    $('#target').classList.remove('side', 'alarm');
+    $('#target').classList.remove('alarm');
     G.winner = null;
     document.querySelectorAll('.player').forEach(p => p.classList.remove('win', 'lose', 'on'));
     $('#turn').classList.remove('show');
@@ -603,7 +603,7 @@
     const b = $('#bubble'), W = window.innerWidth, H = window.innerHeight, U = u(), m = 2 * U, gap = 2.6 * U;
     const ex = [croc.eyeScreen(0), croc.eyeScreen(1)].sort((p, q) => p.x - q.x), r = Math.max(2 * U, (ex[1].x - ex[0].x) * 0.3);
     const head = { left: ex[0].x - r, right: ex[1].x + r, top: Math.min(ex[0].y, ex[1].y) - r, y: (ex[0].y + ex[1].y) / 2 };
-    const sel = '.player .ava, .sys, #skip, #target .card, #cards .flyer .card, ' + (G.screen === 'title' ? '.title .logo' : '.glogo');
+    const sel = '.player .ava, .sys, #skip, #target .card, #cards .flyer .card' + (G.screen === 'title' ? '' : ', .glogo');
     const avoid = [...document.querySelectorAll(sel)].filter(el => el.closest('.player') ? getComputedStyle(el.closest('.player')).opacity !== '0' : true)
       .map(el => el.getBoundingClientRect()).filter(a => a.width > 0);
     const clear = (x, y, bw, bh) => x >= m - 1 && y >= m - 1 && x + bw <= W - m + 1 && y + bh <= H - m + 1
@@ -671,11 +671,11 @@
     T.on = false;
     T.line = null;
     croc.talk(0);
-    app.classList.remove('howto', 'howto-p');
+    app.classList.remove('howto');
     $('#skip').classList.remove('show');
     $('#bubble').classList.remove('show');
     $('#hint').classList.remove('show');
-    $('#target').classList.remove('side', 'alarm', 'intro');
+    $('#target').classList.remove('alarm', 'intro');
     document.querySelectorAll('.player').forEach(p => p.classList.remove('on'));
     document.querySelectorAll('#cards .flyer.demo').forEach(el => el.remove());
   }
@@ -703,7 +703,7 @@
     G.nextTarget = target;
     const card = setTargetCard(target);
     T.card = card;
-    t.classList.remove('intro', 'side', 'alarm');
+    t.classList.remove('intro', 'alarm');
     t.classList.add('hidden');
     const fr = croc.frontTeeth.length ? croc.frontTeeth : [0, 1, 2, 3];
     const pressI = fr[Math.min(1, fr.length - 1)], biteI = fr[Math.min(2, fr.length - 1)] !== pressI ? fr[Math.min(2, fr.length - 1)] : fr[0];
@@ -726,21 +726,13 @@
     croc.reopen();
     await sleep(350);
     if (!live() || !await tutorSay('tut3', tt)) return false;
-    // the card moves aside (the logo keeps the top) and stays there as the trap word
+    // the card settles at the top centre (its place in the game) and stays there as the trap word
     t.classList.remove('intro');
-    t.classList.add('side');
     $('#bubble').classList.remove('show');
     A.sfxPlay('whoosh');
     await sleep(750);
     if (!live()) return false;
-    // 3 · take turns: the two players come in and light up in turn; the glove taps a tooth
-    app.classList.add('howto-p');
-    const pl = document.querySelectorAll('.player');
-    (async () => {
-      await sleep(450);
-      for (let k = 0; k < 4; k++) { if (!live()) return; pl.forEach((el, j) => el.classList.toggle('on', j === k % 2)); await sleep(650); }
-      if (live()) pl.forEach(el => el.classList.remove('on'));
-    })();
+    // 3 · take turns and press a tooth: the glove taps one (the players come in with the game: the screen stays plain)
     const say4 = tutorSay('tut4', tt);
     await sleep(600);
     if (!live()) return false;
