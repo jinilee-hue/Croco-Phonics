@@ -1,16 +1,22 @@
 # Croco Phonics (악어 이빨 파닉스)
 
-두 명이 번갈아 악어 이빨을 누르는 파닉스 보드게임. 단어는 모두 **FPR K · Unit 1 · Lesson 1(교재 p.9–20)** 에 나오는 m 단어.
+두 명이 번갈아 악어 이빨을 누르는 파닉스 보드게임. **레벨 N = FPR K 교재 Lesson N**: 그 레슨의 음가와 그 레슨 쪽에 나오는 단어로 한다.
+레벨 1은 Lesson 1(p.9–20)의 m 단어, 레벨 2는 Lesson 2(Short a)… 지금 레벨 1–10(Unit 1–2, Lesson 1–10).
 
 ## 규칙
-1. 라운드가 시작되면 m 단어 하나가 **지시 단어**로 나온다(화면 위 카드 · 왼쪽 위에서 입을 계속 덥석거리는 악어 얼굴 배지 = 이 단어는 덥석). 음가 /m/ + 단어를 들려준다.
+1. 라운드가 시작되면 그 레벨의 단어 하나가 **지시 단어**로 나온다(화면 위 카드 · 왼쪽 위에서 입을 계속 덥석거리는 악어 얼굴 배지 = 이 단어는 덥석). 그 레벨 음가(공식 FPR K 녹음) + 단어를 들려준다.
    배지는 게임 속 3D 악어를 정면에서 입을 여닫는 11장면으로 렌더해 오린 움직이는 WebP(1.16초마다 한 번 덥석, 눈은 제자리·아래턱이 내려감;
    `tools/make_bite_badge.py` → `assets/img/bite_croc.webp`, 320×288). 얼굴만 빨간 입술까지 그려서 잘린 가장자리가 없다(몸통·다리는 숨김).
    도구가 출력하는 `.bite` 위치·크기를 css에 그대로 쓴다. 악어 얼굴을 고치면 다시 실행.
-2. 이빨 10개(앞 4 + 양옆 3)에 Lesson 1 m 단어가 하나씩 숨어 있고, 그중 하나가 지시 단어다.
-3. 이빨을 누르면 → 그림카드가 튀어나오고 → **/m/ 음가 + 단어**를 들려주고 → "Now say the word." → 마이크로 아이 목소리가 들리면 칭찬 → 카드는 누른 사람 쪽에 쌓이고 → 상대 턴.
+2. 이빨 10개(앞 4 + 양옆 3)에 그 레벨 단어가 하나씩 숨어 있고, 지시 단어는 딱 한 이빨에만 있다(단어가 10개보다 적은 레벨은 다른 단어를 다시 섞어 채운다).
+   이빨·소리 버튼의 글자는 그 레벨 글자(m, a, s …)이고, 카드 단어에서 그 글자가 주황색으로 강조된다(첫 글자, 짧은 모음 레벨은 가운데 모음: C**a**t).
+3. 이빨을 누르면 → 그림카드가 튀어나오고 → **음가 + 단어**를 들려주고 → "Now say the word." → 마이크로 아이 목소리가 들리면 칭찬 → 카드는 누른 사람 쪽에 쌓이고 → 상대 턴.
 4. 지시 단어가 숨은 이빨을 누르면 이빨이 보라색으로 빛나고 악어가 **덥석!** 그 사람이 지고, 상대가 이긴다.
-5. Play Again → 새 지시 단어로 다음 판(진 사람이 먼저).
+5. 결과 화면 버튼 두 개: **다시 하기**(같은 레벨, 새 지시 단어) · **다음 레벨 →**(다음 레슨의 음가와 단어. 진 사람이 먼저).
+   다음 레벨을 누르면 악어가 입을 닫았다 열며 이빨 글자가 바뀌고, "Level 2!" 배너에 새 글자(Aa)가 나오며 그 음가를 들려준 뒤 새 판이 시작된다.
+   마지막 레벨에서는 다음 레벨 버튼이 없다. 게임 화면 왼쪽 위 로고 밑에 "Level 2 · Short a" 표시.
+   세로 화면에서는 두 버튼이 위아래로 놓인다(나란히 두면 아래 구석의 플레이어를 가림).
+   다시 접속하면 레벨 1부터. 주소 `?level=N` 으로 레벨 N부터 시작할 수 있다(예: http://127.0.0.1:5211/?level=3).
 
 ## 인트로(타이틀 화면)
 - 흐름(매직블록 인트로처럼): 페이지가 열리면 **타이틀이 먼저 등장**한다(로고가 떨어지고, 악어가 커지고, 그림카드가 날아오고, START).
@@ -26,8 +32,8 @@
 
 ## 언어 EN | 한
 - 위쪽 오른쪽 기본 버튼 줄의 국기 토글(매직블록과 같은 모양). 고른 언어는 기억한다(localStorage `croco.lang.v1`).
-- 바뀌는 것: 악어 설명(말풍선 + 음성), 게임 중 악어 대사(차례·말해 봐·칭찬·앗·승리·한 번 더), 화면 글자(플레이어·차례·승리·다시 하기·건너뛰기).
-  단어와 /m/ 음가는 항상 영어. 설명 중에 바꾸면 그 줄을 바로 다른 언어로 다시 말한다.
+- 바뀌는 것: 악어 설명(말풍선 + 음성), 게임 중 악어 대사(차례·말해 봐·칭찬·앗·승리·한 번 더), 화면 글자(플레이어·차례·승리·다시 하기·다음 레벨·레벨·건너뛰기).
+  단어·음가·레슨 이름(Short a 등)은 항상 영어. 설명 중에 바꾸면 그 줄을 바로 다른 언어로 다시 말한다.
 - 한국어 글꼴: Jua(매직블록과 같음) — 쓰는 글자만 잘라 `css/font-ko.css`에 내장(`tools/make_ko_font.py`, 한국어 문구를 바꾸면 다시 실행).
 
 ## 화면 배치
@@ -36,18 +42,31 @@
   꼬리가 얼굴을 가리키고, 차례마다 아바타에서 톡 튀어나온다. 상대 플레이어는 흐리게 표시된다(`tools/qa/qa_turn.py`로 꼬리 위치 실측).
 - 말해 보기 마이크는 화면 가운데, 악어 아래턱(앞니 아래 빨간 입술)에 겹쳐 나온다(`placeMic` → `jawScreen`).
 
-## 단어 (12개 · `tools/build_words.py`)
-man, map, meat, milk, mirror, mitt, monkey, moon, mop, mouse, mug, mushroom
-- 출처: SAD·FPR 단어 연구 자료집 `~/dev/sadfpr-studio/data/b2_book_FPRK.json` 의 Lesson 1 쪽(p.9–20) 행.
-- 뺀 단어: **my** — p.11에 글자로만 나오는 기능어라 그림카드로 보여줄 수 없음.
-- 그림카드는 Magic Block(Phonics-Jenga)과 같은 FPR K 그림.
+## 레벨과 단어 (`tools/build_words.py` → `js/words.js`)
+| 레벨 | 레슨 | 단어 |
+|---|---|---|
+| 1 | L1 Mm (p.9–20) | man, map, meat, milk, mirror, mitt, monkey, moon, mop, mouse, mug, mushroom |
+| 2 | L2 Short a (p.21–34) | ant, apple, bag, cap, cat, fan, hat, van |
+| 3 | L3 Ss (p.35–48) | seal, see, seven, sink, sock, soup, spoon, sun |
+| 4 | L4 Tt (p.49–62) | tail, ten, tent, tie, toe, turkey, turtle |
+| 5 | L5 Pp (p.63–76) | pencil, pie, pillow, pop, popcorn, pot |
+| 6 | L6 Nn (p.79–90) | nail, nap, nest, net, nose, nut |
+| 7 | L7 Short i (p.91–102) | big, fish, ink, pin, sit |
+| 8 | L8 Cc (p.103–114) | cake, cap, cat, comb, cow, cup |
+| 9 | L9 Ff (p.115–126) | fan, fat, fire, fish, fit, foot, fork, four |
+| 10 | L10 Dd (p.127–138) | dig, dip, dog, doll, door, duck |
+- 출처: SAD·FPR 단어 연구 자료집 `~/dev/sadfpr-studio/data/b2_book_FPRK.json` — 각 레슨 쪽에 나오는 단어 중 그 레슨 소리를 가진 것
+  (자음 레슨은 그 글자로 시작, 짧은 모음 레슨은 그 모음으로 시작하거나 c-a-t처럼 가운데 짧은 모음, sh·ch·th 등 이중자음과 c/g 연음은 제외).
+- 그림카드(공식 FPR K 그림: 매직블록·파닉스 아일랜드와 같은 그림)와 아이 목소리 음성이 둘 다 있는 단어만 쓴다. 기능어(my, in, it, no …)는 뺀다.
+- 레슨 11 이후는 공식 그림카드·음성이 아직 없어 레벨이 아니다(스크립트 출력에 레슨마다 빠진 이유가 나온다). 그림과 음성이 생기면 다시 실행.
+- 레벨 1은 처음 정한 12단어 그대로(스크립트가 확인).
 
 ## 실행
 - `실행.command` 더블클릭 → http://127.0.0.1:5211/ (마이크는 http(s) 또는 파일에서 허용 필요)
   서버는 `tools/serve.py`(캐시 안 함: 고친 뒤 그냥 새로고침해도 최신 파일이 보임).
 - `index.html` 더블클릭(file://)도 동작 (음성·폰트는 js/css에 내장).
-- 테스트 훅: `window.__test = { mic:false | heard:true, target:'moon', teeth:[...] }`, `window.__croco`, 주소 `?nohowto` · `?target=`.
-- QA(`tools/qa/`): `qa_flow`·`qa_sizes`·`qa_again`·`qa_file`·`qa_cards`(카드 비행)·`qa_tutor`(페이지 열리면 설명 → START 타이틀 → 게임, 홈, EN|한, Skip, 마이크 위치, 긴 단어)·`console`(SDF 경고).
+- 테스트 훅: `window.__test = { mic:false | heard:true, target:'moon', teeth:[...] }`, `window.__croco`(LEVELS, setLevel, levelUp …), 주소 `?nohowto` · `?target=` · `?level=`.
+- QA(`tools/qa/`): `qa_flow`·`qa_sizes`·`qa_again`·`qa_file`·`qa_cards`(카드 비행)·`qa_tutor`(페이지 열리면 설명 → START 타이틀 → 게임, 홈, EN|한, Skip, 마이크 위치, 긴 단어)·`qa_levels`(레벨마다 음성·카드·이빨 글자, 다음 레벨·다시 하기·마지막 레벨)·`console`(SDF 경고).
   QA는 `window.__ready && window.__intro`(등장 모션 끝)를 기다린 뒤 START를 누른다.
 
 ## 구성
@@ -67,9 +86,10 @@ man, map, meat, milk, mirror, mitt, monkey, moon, mop, mouse, mug, mushroom
 - 레퍼런스(사용자 Gemini 이미지)는 `design/*.png` — 용량 때문에 git 제외.
 
 ## 음성
-회사 TTS 소년 목소리(Qwen3 'aiden') = Magic Block과 같은 목소리. 단어 12개, 공식 FPR K /m/ 음원, 공용 대사는 Magic Block에서 재사용.
+회사 TTS 소년 목소리(Qwen3 'aiden') = Magic Block과 같은 목소리. 레벨 단어는 Magic Block 음성, 없으면 Phonics Island의 같은 목소리 단어 음성을,
+레벨 음가는 공식 FPR K 녹음(Magic Block에서 다듬은 것, 없으면 Phonics Island에 있는 원본을 같은 방식으로 다듬음)을 쓴다. 공용 대사도 Magic Block에서 재사용.
 한국어(`k:`)는 매직블록의 한국어 공용 대사를 재사용한다(블럭이라고 말하는 great1만 뺌).
-게임 전용 새 대사(인사·규칙·덥석, 악어 튜터 설명 `tut1`–`tut8`)는 영어(`NEW`)·한국어(`NEW_KO`) 모두 **회사망에서** 아래로 생성:
+게임 전용 새 대사(인사·규칙·덥석·레벨 업, 악어 튜터 설명 `tut1`–`tut8`)는 영어(`NEW`)·한국어(`NEW_KO`) 모두 **회사망에서** 아래로 생성:
 ```
 zsh -ic '/Users/jini/.hermes/bin/uv run --with numpy python tools/build_voice.py'
 ```

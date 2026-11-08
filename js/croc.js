@@ -160,7 +160,7 @@
     g.clearRect(0, 0, 256, 256);
     g.textAlign = 'center';
     g.textBaseline = 'alphabetic';
-    g.font = '700 190px "Baloo 2", "Arial Rounded MT Bold", "Nunito", sans-serif';
+    g.font = `700 ${ch.length > 1 ? 140 : 190}px "Baloo 2", "Arial Rounded MT Bold", "Nunito", sans-serif`;    // qu: two letters
     g.fillStyle = 'rgba(30,40,70,0.16)';                 // a soft print shadow
     g.fillText(ch, 131, 186);
     g.fillStyle = color;
@@ -422,6 +422,10 @@
       look(p) { st.gaze = p ? p.clone() : null; },
       press(i) { P.teeth[i].pressed = true; },
       release(i) { P.teeth[i].pressed = false; },
+      /* the level's letter on every tooth (game.js setLevel), drawn on the same textures */
+      setLetter(ch) {
+        for (const t of P.teeth) { const tex = t.decal.material.map; tex.userData.ch = ch; drawLetter(tex.image, ch, tex.userData.color); tex.needsUpdate = true; }
+      },
       /* redraw the tooth letters once the web font has loaded */
       refreshLetters() {
         for (const t of P.teeth) { const tex = t.decal.material.map; drawLetter(tex.image, tex.userData.ch, tex.userData.color); tex.needsUpdate = true; }

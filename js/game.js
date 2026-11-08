@@ -16,7 +16,16 @@
   const HOWTO_FIRST = !Q.has('nohowto');
   const HOWTO_AFTER = 550 + 2250 + 1000;               // ms: the title's entrance (START up at 2.8 s), a moment, then explain
   const A = window.Sound, Mic = window.Mic;
-  const DATA = window.CROCO_WORDS, WORDS = DATA.words, BY = Object.fromEntries(WORDS.map(w => [w.w, w]));
+  // levels = the FPR K lessons in book order (tools/build_words.py; user: "레벨1이 끝나면 레벨2로 넘어가게 … lesson2에
+  // 배워야하는 음가와 단어로 … 교재기반으로 계속 레벨 올라가게"). Level N = Lesson N: its letter on the teeth, the sound pill
+  // and in bold in each word, its official letter sound, its words. WORDS / BY follow the current level (setLevel).
+  const DATA = window.CROCO_WORDS;
+  const LEVELS = DATA.levels && DATA.levels.length ? DATA.levels
+    : [{ level: 1, lesson: 1, title: 'Mm', letter: 'm', sound: 'm', kind: 'letter', words: DATA.words }];
+  const ANY = {};
+  LEVELS.forEach(l => l.words.forEach(w => { if (!ANY[w.w]) ANY[w.w] = w; }));
+  let WORDS = LEVELS[0].words, BY = Object.fromEntries(WORDS.map(w => [w.w, w]));
+  const LV = () => LEVELS[G.level] || LEVELS[0];
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const rand = n => Math.floor(Math.random() * n);
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -34,7 +43,7 @@
   const SVG_MIC = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0" fill="none" stroke="#ff7d2e" stroke-width="2.2" stroke-linecap="round"/><path d="M12 17.5V21" stroke="#ff7d2e" stroke-width="2.2" stroke-linecap="round"/></svg>';
   const SVG_OK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg>';
 
-  const G = { screen: 'title', token: 0, busy: true, target: null, nextTarget: null, winner: null, lastTarget: null, teeth: [], pressed: new Set(), turn: 0, starter: 0, got: [[], []], idle: null, said: new Set() };
+  const G = { screen: 'title', token: 0, busy: true, target: null, nextTarget: null, winner: null, lastTarget: null, teeth: [], pressed: new Set(), turn: 0, starter: 0, got: [[], []], idle: null, said: new Set(), level: 0, bootHowto: null };
 
   // ── the 3D croc (js/croc.js) on the three.js stage (js/stage.js) ─────────────────────────────────────
   Stage.init($('#croc'), { preserve: /[?&]shot\b/.test(location.search) });
@@ -63,35 +72,67 @@
   // (scale 1.12). Measured in the game font; measured again once that font has loaded.
   const measure = document.createElement('canvas').getContext('2d');
   const FONT = getComputedStyle(document.documentElement).getPropertyValue('--font').trim() || '"Baloo 2", sans-serif';
+  /* the word as the cards show it: capitalised, the lesson's letter in bold (hl / hn from tools/build_words.py) — the
+     initial (Map), a short vowel (C-a-t) or the final x */
+  function wordParts(word) {
+    const e = BY[word] || ANY[word] || {}, s = cap(word), i = e.hl || 0, n = e.hn || 1;
+    return [s.slice(0, i), s.slice(i, i + n), s.slice(i + n)];
+  }
   function wordFit(word, tgt) {
+    const [pa, pb, pc] = wordParts(word);
     measure.font = `800 100px ${FONT}`;
-    let w = measure.measureText(word[0].toUpperCase()).width;
+    let w = measure.measureText(pb).width;
     measure.font = `700 100px ${FONT}`;
-    w += measure.measureText(word.slice(1)).width + word.length;          // + letter-spacing .01em
+    w += measure.measureText(pa + pc).width + word.length;          // + letter-spacing .01em
     // inside width: card .788 (border .036 + padding .07 a side), target card .808; × .88 for the glow
     return Math.min(tgt ? 0.13 : 0.19, (tgt ? 0.71 : 0.69) / (w / 100));
   }
   function fitCardWord(el) { el.style.setProperty('--wf', wordFit(el.dataset.word, el.classList.contains('tgt')).toFixed(4)); }
   function makeCard(word, opts = {}) {
-    const w = BY[word];
+    const w = BY[word] || ANY[word], [pa, pb, pc] = wordParts(word);
     const el = document.createElement('div');
     el.className = 'card' + (opts.cls ? ' ' + opts.cls : '') + (opts.sound ? ' has-snd' : '');
     el.style.setProperty('--edge', opts.edge || EDGES[edgeN++ % EDGES.length]);
     el.dataset.word = word;
     fitCardWord(el);
     el.innerHTML = `<div class="pic"><img src="${w.card}" alt="" draggable="false"></div>`
-      + `<div class="word"><b>${cap(word)[0]}</b>${word.slice(1)}</div>`
-      + (opts.sound ? `<div class="snd" role="button" aria-label="Listen: ${word}"><span class="ltr">M</span>${SVG_SPK}</div>` : '')
+      + `<div class="word">${pa}<b>${pb}</b>${pc}</div>`
+      + (opts.sound ? `<div class="snd" role="button" aria-label="Listen: ${word}"><span class="ltr">${cap(LV().letter)}</span>${SVG_SPK}</div>` : '')
       + (opts.mic ? `<div class="ok" aria-hidden="true">${SVG_OK}</div>` : '');
     return el;
   }
   function placeDecor() {
-    document.querySelectorAll('.deco [data-word]').forEach(slot => {
+    document.querySelectorAll('.deco > [data-word]').forEach(slot => {          // the slots (their cards carry data-word too)
       slot.innerHTML = '';
       slot.appendChild(makeCard(slot.dataset.word, { edge: slot.classList.contains('fly-r') ? '#86c3ec' : slot.classList.contains('lay-l') ? '#b9a2f0' : slot.classList.contains('lay-r') ? '#f6b043' : '#f6b043' }));
     });
   }
   placeDecor();
+
+  /* a level: the croc's teeth, the title's clay letters and cards, the level tag and banner follow it */
+  const DECOR1 = ['monkey', 'map', 'mouse', 'moon'];          // level 1's title cards, as they were
+  function setLevel(i) {
+    G.level = Math.max(0, Math.min(LEVELS.length - 1, i | 0));
+    const L = LV();
+    WORDS = L.words;
+    BY = Object.fromEntries(WORDS.map(w => [w.w, w]));
+    app.dataset.level = String(G.level + 1);
+    app.classList.toggle('lastlv', G.level >= LEVELS.length - 1);
+    croc.setLetter(L.letter);
+    document.querySelectorAll('.deco .l3d').forEach(el => { el.textContent = el.classList.contains('big') ? cap(L.letter) : L.letter; });
+    const pick = G.level === 0 ? DECOR1.filter(w => BY[w]) : WORDS.map(w => w.w);
+    document.querySelectorAll('.deco > [data-word]').forEach((slot, k) => { slot.dataset.word = pick[k % pick.length]; });
+    placeDecor();
+    levelText();
+  }
+  function levelText() {
+    const L = LV(), t = $('#lvTag'), b = $('#lvUp');
+    t.querySelector('.n').textContent = tr('level', { n: G.level + 1 });
+    t.querySelector('.s').textContent = L.title;
+    b.querySelector('.t').textContent = tr('levelup', { n: G.level + 1 });
+    b.querySelector('.lv-ltr b').textContent = cap(L.letter) + L.letter;
+    b.querySelector('.lv-sub').textContent = L.kind === 'short' ? L.title : '';
+  }
 
   // CSS cubic-bezier curves as functions: the card curves of Halli Galli (deal = comes out, fly = goes to a slot)
   function bezier(x1, y1, x2, y2) {
@@ -215,7 +256,7 @@
   const say = (key, minMs = 0) => Promise.all([A.say(key), sleep(minMs)]);
   async function sayWord(word, card, tok) {
     if (card) card.classList.add('say-m');
-    await say('s:m', 900);
+    await say('s:' + LV().sound, 900);
     if (card) card.classList.remove('say-m');
     if (tok !== G.token) return;
     await sleep(140);
@@ -256,7 +297,10 @@
     if (window.__test && window.__test.target) target = window.__test.target;
     if (BY[Q.get('target')]) target = Q.get('target');
     G.lastTarget = target; G.target = target;
-    const others = shuffle(pool.filter(w => w !== target)).slice(0, croc.N_TEETH - 1);
+    // 10 teeth: the trap word once, the level's other words on the rest (dealt again when a level has fewer)
+    const rest = pool.filter(w => w !== target), others = [];
+    while (rest.length && others.length < croc.N_TEETH - 1) others.push(...shuffle(rest.slice()));
+    others.length = Math.min(others.length, croc.N_TEETH - 1);
     G.teeth = shuffle([target, ...others]);
     if (window.__test && window.__test.teeth) G.teeth = window.__test.teeth.slice();
     G.pressed = new Set();
@@ -517,6 +561,7 @@
     app.dataset.screen = 'title';
     $('#cards').innerHTML = '';
     $('#turn').classList.remove('show');
+    $('#lvUp').classList.remove('show', 'say');
     $('#target').classList.remove('alarm', 'intro');
     document.querySelectorAll('.player').forEach(p => p.classList.remove('win', 'lose', 'on'));
     croc.setFrame(FRAME.title, 900);
@@ -535,9 +580,9 @@
   const LANG_KEY = 'croco.lang.v1';
   let LANG = (() => { try { return localStorage.getItem(LANG_KEY) === 'ko' ? 'ko' : 'en'; } catch (e) { return 'en'; } })();
   const UI = {
-    en: { p1: 'Player 1', p2: 'Player 2', turn: 'Your turn!', wins: 'Player {n} Wins!', again: 'Play Again', skip: 'Skip',
+    en: { p1: 'Player 1', p2: 'Player 2', turn: 'Your turn!', wins: 'Player {n} Wins!', again: 'Play Again', next: 'Next Level', level: 'Level {n}', levelup: 'Level {n}!', skip: 'Skip',
       a_skip: 'Skip the explanation', a_lang: 'Language: English or Korean', a_sound: 'Sound on/off', a_home: 'Home' },
-    ko: { p1: '플레이어 1', p2: '플레이어 2', turn: '네 차례!', wins: '플레이어 {n} 승리!', again: '다시 하기', skip: '건너뛰기',
+    ko: { p1: '플레이어 1', p2: '플레이어 2', turn: '네 차례!', wins: '플레이어 {n} 승리!', again: '다시 하기', next: '다음 레벨', level: '레벨 {n}', levelup: '레벨 {n}!', skip: '건너뛰기',
       a_skip: '설명 건너뛰기', a_lang: '언어: 영어 또는 한국어', a_sound: '소리 켜기/끄기', a_home: '처음으로' },
   };
   const tr = (k, v = {}) => (UI[LANG][k] || UI.en[k] || k).replace(/\{(\w+)\}/g, (_, x) => (v[x] != null ? v[x] : ''));
@@ -553,6 +598,7 @@
     b.querySelectorAll('.flag').forEach(f => f.classList.toggle('on', f.dataset.l === LANG));
     $('#turn .t').textContent = tr('turn', { n: G.turn + 1 });
     if (G.winner != null) $('#rbText').textContent = tr('wins', { n: G.winner + 1 });
+    levelText();
   }
   $('#btnLang').addEventListener('click', e => {
     e.stopPropagation();
@@ -891,6 +937,7 @@
     introTimer = setTimeout(() => { window.__intro = true; }, d0 + 2250);
   }
   applyLang();
+  setLevel((parseInt(Q.get('level'), 10) || 1) - 1);       // ?level=N: start at level N (QA, a class on lesson N)
 
   $('#start').addEventListener('click', () => {
     if (T.on || G.screen !== 'title') return;
@@ -911,6 +958,54 @@
     say('t:playagain');
     startRound();
   });
+  // Next Level (user: "다시하기가 있고 다음레벨로 넘어가는 버튼이 있어야"): the next lesson's sound and words
+  $('#next').addEventListener('click', () => {
+    if (G.screen !== 'result' || G.level >= LEVELS.length - 1) return;
+    A.sfxPlay('pop');
+    levelUp();
+  });
+  /* the croc snaps shut, the new lesson's letter goes onto its teeth, a banner shows the level and its sound is said,
+     then the round starts with the new words */
+  async function levelUp() {
+    const tok = ++G.token;
+    G.screen = 'game';
+    app.dataset.screen = 'game';
+    G.busy = true;
+    G.winner = null;
+    clearIdle();
+    A.stopVoice();
+    $('#cards').innerHTML = '';
+    document.querySelectorAll('.player').forEach(p => p.classList.remove('win', 'lose', 'on'));
+    $('#turn').classList.remove('show');
+    $('#target').classList.add('hidden');
+    G.got = [[], []];
+    renderStack(0); renderStack(1);
+    croc.chomp();
+    A.sfxPlay('chomp');
+    await sleep(300);
+    if (tok !== G.token) return;
+    setLevel(G.level + 1);
+    const b = $('#lvUp');
+    b.classList.remove('show', 'say');
+    void b.offsetWidth;
+    b.classList.add('show');
+    A.sfxPlay('fanfare');
+    FX.pop(window.innerWidth * 0.5, window.innerHeight * 0.42, 50);
+    croc.reopen();
+    croc.cheer(1800);
+    await sleep(800);
+    if (tok !== G.token) return;
+    if (A.has('t:levelup')) { await say('t:levelup'); if (tok !== G.token) return; }
+    b.classList.add('say');
+    await say('s:' + LV().sound, 900);
+    b.classList.remove('say');
+    await sleep(600);
+    if (tok !== G.token) return;
+    b.classList.remove('show');
+    await sleep(350);
+    if (tok !== G.token) return;
+    startRound();
+  }
   $('#btnHome').addEventListener('click', () => { A.sfxPlay('tap'); goTitle(); });
   $('#btnSound').addEventListener('click', () => {
     A.unlock();
@@ -974,5 +1069,5 @@
   });
 
   // QA hooks (headless checks)
-  window.__croco = { G, croc, goGame, goTitle, onTooth, startRound, showResult, toothScreen, revealSlot, makeCard, T, LANG_KEY, lang: () => LANG, howtoSeen: () => howtoSeen };
+  window.__croco = { G, croc, goGame, goTitle, onTooth, startRound, showResult, toothScreen, revealSlot, makeCard, T, LANG_KEY, lang: () => LANG, howtoSeen: () => howtoSeen, LEVELS, setLevel, levelUp };
 })();

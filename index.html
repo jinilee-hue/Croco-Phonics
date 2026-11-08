@@ -45,6 +45,8 @@
   <!-- game HUD -->
   <section class="hud">
     <img class="glogo" src="assets/img/logo.webp" alt="" draggable="false">
+    <div class="lvtag" id="lvTag" aria-live="polite"><span class="n">Level 1</span><span class="s">Mm</span></div>
+    <div class="lvup" id="lvUp" aria-live="polite"><div class="lv-rb"><span class="t">Level 1!</span></div><div class="lv-ltr"><b>Mm</b></div><div class="lv-sub"></div></div>
     <div class="player p1" data-p="0">
       <div class="ava"><img src="assets/img/p1.webp" alt="" draggable="false"></div>
       <div class="name" data-i18n="p1">Player 1</div>
@@ -71,6 +73,7 @@
       <div class="champ"><div class="crown" aria-hidden="true"></div><div class="ava"><img id="champImg" src="assets/img/p1.webp" alt=""></div></div>
     </div>
     <div class="r-btns">
+      <button id="next" class="start again next"><span data-i18n="next">Next Level</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12h13.5M12.5 5.5 19 12l-6.5 6.5" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <button id="again" class="start again"><span data-i18n="again">Play Again</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a8 8 0 1 0 7.75 10h-2.1A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35A7.96 7.96 0 0 0 12 4z"/></svg></button>
     </div>
   </section>

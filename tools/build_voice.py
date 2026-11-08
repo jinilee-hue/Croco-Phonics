@@ -2,8 +2,12 @@
 
 One voice for the whole game = the company TTS boy voice Magic Block (Phonics-Jenga) uses (Qwen3 'aiden',
 cheerful 7-year-old boy) — the user picked it for Phonics Island; no device speechSynthesis (differs per device).
-- REUSED from Phonics-Jenga public/voice (same engine, already read-back checked there):
-  the 12 Lesson 1 words (w_*), the official FPR K /m/ letter-sound recording (s_m), and shared lines (turns, say it, wins…).
+- WORDS: every level's words (js/words.js, tools/build_words.py): Magic Block's clip when it has one (w_*), else
+  Phonics Island's word clip (speaker 'learn', the same voice; trimmed and levelled here).
+- LETTER SOUNDS: every level's official FPR K recording (s_*): Magic Block's trimmed take when it has one, else
+  Phonics Island's copy of the FPR K file (public/fpr), trimmed and levelled here like Magic Block's.
+- REUSED from Phonics-Jenga public/voice (same engine, already read-back checked there): shared lines (turns, say it,
+  wins…).
 - KOREAN (EN | 한 in the game): Magic Block's Korean takes of the shared lines (k:*, same voice, language 'ko') are
   reused too, except great1 (it says 블럭); NEW_KO are this game's Korean lines. audio.js plays 'k:x' for 't:x' in Korean.
 - NEW lines below (game-specific) are fetched from the company TTS (company network / VPN; TTS_BASE_URL + LLM_API_KEY
@@ -38,8 +42,10 @@ T_INS = ['Speak like a cheerful, energetic 7-year-old boy: bright and excited.',
          'Speak like a cheerful, energetic 7-year-old boy, bright and excited, clearly.',
          'Like a cheerful, energetic 7-year-old boy: bright, excited and clear.']
 
-WORDS = [w['w'] for w in json.loads((ROOT / 'js' / 'words.js').read_text(encoding='utf-8')
-                                    .split('=', 1)[1].rstrip().rstrip(';'))['words']]
+ISLAND = pathlib.Path.home() / 'Documents/Jini/2026/Phonics/Phonics_island/phonics-island-3d/public'
+LEVELS = json.loads((ROOT / 'js' / 'words.js').read_text(encoding='utf-8').split('=', 1)[1].rstrip().rstrip(';'))['levels']
+WORDS = list(dict.fromkeys(w['w'] for lv in LEVELS for w in lv['words']))
+SOUNDS = list(dict.fromkeys(lv['sound'] for lv in LEVELS))
 REUSE_T = ['turn1', 'turn2', 'sayit', 'great1', 'great2', 'great3', 'uhoh', 'win1', 'win2', 'playagain',
            'nomic', 'louder', 'pressstart']
 REUSE_K = [k for k in REUSE_T if k != 'great1']        # Magic Block's Korean takes ('great1' says "블럭을 얻었어")
@@ -49,6 +55,7 @@ NEW = {
     'safe': 'Phew! Safe!',
     'chomp': 'Chomp! The croc got you!',
     'howto': 'Press a tooth and say the word!',
+    'levelup': "Level up! Let's learn a new sound!",
     # the croc tutor's explanation (first game only; game.js TUT has the same texts for its bubbles)
     'tut1': "Hi, friends! I'm Croco!",
     'tut2': 'This is the trap word.',
@@ -66,6 +73,7 @@ NEW_KO = {
     'safe': '휴! 괜찮아!',
     'chomp': '덥석! 악어한테 잡혔다!',
     'howto': '이빨을 누르고 단어를 말해 봐!',
+    'levelup': '레벨 업! 새로운 소리를 배워 보자!',
     'tut1': '안녕, 친구들! 나는 크로코야!',
     'tut2': '이건 함정 단어야.',
     'tut3': '이 단어가 숨은 이빨은 누르면 안 돼!',
@@ -90,15 +98,42 @@ def reuse(key):
     clips[key] = e
 
 
-for w in WORDS:
-    reuse(f'w:{w}')
-reuse('s:m')
+island_keys = set(json.loads((ISLAND / 'voice' / 'manifest.json').read_text())['keys'])
+fpr = json.loads((ISLAND / 'fpr' / 'manifest.json').read_text())['clips']
+
+
+def island_key(text, speaker='learn'):
+    """Phonics Island's clip name (src/core/voiceLines.ts voiceKey: FNV-1a of 'speaker|text', base 36)"""
+    s, h = f'{speaker}|{text.strip()}', 0x811c9dc5
+    for ch in s:
+        h = ((h ^ ord(ch)) * 0x01000193) & 0xffffffff
+    d, out = '0123456789abcdefghijklmnopqrstuvwxyz', ''
+    while True:
+        out, h = d[h % 36] + out, h // 36
+        if not h:
+            return out
+
+
+island_words, island_sounds = [], []
 for k in REUSE_T:
     reuse(f't:{k}')
     lines[k] = jv['lines'][k]
 for k in REUSE_K:
     reuse(f'k:{k}')
     lines_ko[k] = jv['lines_ko'][k]
+
+# ── level words and letter sounds: Magic Block's clips, else Phonics Island's (trimmed + levelled below) ─────────
+for w in WORDS:
+    if f'w:{w}' in jv['clips']:
+        reuse(f'w:{w}')
+    else:
+        assert island_key(w) in island_keys, f'no voice for {w} (tools/build_words.py only keeps words with one)'
+        island_words.append(w)
+for L in SOUNDS:
+    if f's:{L}' in jv['clips']:
+        reuse(f's:{L}')
+    else:
+        island_sounds.append(L)
 
 # ── new lines: company TTS ───────────────────────────────────────────────────────────────────────────────
 LEAD, TAIL = .10, .25
@@ -158,6 +193,14 @@ def qwen(text, ins, dst, lang='en'):
                 return False
             time.sleep(4 + 3 * attempt)
 
+
+for w in island_words:
+    dst = OUT / f'w_{w}.mp3'
+    clips[f'w:{w}'] = [dst.name, *trim(ISLAND / 'voice' / f'{island_key(w)}.mp3', dst)]
+for L in island_sounds:                                  # the FPR K files carry ~0.5 s of silence before the sound
+    dst = OUT / f's_{L}.mp3'
+    clips[f's:{L}'] = [dst.name, *trim(ISLAND / fpr[f'sound:{L}'], dst, target_db=-18, floor_db=-40)]
+print(f'{len(WORDS)} words ({len(island_words)} from Phonics Island) · letter sounds {SOUNDS} ({len(island_sounds)} from the FPR K files)')
 
 CACHE.mkdir(parents=True, exist_ok=True)
 missing = []
