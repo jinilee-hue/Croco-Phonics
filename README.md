@@ -21,9 +21,9 @@ man, map, meat, milk, mirror, mitt, monkey, moon, mop, mouse, mug, mushroom
 - 테스트 훅: `window.__test = { mic:false | heard:true, target:'moon', teeth:[...] }`, `window.__croco`.
 
 ## 구성
-- `js/croc.js` — 3D 악어 "Croco"(three.js). 캐릭터 시트(`design/character_sheet.png`)를 따라 SDF로 만든 무광 클레이 모델:
-  머리(볼의 경첩 핀 기준) 덥석, 이빨 눌림, 눈 깜빡/시선(눈은 Phonics Match 튜터처럼 갈색 홍채 + 반짝이),
-  시트의 표정 — 안전한 이빨이면 신난 표정(눈 ^^, 팔 번쩍), 지시 단어 이빨이면 놀란 표정(손을 볼에).
+- `js/croc.js` — 3D 악어(three.js). 악어 이빨 장난감 모양(몸통 없음 · `design/croc_ref.png`)을 SDF로 만든 무광 클레이 모델:
+  윗턱(경첩) 덥석, 이빨 눌림, 눈 깜빡/시선(눈은 Phonics Match 튜터처럼 갈색 홍채 + 반짝이),
+  캐릭터 시트의 표정을 눈으로 — 안전한 이빨이면 신난 눈(^^), 지시 단어 이빨이면 놀란 눈.
   게임 화면에서는 카메라가 위로 올라가고 입을 더 벌려 이빨 10개가 다 보인다.
 - `js/sdf.js` — SDF + Surface Nets 메셔. `js/stage.js` — 카메라·조명·그림자·피킹.
 - `js/game.js` — 진행(지시 단어 → 턴 → 공개/말하기/수집 → 덥석/결과). `js/audio.js` — 음성·효과음·배경음·마이크.

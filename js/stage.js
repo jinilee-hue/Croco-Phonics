@@ -9,7 +9,7 @@
     frame: { y: 0.66, h: 0.6, el: 20 },         // where the croc sits on screen (centre y as a fraction from the top), its height fraction, camera elevation°
     frameTo: null, onTick: [], pointer: { x: 0, y: 0, inside: false }, ray: new THREE.Raycaster(), fps: 0,
   };
-  const T = new THREE.Vector3(0, 1.78, 0.25);      // the croc's visual centre (feet → eye tops)
+  const T = new THREE.Vector3(0, 1.62, 0.2);       // the croc's visual centre (feet → eye tops)
 
   function contactTexture() {
     const c = document.createElement('canvas');
@@ -41,7 +41,7 @@
     const scene = new THREE.Scene();
     const pm = new THREE.PMREMGenerator(r);
     scene.environment = pm.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
-    scene.environmentIntensity = 0.35;           // matte clay: only a hint of studio reflections            // soft studio reflections: the glossy eyes, teeth and tongue
+    scene.environmentIntensity = 0.35;            // matte clay: only a hint of studio reflections
     S.scene = scene;
 
     scene.add(new THREE.HemisphereLight('#ffffff', '#d9cbb2', 1.05));
@@ -89,7 +89,7 @@
     const cam = S.camera, f = S.frame;
     cam.aspect = w / h;
     const vfov = cam.fov * Math.PI / 180;
-    const croH = 3.55, croW = 3.5;                          // croc visual size (units): feet → eye tops, foot to foot
+    const croH = 3.3, croW = 4.5;                           // croc visual size (units): feet → eye tops, foot to foot
     let d = croH / (2 * Math.tan(vfov / 2) * f.h);
     const dw = croW / (2 * Math.tan(vfov / 2) * cam.aspect * 0.86);
     d = Math.max(d, dw);
@@ -156,9 +156,9 @@
         }
         return S.project(V3(0, 0.17, 0).applyMatrix4(g.matrixWorld));
       },
-      mouthScreen: () => S.project(V3(0, 1.95, 0.85)),
+      mouthScreen: () => S.project(V3(0, 1.35, 0.7)),
       screenBox() {
-        const pts = [V3(-1.55, 0.1, 0.6), V3(1.55, 0.1, 0.6), V3(-1.5, 2.0, 0.3), V3(1.5, 2.0, 0.3), V3(0, 3.55, 0.2), V3(0, 0, 1.0)].map(S.project);
+        const pts = [V3(-2.25, 0.2, 0.8), V3(2.25, 0.2, 0.8), V3(-1.7, 2.0, 0), V3(1.7, 2.0, 0), V3(0, 3.3, -0.2), V3(0, 0, 1.2)].map(S.project);
         return { left: Math.min(...pts.map(p => p.x)), right: Math.max(...pts.map(p => p.x)), top: Math.min(...pts.map(p => p.y)), bottom: Math.max(...pts.map(p => p.y)) };
       },
       pick: (x, y) => S.pick(x, y),

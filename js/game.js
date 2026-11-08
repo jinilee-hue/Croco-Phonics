@@ -22,8 +22,8 @@
   // croc framing: horizontal centre, bottom edge, height (fractions of the viewport)
   // camera framing: croc centre (fraction from the top), its height fraction, camera elevation (°). In the game the
   // camera swings up to look into the mouth so every tooth shows (user: "화면 돌려서 악어 이빨이 다 잘 보이게")
-  const FRAME = { title: { y: 0.68, h: 0.6, el: 12 }, game: { y: 0.64, h: 0.7, el: 34 } };
-  const OPEN_REST = { title: 1, game: 2.5 };          // the game opens the mouth wider: the back teeth clear the upper jaw
+  const FRAME = { title: { y: 0.68, h: 0.6, el: 12 }, game: { y: 0.635, h: 0.64, el: 35 } };
+  const OPEN_REST = { title: 1, game: 1.32 };          // the game opens the mouth wider: the back teeth clear the upper jaw
   const portrait = () => window.innerWidth < window.innerHeight;
   const u = () => Math.min(window.innerHeight / 100, window.innerWidth * (portrait() ? 0.0095 : 0.0062));
   const SVG_SPK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9.5v5a1 1 0 0 0 1 1h3l4.4 3.7a.8.8 0 0 0 1.3-.6V5.4a.8.8 0 0 0-1.3-.6L7 8.5H4a1 1 0 0 0-1 1z"/><path d="M15.6 8.2a5 5 0 0 1 0 7.6M18.3 5.6a8.6 8.6 0 0 1 0 12.8" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>';
