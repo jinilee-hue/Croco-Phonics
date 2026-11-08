@@ -12,6 +12,12 @@ removes everything below the red lip (LIP_BOTTOM, the tub's top) — and the cro
 frame. The frames are aligned on the irises: the eyes stay still, the jaw drops. The tool prints the .bite box (in card
 widths) that keeps the face exactly where and as big as the approved still badge had it (95c8139); css/style.css uses it.
 
+The white sticker outline and the soft shadow are drawn INTO every frame: Chrome renders each frame once with the very
+CSS filter the badge used to carry (STICKER_CSS) on black and on white, and the alpha comes from the difference again. A
+CSS drop-shadow filter on the animated image went stale in Chrome as the jaw moved (user: "이거 턱 움직일때 그림자
+이상한거 아직 안고쳐졌는데" — glow left over from an earlier frame, ending in a hard edge in the empty space above the
+head), so the game shows the baked frames with no filter.
+
     uv run --with playwright --with numpy --with pillow python tools/make_bite_badge.py
 """
 import io
@@ -34,6 +40,36 @@ LOOP = [(0, 520), (0.12, 40), (0.3, 40), (0.46, 40), (0.58, 50), (0.66, 60), (0.
 # middle in badge px of 320 → the face's size and place on the card, which the new box keeps
 STILL = {'w': 0.27, 'left': -0.09, 'top': -0.1, 'gap': 122.0 / 320, 'mx': 160.5 / 320, 'my': 138.5 / 320}
 MARGIN = 6                                   # render px of clear space round the silhouette
+# the sticker look the badge had as a CSS filter (white outline + soft reddish shadow), in card widths
+STICKER_CSS = ('drop-shadow(0 0 calc(var(--cw) * .008) #fff) drop-shadow(0 0 calc(var(--cw) * .008) #fff) '
+               'drop-shadow(0 calc(var(--cw) * .012) calc(var(--cw) * .02) rgba(120,30,30,.4))')
+PAD = 72                                     # px of room round the face box for the glow and the shadow (trimmed after)
+
+
+def bake_sticker(browser, faces, k):
+    """Chrome draws each face frame with STICKER_CSS at 1:1 (--cw = k px) on black and on white; alpha from the
+    difference, as for the 3D renders → RGBA frames (W + 2 PAD) × (H + 2 PAD)"""
+    import base64
+    h, w = next(iter(faces.values())).shape[:2]
+    pg = browser.new_page(viewport={'width': w + 2 * PAD, 'height': h + 2 * PAD}, device_scale_factor=1)
+    out = {}
+    for v, im in faces.items():
+        buf = io.BytesIO()
+        Image.fromarray(im).save(buf, 'PNG')
+        src = 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode()
+        shots = {}
+        for bg in ('#000', '#fff'):
+            pg.set_content(f'<html><body style="margin:0;background:{bg}"><div style="position:absolute;left:{PAD}px;top:{PAD}px;'
+                           f'width:{w}px;--cw:{k}px;filter:{STICKER_CSS}"><img src="{src}" style="display:block;width:{w}px;height:{h}px"></div></body></html>')
+            pg.wait_for_function('document.images[0].complete')
+            shots[bg] = np.asarray(Image.open(io.BytesIO(pg.screenshot())).convert('RGB')).astype(np.float64)
+        kk, ww = shots['#000'], shots['#fff']
+        alpha = np.clip(1 - (ww - kk).mean(axis=2) / 255, 0, 1)
+        rgb = np.where(alpha[..., None] > 1e-3, kk / np.maximum(alpha[..., None], 1e-3), 0)
+        out[v] = np.dstack([np.clip(rgb, 0, 255), alpha * 255]).round().astype(np.uint8)
+    pg.close()
+    return out
+
 
 
 def irises(rgba, near, r):
@@ -113,23 +149,42 @@ for v, (rgba, _) in frames.items():
 L, T, R, B = L - MARGIN, T - MARGIN, R + MARGIN, B + MARGIN
 cw, ch = R - L, B - T
 out_h = round(WIDTH * ch / cw)
-seqimg = {}
+# the face's box on the card (card widths) that keeps the closed face as on the still badge
+gap0 = frames[0][1][1][0] - frames[0][1][0][0]
+w_cw = STILL['w'] * STILL['gap'] * cw / gap0                           # same iris gap on the card
+fx, fy = (mx0 - L) / cw, (my0 - T) / cw                                 # the irises' middle in face-box widths
+left = STILL['left'] + STILL['mx'] * STILL['w'] - fx * w_cw
+top = STILL['top'] + STILL['my'] * STILL['w'] - fy * w_cw
+K = WIDTH / w_cw                                                        # output px per card width
+faces = {}
 for v, (rgba, _) in frames.items():
     dx, dy = mx0 - mid[v][0], my0 - mid[v][1]
     box = (L - dx, T - dy, R - dx, B - dy)
     im = np.asarray(Image.fromarray(rgba).resize((WIDTH, out_h), Image.LANCZOS, box=box)).copy()
     im[im[..., 3] <= 6] = 0                                             # the resize's faint ringing (alpha ≤ 6)
-    seqimg[v] = Image.fromarray(im)
-seq = [seqimg[v] for v, _ in LOOP]
+    faces[v] = im
+with sync_playwright() as p:
+    b = p.chromium.launch(channel='chrome', headless=True)
+    seqimg = bake_sticker(b, faces, K)
+    b.close()
+edge = max(int(f[[0, -1]].max()) for f in (x[..., 3] for x in seqimg.values()))
+assert edge <= 2, f'the glow reaches the edge of the {PAD} px room (alpha {edge})'
+# trim the empty border the glow and the shadow leave (the same box for every frame: they stay aligned)
+on = np.zeros(next(iter(seqimg.values())).shape[:2], bool)
+for f in seqimg.values():
+    on |= f[..., 3] > 2
+ys, xs = np.nonzero(on)
+x0, y0, x1, y1 = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
+seq = []
+for v, _ in LOOP:
+    f = seqimg[v][y0:y1, x0:x1].copy()
+    f[f[..., 3] <= 2] = 0
+    seq.append(Image.fromarray(f))
 seq[0].save(OUT, 'WEBP', save_all=True, append_images=seq[1:], duration=[ms for _, ms in LOOP], loop=0,
             quality=90, method=6, background=(0, 0, 0, 0))
-
-# the .bite box on the card (card widths) that keeps the closed face as on the still badge
-gap0 = frames[0][1][1][0] - frames[0][1][0][0]
-w_cw = STILL['w'] * STILL['gap'] * cw / gap0                           # same iris gap on the card
-fx, fy = (mx0 - L) / cw, (my0 - T) / cw                                 # the irises' middle in box widths
-left = STILL['left'] + STILL['mx'] * STILL['w'] - fx * w_cw
-top = STILL['top'] + STILL['my'] * STILL['w'] - fy * w_cw
-print(f'{OUT.relative_to(ROOT)} {WIDTH}×{out_h} px · {len(seq)} frames · {sum(ms for _, ms in LOOP)} ms loop · {OUT.stat().st_size // 1024} KB')
-print(f'.bite {{ left: calc(var(--cw) * {left:.4f}); top: calc(var(--cw) * {top:.4f}); width: calc(var(--cw) * {w_cw:.4f}); '
-      f'transform-origin: {100 * fx:.1f}% {100 * fy * cw / ch:.1f}%; }}   /* the eyes\' middle */')
+ox, oy = PAD - x0, PAD - y0                                             # the face box's corner in the image (px)
+W2, H2 = x1 - x0, y1 - y0
+print(f'{OUT.relative_to(ROOT)} {W2}×{H2} px (face {WIDTH}×{out_h} at {ox},{oy}) · {len(seq)} frames · {sum(ms for _, ms in LOOP)} ms loop · '
+      f'{OUT.stat().st_size // 1024} KB')
+print(f'.bite {{ left: calc(var(--cw) * {left - ox / K:.4f}); top: calc(var(--cw) * {top - oy / K:.4f}); width: calc(var(--cw) * {W2 / K:.4f}); '
+      f'transform-origin: {100 * (ox + fx * WIDTH) / W2:.1f}% {100 * (oy + fy * WIDTH) / H2:.1f}%; }}   /* the eyes\' middle */')
