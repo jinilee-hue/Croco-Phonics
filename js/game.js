@@ -29,7 +29,6 @@
   const SVG_SPK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9.5v5a1 1 0 0 0 1 1h3l4.4 3.7a.8.8 0 0 0 1.3-.6V5.4a.8.8 0 0 0-1.3-.6L7 8.5H4a1 1 0 0 0-1 1z"/><path d="M15.6 8.2a5 5 0 0 1 0 7.6M18.3 5.6a8.6 8.6 0 0 1 0 12.8" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>';
   const SVG_MIC = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0" fill="none" stroke="#ff7d2e" stroke-width="2.2" stroke-linecap="round"/><path d="M12 17.5V21" stroke="#ff7d2e" stroke-width="2.2" stroke-linecap="round"/></svg>';
   const SVG_OK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg>';
-  const SVG_BITE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.6 9.2C4.5 5.6 19.5 5.6 21.4 9.2v1.1l-1.9 2.4-1.9-2.4-1.9 2.4-1.9-2.4-1.9 2.4-1.9-2.4-1.9 2.4-1.9-2.4-1.9 2.4-1.9-2.4z" fill="#fff"/><path d="M2.6 14.8c1.9 3.6 16.9 3.6 18.8 0v-1.1l-1.9-2.4-1.9 2.4-1.9-2.4-1.9 2.4-1.9-2.4-1.9 2.4-1.9-2.4-1.9 2.4-1.9-2.4-1.9 2.4z" fill="#ffe1e1"/></svg>';
 
   const G = { screen: 'title', token: 0, busy: true, target: null, nextTarget: null, winner: null, lastTarget: null, teeth: [], pressed: new Set(), turn: 0, starter: 0, got: [[], []], idle: null, said: new Set() };
 
@@ -228,7 +227,7 @@
     const card = makeCard(word, { cls: 'tgt', sound: true, edge: '#f5b54a' });
     const bite = document.createElement('div');
     bite.className = 'bite';
-    bite.innerHTML = SVG_BITE;
+    bite.innerHTML = '<img src="assets/img/bite_croc.webp" alt="" draggable="false">';
     card.appendChild(bite);
     t.appendChild(card);
     return card;

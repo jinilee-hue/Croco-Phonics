@@ -84,10 +84,12 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .card.tgt { aspect-ratio: 1.36; grid-template-rows: minmax(0, 1fr) auto; padding: calc(var(--cw) * .045) calc(var(--cw) * .06) calc(var(--cw) * .1); --edge: #f5b54a; }
 .card.tgt .word { font-size: calc(var(--cw) * var(--wf, .13)); }
 .card.tgt .snd { font-size: calc(var(--cw) * .085); bottom: calc(var(--cw) * -.07); }
-.bite { position: absolute; left: calc(var(--cw) * -.07); top: calc(var(--cw) * -.07); width: calc(var(--cw) * .2); height: calc(var(--cw) * .2); border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #ff8a8a, #f0484e 60%, #c93038); box-shadow: 0 calc(var(--cw) * .015) calc(var(--cw) * .03) rgba(180,40,40,.35), inset 0 calc(var(--cw) * -.01) 0 rgba(120,20,20,.3);
-  display: grid; place-items: center; animation: biteBob 1.6s ease-in-out infinite; }
-.bite svg { width: 74%; height: 74%; }
+/* the trap word's badge = the game croc's own face, mouth shut, teeth showing (user: "이건 악어얼굴에서 입을 닫았을때
+   이빨을 보여주면"; tools/make_bite_badge.py renders it from the 3D model), a white sticker outline */
+.bite { position: absolute; left: calc(var(--cw) * -.09); top: calc(var(--cw) * -.1); width: calc(var(--cw) * .27); height: calc(var(--cw) * .27);
+  filter: drop-shadow(0 0 calc(var(--cw) * .008) #fff) drop-shadow(0 0 calc(var(--cw) * .008) #fff) drop-shadow(0 calc(var(--cw) * .012) calc(var(--cw) * .02) rgba(120,30,30,.4));
+  animation: biteBob 1.6s ease-in-out infinite; }
+.bite img { width: 100%; height: 100%; display: block; object-fit: contain; pointer-events: none; }
 @keyframes biteBob { 50% { transform: scale(1.1) rotate(-8deg); } }
 
 /* ── title ────────────────────────────────────────────────────────────────────────────────────────── */
