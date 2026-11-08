@@ -3,10 +3,14 @@
 
 Renders dev/croc.html (front view, eyes pinned open and looking straight out, plain teeth without the letters, no floor
 shadow) at the mouth openings of one chomp, each on black and on white: the alpha comes from the difference, so the
-anti-aliased edges stay clean. Every frame is cropped around the EYES (they stay still; the jaw drops), with the bottom
-cut riding on the lower jaw, so the closed frame is the badge as it was and the open mouth grows downward over the card's
-corner (never up past the screen's top edge). Writes one animated WebP: assets/img/bite_croc.webp (loops; the browser
-plays it, no script). Needs the local server (tools/serve.py on 5211).
+anti-aliased edges stay clean. Writes one animated WebP: assets/img/bite_croc.webp (loops; the browser plays it, no
+script). Needs the local server (tools/serve.py on 5211).
+
+Nothing is cut (user: "영역에 대한 그림자가 잘려서 들어갔는데" — the crop used to run through the shaded green body under
+the lip and through the side walls): only the face is drawn — the body, legs and claws are hidden and a clip plane
+removes everything below the red lip (LIP_BOTTOM, the tub's top) — and the crop holds the whole silhouette of every
+frame. The frames are aligned on the irises: the eyes stay still, the jaw drops. The tool prints the .bite box (in card
+widths) that keeps the face exactly where and as big as the approved still badge had it (95c8139); css/style.css uses it.
 
     uv run --with playwright --with numpy --with pillow python tools/make_bite_badge.py
 """
@@ -20,14 +24,16 @@ from playwright.sync_api import sync_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / 'assets' / 'img' / 'bite_croc.webp'
-URL = 'http://127.0.0.1:5211/dev/croc.html?still&az=0&el=12&open=0&fy=0.58&fh=0.6'
+URL = 'http://127.0.0.1:5211/dev/croc.html?still&az=0&el=12&open=0&fy=0.56&fh=0.56'
 WIDTH = 320                                  # output px wide (the badge shows ≤ 180 px wide on a 2× screen)
+LIP_BOTTOM = 0.6                             # croc units: the bottom of the red lip = the tub's top (croc.js BOWL.top)
 # one chomp: a closed rest, the mouth opens (ease-out), holds, SNAPS shut, a little bounce — (mouth opening, ms)
 LOOP = [(0, 520), (0.12, 40), (0.3, 40), (0.46, 40), (0.58, 50), (0.66, 60), (0.7, 200),
         (0.4, 40), (0.08, 40), (0, 70), (0.05, 60)]
-# the closed face sits as on the still badge the user approved (95c8139): iris gap and the irises' middle, in badge widths;
-# its bottom cut = one badge width below the top (the still was square)
-EYE_GAP, EYE_X, EYE_Y = 122.0 / 320, 160.5 / 320, 138.5 / 320
+# the approved still badge (95c8139): a .27-card-width square at left -.09 / top -.1 (card widths); its irises' gap and
+# middle in badge px of 320 → the face's size and place on the card, which the new box keeps
+STILL = {'w': 0.27, 'left': -0.09, 'top': -0.1, 'gap': 122.0 / 320, 'mx': 160.5 / 320, 'my': 138.5 / 320}
+MARGIN = 6                                   # render px of clear space round the silhouette
 
 
 def irises(rgba, near, r):
@@ -42,6 +48,7 @@ def irises(rgba, near, r):
         out.append((xs.mean() + x0, ys.mean() + y0, len(xs)))
     return out
 
+
 with sync_playwright() as p:
     b = p.chromium.launch(channel='chrome', headless=True, args=['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'])
     pg = b.new_page(viewport={'width': 900, 'height': 900}, device_scale_factor=2)
@@ -50,15 +57,19 @@ with sync_playwright() as p:
     time.sleep(1.0)
     pg.evaluate("""() => {
       document.getElementById('info').style.display = 'none';
+      const P = Stage.croc.parts;
       Stage.scene.traverse(o => {
         if (o.material && o.material.isShadowMaterial) o.visible = false;                              // no floor shadow
         if (o.material && o.material.map && o.material.map.userData && o.material.map.userData.ch) o.visible = false;   // plain teeth (the letter changes by level)
       });
+      P.base.children.forEach(m => { if (m.material === P.M.skin || m.material === P.M.claw) m.visible = false; });   // no body, legs, claws
+      const y = P.root.localToWorld(new THREE.Vector3(0, LIP_BOTTOM, 0)).y;                    // nothing below the red lip
+      Stage.renderer.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 1, 0), -y)];
       const st = Stage.croc.state;
       st.nextBlink = 1e9; st.blinkT = 0; st.blink = 0; st.squintTarget = 0; st.squint = 0;   // eyes open: no blink mid-render
       st.wander.set(0, 0, 0); st.nextWander = 1e9;                                          // and looking straight out
       Stage.step(1 / 60, 150);
-    }""")
+    }""".replace('LIP_BOTTOM', str(LIP_BOTTOM)))
     frames, prev = {}, None
     for v in sorted({v for v, _ in LOOP}):                              # closed first: each frame tracks the irises from the last
         E = pg.evaluate(f"""() => {{
@@ -84,36 +95,41 @@ with sync_playwright() as p:
         ir = irises(rgba, near, 0.3 * gap)          # an iris is ~0.2 gap across
         if prev is not None:
             assert all(0.6 < i[2] / p[2] < 1.4 for i, p in zip(ir, frames[0][1])), (v, ir)   # each one found whole
+        a = rgba[..., 3] > 4
+        assert not (a[0].any() or a[-1].any() or a[:, 0].any() or a[:, -1].any()), f'open {v}: the croc touches the render edge'
         frames[v] = (rgba, ir)
         prev = (ir, E)
     b.close()
 
-# the closed frame: scaled and placed like the still badge (iris gap + middle), square, its bottom cut one width down
-rgba0, ir0 = frames[0]
-mx0, my0 = (ir0[0][0] + ir0[1][0]) / 2, (ir0[0][1] + ir0[1][1]) / 2
-side = (ir0[1][0] - ir0[0][0]) / EYE_GAP                               # render px per badge width
-x0, y0 = mx0 - EYE_X * side, my0 - EYE_Y * side
-cut = int(round(y0 + side))                                            # the bottom cut rides on the lower jaw (fixed in the render)
-# … along a gentle arc (the middle as low as the still's straight cut, the sides ARC px higher): its sticker outline and
-# shadow follow a chin-like curve; a straight one showed as a pale strip over the card while the mouth was open
-ARC = 0.07 * side
-cols = np.arange(rgba0.shape[1])
-below = np.arange(rgba0.shape[0])[:, None] >= (cut - ARC * ((cols - (x0 + side / 2)) / (side / 2)) ** 2)[None, :]
-rise = {v: my0 - (ir[0][1] + ir[1][1]) / 2 for v, (_, ir) in frames.items()}    # how far the eyes go up = the jaw drops below them
-H = side + max(rise.values())
-out_h = round(WIDTH * H / side)
-imgs = {}
-for v, (rgba, ir) in frames.items():
-    f = rgba.copy()
-    f[below] = 0
-    top = y0 - rise[v]                                                  # the window goes up with the eyes: they stay still
-    im = np.asarray(Image.fromarray(f).crop((round(x0), round(top), round(x0 + side), round(top + H))).resize((WIDTH, out_h), Image.LANCZOS)).copy()
-    im[im[..., 3] <= 6] = 0                                             # the resize's faint ringing (alpha ≤ 6) off the cleared parts
-    imgs[v] = Image.fromarray(im)
-drop = max(rise.values())
-seq = [imgs[v] for v, _ in LOOP]
+# the crop: every frame's whole silhouette, the frames moved so that their irises sit where the closed frame's do
+mid = {v: ((ir[0][0] + ir[1][0]) / 2, (ir[0][1] + ir[1][1]) / 2) for v, (_, ir) in frames.items()}
+mx0, my0 = mid[0]
+L = T = 1e9
+R = B = -1e9
+for v, (rgba, _) in frames.items():
+    ys, xs = np.nonzero(rgba[..., 3] > 4)
+    dx, dy = mx0 - mid[v][0], my0 - mid[v][1]                          # this frame's shift (its eyes onto the closed ones)
+    L, T, R, B = min(L, xs.min() + dx), min(T, ys.min() + dy), max(R, xs.max() + 1 + dx), max(B, ys.max() + 1 + dy)
+L, T, R, B = L - MARGIN, T - MARGIN, R + MARGIN, B + MARGIN
+cw, ch = R - L, B - T
+out_h = round(WIDTH * ch / cw)
+seqimg = {}
+for v, (rgba, _) in frames.items():
+    dx, dy = mx0 - mid[v][0], my0 - mid[v][1]
+    box = (L - dx, T - dy, R - dx, B - dy)
+    im = np.asarray(Image.fromarray(rgba).resize((WIDTH, out_h), Image.LANCZOS, box=box)).copy()
+    im[im[..., 3] <= 6] = 0                                             # the resize's faint ringing (alpha ≤ 6)
+    seqimg[v] = Image.fromarray(im)
+seq = [seqimg[v] for v, _ in LOOP]
 seq[0].save(OUT, 'WEBP', save_all=True, append_images=seq[1:], duration=[ms for _, ms in LOOP], loop=0,
             quality=90, method=6, background=(0, 0, 0, 0))
-print(f'{OUT.relative_to(ROOT)} {WIDTH}×{out_h} px (aspect {WIDTH / out_h:.4f}) · {len(seq)} frames · {sum(ms for _, ms in LOOP)} ms loop · '
-      f'{OUT.stat().st_size // 1024} KB · crop {x0:.0f},{y0:.0f} {side:.0f}px + jaw drop {drop:.0f}px · '
-      f'iris rise by opening: ' + ' '.join(f'{v}:{rise[v]:.0f}' for v in sorted(rise)))
+
+# the .bite box on the card (card widths) that keeps the closed face as on the still badge
+gap0 = frames[0][1][1][0] - frames[0][1][0][0]
+w_cw = STILL['w'] * STILL['gap'] * cw / gap0                           # same iris gap on the card
+fx, fy = (mx0 - L) / cw, (my0 - T) / cw                                 # the irises' middle in box widths
+left = STILL['left'] + STILL['mx'] * STILL['w'] - fx * w_cw
+top = STILL['top'] + STILL['my'] * STILL['w'] - fy * w_cw
+print(f'{OUT.relative_to(ROOT)} {WIDTH}×{out_h} px · {len(seq)} frames · {sum(ms for _, ms in LOOP)} ms loop · {OUT.stat().st_size // 1024} KB')
+print(f'.bite {{ left: calc(var(--cw) * {left:.4f}); top: calc(var(--cw) * {top:.4f}); width: calc(var(--cw) * {w_cw:.4f}); '
+      f'transform-origin: {100 * fx:.1f}% {100 * fy * cw / ch:.1f}%; }}   /* the eyes\' middle */')
