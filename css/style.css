@@ -127,10 +127,12 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .p1 { --pc: var(--p1); } .p2 { --pc: var(--p2); }
 @keyframes hop { 0%, 100% { transform: translateY(0); } 12% { transform: translateY(calc(var(--u) * -1.2)); } 24% { transform: translateY(0); } }
 .player.win .ava { box-shadow: 0 0 0 calc(var(--u) * .8) #ffd34d, 0 0 calc(var(--u) * 5) #ffd34d; }
-.player.win::before { content: ''; position: absolute; left: 50%; top: calc(var(--u) * -2.2); width: calc(var(--u) * 9); height: calc(var(--u) * 6.5); transform: translateX(-50%) rotate(-8deg); z-index: 2;
-  background: no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 46'%3E%3Cpath d='M6 40 3 10l16 13L32 3l13 20 16-13-3 30z' fill='%23ffd23f' stroke='%23e9a213' stroke-width='3' stroke-linejoin='round'/%3E%3Ccircle cx='3' cy='10' r='4' fill='%23ff7aa8'/%3E%3Ccircle cx='32' cy='3' r='4' fill='%2368c7ff'/%3E%3Ccircle cx='61' cy='10' r='4' fill='%23ff7aa8'/%3E%3Crect x='6' y='34' width='52' height='7' rx='3' fill='%23ffb92e'/%3E%3C/svg%3E");
-  animation: crown 1.2s cubic-bezier(.2,.9,.3,1.4) both; }
-@keyframes crown { from { transform: translateX(-50%) translateY(-6vh) rotate(-30deg) scale(.4); opacity: 0; } }
+/* the winner's crown: the 3D crown from Magic Block (assets/img/crown.webp), dropped on with a bounce */
+.player.win::before { content: ''; position: absolute; left: 50%; top: calc(var(--u) * -2.1); width: calc(var(--u) * 8.8); height: calc(var(--u) * 8.2);
+  transform: translateX(-50%) rotate(-8deg); z-index: 2; background: no-repeat center/contain url(../assets/img/crown.webp);
+  filter: drop-shadow(0 calc(var(--u) * .55) calc(var(--u) * .7) rgba(176,110,20,.45)); animation: crown 1.15s cubic-bezier(.3,1.6,.5,1) .2s both; }
+@keyframes crown { 0% { transform: translateX(-50%) translateY(calc(var(--u) * -7)) scale(.25) rotate(-18deg); opacity: 0; }
+  62% { transform: translateX(-50%) translateY(calc(var(--u) * .35)) scale(1.08) rotate(0deg); opacity: 1; } }
 .player.win .ava { animation: none; }
 .player.lose .ava { animation: dizzy 1.2s ease-in-out; filter: grayscale(.25); }
 @keyframes dizzy { 20% { transform: rotate(-10deg); } 40% { transform: rotate(8deg); } 60% { transform: rotate(-6deg); } 80% { transform: rotate(3deg); } }
@@ -186,6 +188,18 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .cards { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
 .cards .flyer { position: absolute; left: 0; top: 0; will-change: transform; }
 .cards .flyer .card { pointer-events: auto; cursor: pointer; }
+/* Halli Galli-like flights (game.js flyer): lift toward the viewer, turn over (front/back faces), a shadow that drops away */
+.cards .flyer .lift { position: relative; perspective: calc(var(--cw, 24vh) * 3.4); transform-origin: 50% 60%; }
+.cards .flyer .flip { position: relative; transform-style: preserve-3d; }
+.cards .flyer .flip > .card, .cards .flyer .cback { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.cards .flyer .cback { position: absolute; inset: 0; transform: rotateY(180deg); border-radius: calc(var(--cw) * .1);
+  border: calc(var(--cw) * .036) solid #fffaf0; background: radial-gradient(circle at 32% 26%, #9ad596, #63ad64 62%, #4f9552);
+  box-shadow: 0 calc(var(--cw) * .045) calc(var(--cw) * .09) rgba(40,70,30,.25); display: grid; place-items: center; overflow: hidden; }
+.cards .flyer .cback::before { content: ''; position: absolute; inset: calc(var(--cw) * .045); border-radius: calc(var(--cw) * .07);
+  border: calc(var(--cw) * .014) dashed rgba(255,255,255,.6); }
+.cards .flyer .cback b { font: 800 calc(var(--cw) * .52)/1 var(--font); color: #fff; text-shadow: 0 calc(var(--cw) * .03) 0 rgba(40,90,40,.35); margin-top: -.08em; }
+.cards .flyer .fshadow { position: absolute; left: 12%; right: 12%; bottom: -2%; height: 14%; border-radius: 50%; opacity: 0; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(60,45,80,.45), rgba(60,45,80,0)); filter: blur(calc(var(--cw) * .025)); }
 .card .mic { position: absolute; left: 50%; bottom: calc(var(--cw) * -.48); width: calc(var(--cw) * .34); height: calc(var(--cw) * .34); transform: translateX(-50%) scale(0);
   border-radius: 50%; background: #fff; display: grid; place-items: center; box-shadow: 0 calc(var(--cw) * .03) calc(var(--cw) * .06) rgba(60,80,110,.25);
   transition: transform .35s cubic-bezier(.2,.9,.3,1.4); --lv: 0; }
@@ -224,12 +238,6 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .ribbon::after { right: calc(var(--u) * -4); transform: scaleX(-1); }
 #app[data-screen="result"] .ribbon { animation: ribbonIn .7s cubic-bezier(.2,.9,.3,1.35) both; }
 @keyframes ribbonIn { from { transform: translateX(-50%) translateY(-14vh) scale(.6); } }
-.bigword { position: absolute; left: 50%; top: calc(var(--u) * 13); transform: translateX(-50%); white-space: nowrap; display: flex; gap: .02em;
-  font: 800 calc(var(--u) * 12.5)/1 var(--font); letter-spacing: .01em; }
-.bigword span { display: inline-block; color: var(--c); -webkit-text-stroke: calc(var(--u) * 1.3) #fff; paint-order: stroke fill;
-  text-shadow: 0 calc(var(--u) * .9) 0 rgba(150,110,170,.25), 0 calc(var(--u) * 1.6) calc(var(--u) * 2) rgba(0,0,0,.12);
-  animation: letterIn .55s cubic-bezier(.2,.9,.3,1.5) both; animation-delay: calc(var(--i) * 70ms + .3s); }
-@keyframes letterIn { from { transform: translateY(-8vh) scale(.3) rotate(-20deg); opacity: 0; } }
 .podium { display: none; }
 .r-btns { position: absolute; left: 50%; bottom: calc(var(--u) * 4.2); transform: translateX(-50%); }
 .again { position: relative; left: auto; bottom: auto; transform: none; font-size: calc(var(--u) * 5.2); padding: calc(var(--u) * 1.2) calc(var(--u) * 4.4) calc(var(--u) * 1.5); animation: none; }

@@ -88,6 +88,12 @@
         for (let x = 0; x < nx; x++, i++) F[i] = f(x0 + x * h, py, pz);
       }
     }
+    // a shape poking out of the box is meshed torn open along the box face (the croc's feet were): warn
+    let clipped = 0;
+    for (let z = 0; z < nz; z++) for (let y = 0; y < ny; y++) clipped += (F[y * nx + z * sxy] < 0) + (F[nx - 1 + y * nx + z * sxy] < 0);
+    for (let z = 0; z < nz; z++) for (let x = 0; x < nx; x++) clipped += (F[x + z * sxy] < 0) + (F[x + (ny - 1) * nx + z * sxy] < 0);
+    for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) clipped += (F[x + y * nx] < 0) + (F[x + y * nx + (nz - 1) * sxy] < 0);
+    if (clipped) console.warn(`SDF mesh cut open by its box [${box.join(', ')}]: ${clipped} inside samples on the boundary`);
     const cx = nx - 1, cy = ny - 1, cz = nz - 1, cxy = cx * cy;
     const cell = new Int32Array(cx * cy * cz).fill(-1);
     const pos = [];

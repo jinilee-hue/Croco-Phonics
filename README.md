@@ -26,9 +26,10 @@ man, map, meat, milk, mirror, mitt, monkey, moon, mop, mouse, mug, mushroom
   캐릭터 시트의 표정을 눈으로 — 안전한 이빨이면 신난 눈(^^), 지시 단어 이빨이면 놀란 눈.
   게임 화면에서는 카메라가 위로 올라가고 입을 더 벌려 이빨 10개가 다 보인다.
 - `js/sdf.js` — SDF + Surface Nets 메셔. `js/stage.js` — 카메라·조명·그림자·피킹.
-- `js/game.js` — 진행(지시 단어 → 턴 → 공개/말하기/수집 → 덥석/결과). `js/audio.js` — 음성·효과음·배경음·마이크.
+- `js/game.js` — 진행(지시 단어 → 턴 → 공개/말하기/수집 → 덥석/결과). 카드는 할리갈리처럼 움직인다: 이빨에서 뒷면으로 나와 포물선을 그리며 들렸다가 공중에서 뒤집혀 앞면으로 내려앉고,
+  모을 때는 다시 들려 포물선으로 날아가 카드 더미 위에 사뿐히 놓인다(`flyer().fly`). `js/audio.js` — 음성·효과음·배경음·마이크.
 - `js/fx.js` — 반짝이·별·색종이·보라 폭발.
-- 에셋: `assets/img/logo.webp`·`bg.webp`(다운로드의 `croco_logo.png`·`croco_bg.png` → `tools/import_art.py`로 다시 가져옴), `hand.webp`(다른 파닉스 게임의 장갑 손, 대기 힌트), `p1/p2.webp`(게임 화면 레퍼런스의 아바타 · `tools/crop_avatars.py`), `assets/cards/`, `assets/voice/`.
+- 에셋: `assets/img/logo.webp`·`bg.webp`(다운로드의 `croco_logo.png`·`croco_bg.png` → `tools/import_art.py`로 다시 가져옴), `hand.webp`(다른 파닉스 게임의 장갑 손, 대기 힌트), `crown.webp`(매직블록의 3D 왕관, 이긴 사람 머리 위), `p1/p2.webp`(게임 화면 레퍼런스의 아바타 · `tools/crop_avatars.py`), `assets/cards/`, `assets/voice/`.
 - 레퍼런스(사용자 Gemini 이미지)는 `design/*.png` — 용량 때문에 git 제외.
 
 ## 음성

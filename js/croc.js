@@ -61,20 +61,20 @@
       leg = smin(leg, ellipsoid(ax, y, z, fx + L.toe[0] * 0.08, 0.17, fz + L.toe[1] * 0.08, 0.42, 0.2, 0.38), 0.16);
       f = smin(f, leg, 0.2);
     }
-    return smax(f, -y, 0.02);
+    return smax(f, -y, 0.06);
   }
   function fClaws(x, y, z) {
     const ax = Math.abs(x);
     let f = 1e9;
     for (const L of LEGS) {
-      const [fx, , fz] = L.foot;
+      const cx = L.foot[0] + L.toe[0] * 0.08, cz = L.foot[2] + L.toe[1] * 0.08;      // the foot pad's centre
       const base = Math.atan2(L.toe[0], L.toe[1]);
       for (let k = -1; k <= 1; k++) {
-        const a = base + k * 0.42, dx = Math.sin(a), dz = Math.cos(a);
-        f = Math.min(f, roundCone(ax, y, z, fx + dx * 0.28, 0.14, fz + dz * 0.28, fx + dx * 0.58, 0.085, fz + dz * 0.58, 0.15, 0.08));
+        const a = base + k * 0.5, dx = Math.sin(a), dz = Math.cos(a);
+        f = smin(f, roundCone(ax, y, z, cx + dx * 0.18, 0.15, cz + dz * 0.18, cx + dx * 0.5, 0.105, cz + dz * 0.5, 0.13, 0.1), 0.04);
       }
     }
-    return smax(f, -y, 0.02);
+    return f;
   }
   function fTray(x, y, z) {
     return extrude(rrect(x, z, TRAY.hx, TRAY.hz, TRAY.rc), y, TRAY.y0, TRAY.top, 0.1);
@@ -264,10 +264,10 @@
     scene.add(root);
     const base = new THREE.Group();
     root.add(base);
-    base.add(shadowy(new THREE.Mesh(mesh(fBody, [-2.3, -0.05, -1.45, 2.3, 0.82, 1.45], H), M.skin)));
-    base.add(shadowy(new THREE.Mesh(mesh(fClaws, [-2.3, -0.05, -1.4, 2.3, 0.22, 1.35], H * 0.6), M.claw)));
+    base.add(shadowy(new THREE.Mesh(mesh(fBody, [-2.55, -0.05, -1.62, 2.55, 0.82, 1.5], H), M.skin)));
+    base.add(shadowy(new THREE.Mesh(mesh(fClaws, [-2.68, -0.03, -1.82, 2.68, 0.32, 1.2], H * 0.5), M.claw)));
     base.add(shadowy(new THREE.Mesh(mesh(fTray, [-1.5, 0.3, -1.18, 1.5, 0.84, 1.18], H * 0.8), M.gum)));
-    base.add(shadowy(new THREE.Mesh(mesh(fTongue, [-0.9, 0.6, -0.9, 0.9, 1.14, 0.55], H), M.tongue)));
+    base.add(shadowy(new THREE.Mesh(mesh(fTongue, [-0.92, 0.5, -0.92, 0.92, 1.16, 0.58], H), M.tongue)));
 
     // hood: pivot at the hinge, children in croc coordinates
     const lid = new THREE.Group();
@@ -278,7 +278,7 @@
     lid.add(lidIn);
     const cSkin = new THREE.Color(COLORS.skin), cPal = new THREE.Color(COLORS.palate), cIn = new THREE.Color(COLORS.interior);
     const cBlush = new THREE.Color(COLORS.blush);
-    const hoodGeo = mesh(fHood, [-1.82, 0.45, -1.42, 1.82, EYE.y + SOCKET.r + 0.05, 1.25], H, {
+    const hoodGeo = mesh(fHood, [-2.0, 0.1, -1.45, 2.0, EYE.y + SOCKET.r + 0.08, 1.3], H, {
       color(x, y, z, out) {
         // outer skin; the inside: a dark-red palate band along the lip, dark green deeper in (always in shadow)
         const solid = hoodSolid(x, y, z), cav = -hoodCavity(x, y, z), cut = -above(y, z);
@@ -301,7 +301,7 @@
     lidIn.add(head);
 
     // upper teeth hang from the palate band, square to the underside plane (straight down once shut)
-    const utGeo = mesh(fUpperTooth, [-0.22, -0.4, -0.14, 0.22, 0.12, 0.14], H * 0.45);
+    const utGeo = mesh(fUpperTooth, [-0.23, -0.36, -0.15, 0.23, 0.23, 0.15], H * 0.45);
     const upper = [];
     for (const [x, sc, inset] of [[-0.58, 0.92, 0.13], [0.58, 0.92, 0.13], [-1.06, 0.46, 0.12], [1.06, 0.46, 0.12], [-1.24, 0.42, 0.12], [1.24, 0.42, 0.12]]) {
       const lp = lipAt(x);

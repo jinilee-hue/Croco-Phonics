@@ -18,7 +18,6 @@
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const cap = w => w[0].toUpperCase() + w.slice(1);
   const EDGES = ['#f6b043', '#86c3ec', '#94d38a', '#f59ab8', '#b9a2f0', '#f7c95c', '#7fd6c8'];
-  const LETTER_C = ['#ff7fb0', '#ffb547', '#5fd0a4', '#58b8f2', '#a98bff', '#ff8a4c', '#f06292', '#4fc3f7'];
   // croc framing: horizontal centre, bottom edge, height (fractions of the viewport)
   // camera framing: croc centre (fraction from the top), its height fraction, camera elevation (°). In the game the
   // camera swings up to look into the mouth so every tooth shows (user: "화면 돌려서 악어 이빨이 다 잘 보이게")
@@ -72,16 +71,77 @@
   }
   placeDecor();
 
-  /* a card that flies on the overlay layer: returns { el, card, at(x,y,s,r) } with WAAPI moves */
+  // CSS cubic-bezier curves as functions: the card curves of Halli Galli (deal = comes out, fly = goes to a slot)
+  function bezier(x1, y1, x2, y2) {
+    const B = (a, b, t) => 3 * a * (1 - t) * (1 - t) * t + 3 * b * (1 - t) * t * t + t * t * t;
+    const dB = (a, b, t) => 3 * a * (1 - t) * (1 - t) + 6 * (b - a) * (1 - t) * t + 3 * (1 - b) * t * t;
+    return x => {
+      if (x <= 0) return 0;
+      if (x >= 1) return 1;
+      let t = x;
+      for (let i = 0; i < 8; i++) { const d = dB(x1, x2, t); if (Math.abs(d) < 1e-6) break; t = Math.min(1, Math.max(0, t - (B(x1, x2, t) - x) / d)); }
+      return B(y1, y2, t);
+    };
+  }
+  const EASE_DEAL = bezier(.2, .9, .25, 1.05), EASE_FLY = bezier(.3, .7, .3, 1);
+  const smooth01 = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+  /* a card on the overlay layer that moves like the cards in Halli Galli (user: "카드들의 인터렉션은 할리갈리에 있는거처럼"):
+   * it travels on an arc, lifts toward the viewer on the way (grows, its shadow drops away), turns over from its back
+   * mid-air when it is revealed (`flip`), and settles with the deal curve's small overshoot.
+   * flyer > .fshadow + .lift > .flip > (.card front, .cback back) */
   function flyer(card) {
     const el = document.createElement('div');
     el.className = 'flyer';
-    el.appendChild(card);
+    const cw = card.style.getPropertyValue('--cw');
+    if (cw) el.style.setProperty('--cw', cw);
+    el.innerHTML = '<div class="fshadow"></div><div class="lift"><div class="flip"><div class="cback"><b>m</b></div></div></div>';
+    const shadow = el.firstChild, liftEl = el.lastChild, flip = liftEl.firstChild;
+    flip.insertBefore(card, flip.firstChild);
     $('#cards').appendChild(el);
     const tf = (x, y, s, r) => `translate(${x}px, ${y}px) translate(-50%, -50%) rotate(${r}deg) scale(${s})`;
     const f = {
       el, card, x: 0, y: 0, s: 1, r: 0,
-      set(x, y, s, r) { Object.assign(f, { x, y, s, r }); el.style.transform = tf(x, y, s, r); return f; },
+      set(x, y, s, r, back) {
+        Object.assign(f, { x, y, s, r });
+        el.style.transform = tf(x, y, s, r);
+        flip.style.transform = back ? 'rotateY(180deg)' : '';
+        return f;
+      },
+      /* fly to (x, y) at scale s, rotation r. o: { ms, ease, arc (px the path bows up), lift (extra scale at the top),
+       * flip (turn over from the back), trail (sparkles along the path) } */
+      fly(x, y, s, r, o = {}) {
+        const ms = o.ms || 720, ease = o.ease || EASE_DEAL, N = 32;
+        const x0 = f.x, y0 = f.y, s0 = f.s, r0 = f.r;
+        const arc = o.arc != null ? o.arc : Math.min(Math.hypot(x - x0, y - y0) * 0.3, 18 * u());
+        const cx = (x0 + x) / 2, cy = Math.min(y0, y) - arc;                 // the arc's control point
+        const lift = o.lift != null ? o.lift : 0.16, cwPx = card.offsetWidth || 200;
+        const pos = k => { const e = ease(k), q = 1 - e; return [q * q * x0 + 2 * q * e * cx + e * e * x, q * q * y0 + 2 * q * e * cy + e * e * y, e]; };
+        const kE = [], kL = [], kS = [], kF = [];
+        for (let i = 0; i <= N; i++) {
+          const k = i / N, [px, py, e] = pos(k), h = Math.sin(Math.PI * Math.min(1, k * 1.08));
+          kE.push({ offset: k, transform: tf(px, py, s0 + (s - s0) * e, r0 + (r - r0) * e) });
+          kL.push({ offset: k, transform: `translateY(${(-h * lift * 0.45 * cwPx).toFixed(2)}px) scale(${(1 + lift * h).toFixed(4)})` });
+          kS.push({ offset: k, transform: `translateY(${(h * 0.22 * cwPx).toFixed(2)}px) scale(${(1 + 0.25 * h).toFixed(4)})`, opacity: (0.75 * h).toFixed(3) });
+          if (o.flip) kF.push({ offset: k, transform: `rotateY(${(180 * (1 - smooth01(0.08, 0.72, k))).toFixed(2)}deg)` });
+        }
+        if (o.trail) {
+          const t0 = performance.now();
+          let lastT = 0;
+          const tick = now => {
+            const k = (now - t0) / ms;
+            if (k >= 1 || !el.isConnected) return;
+            if (now - lastT > 40) { lastT = now; const [px, py] = pos(k); FX.burst(px, py, { kind: 'sparkle', n: 2, speed: 0.25 }); }
+            requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        }
+        Object.assign(f, { x, y, s, r });
+        const opt = { duration: ms, easing: 'linear', fill: 'forwards' };
+        const an = [el.animate(kE, opt), liftEl.animate(kL, opt), shadow.animate(kS, opt)];
+        if (o.flip) an.push(flip.animate(kF, opt));
+        return Promise.all(an.map(a => a.finished.catch(() => {})));
+      },
       to(x, y, s, r, ms, ease) {
         const from = tf(f.x, f.y, f.s, f.r);
         Object.assign(f, { x, y, s, r });
@@ -103,24 +163,30 @@
     const dx = 2.2 * u() + 4.5 * u();
     return { x: p === 0 ? ava.right + dx : ava.left - dx, y: ava.top + ava.height * 0.45 };
   }
-  function renderStack(p) {
+  /* the player's pile; landing = the newest card is laid out but hidden (a flying card is about to land on it) */
+  function renderStack(p, landing) {
     const st = document.querySelector(`.player.p${p + 1} .stack`);
     st.innerHTML = '';
+    let top = null;
     G.got[p].forEach((w, k) => {
       const m = document.createElement('div');
       m.className = 'mini';
       m.style.setProperty('--i', Math.min(k, 6));
       m.style.setProperty('--rot', ((k * 37) % 13) - 6);
-      if (k < G.got[p].length - 1) m.style.animation = 'none';
+      if (k < G.got[p].length - 1 || landing) m.style.animation = 'none';
+      if (landing && k === G.got[p].length - 1) m.style.visibility = 'hidden';
       m.appendChild(makeCard(w, { edge: EDGES[k % EDGES.length] }));
       st.appendChild(m);
+      top = m;
     });
     if (G.got[p].length) {
       const c = document.createElement('div');
       c.className = 'count';
       c.textContent = G.got[p].length;
+      if (landing) c.style.visibility = 'hidden';
       st.appendChild(c);
     }
+    return top;
   }
 
   // ── voice helpers ────────────────────────────────────────────────────────────────────────────────────
@@ -266,10 +332,10 @@
     FX.burst(from.x, from.y, { kind: 'dots', n: 14, speed: 0.8 });
     const card = makeCard(word, { sound: true, mic: true });
     card.style.setProperty('--cw', 27 * u() + 'px');
-    const f = flyer(card).set(from.x, from.y, 0.12, 0);
+    const f = flyer(card).set(from.x, from.y, 0.2, 0, true);
     const slot = revealSlot(p);
     A.sfxPlay('card');
-    await f.to(slot.x, slot.y, 1, slot.r, 560);
+    await f.fly(slot.x, slot.y, 1, slot.r, { ms: 780, flip: true, lift: 0.2 });
     if (tok !== G.token) return;
     croc.look(null);
     card.addEventListener('pointerdown', e => { e.stopPropagation(); if (!card.classList.contains('busy')) A.say('w:' + word); });
@@ -279,14 +345,19 @@
     await sayIt(card, tok);
     if (tok !== G.token) return;
     card.classList.remove('busy');
-    // dock into the player's corner with a sparkle trail
-    const to = stackPoint(p);
-    FX.trail(slot.x, slot.y, to.x, to.y, 520);
-    A.sfxPlay('whoosh');
-    await f.to(to.x, to.y, 0.36, 0, 620, 'cubic-bezier(.5,0,.3,1)');
-    f.el.remove();
+    // onto the player's pile: the pile makes a place, the card arcs over (sparkle trail) and lands on it
     G.got[p].push(word);
-    renderStack(p);
+    const mini = renderStack(p, true);
+    const mr = mini.getBoundingClientRect(), to = { x: mr.left + mr.width / 2, y: mr.top + mr.height / 2 };
+    const sc = mini.firstChild.offsetWidth / (card.offsetWidth || 1);
+    A.sfxPlay('whoosh');
+    await f.fly(to.x, to.y, sc, +mini.style.getPropertyValue('--rot') || 0, { ms: 680, ease: EASE_FLY, lift: 0.14, trail: true });
+    f.el.remove();
+    mini.style.visibility = '';
+    mini.firstChild.style.transformOrigin = '50% 90%';
+    mini.firstChild.animate([{ transform: 'scale(1.1, .9)' }, { transform: 'scale(.97, 1.03)', offset: 0.55 }, { transform: 'none' }], { duration: 340, easing: 'ease-out' });
+    const cnt = mini.parentNode.querySelector('.count');
+    if (cnt) { cnt.style.visibility = ''; cnt.animate([{ transform: 'scale(.3)' }, { transform: 'scale(1.25)', offset: 0.6 }, { transform: 'none' }], { duration: 380, easing: 'ease-out' }); }
     A.sfxPlay('ding');
     FX.burst(to.x, to.y, { kind: 'stars', n: 10, speed: 0.6 });
     if (tok !== G.token) return;
@@ -359,12 +430,12 @@
     // the target card bursts out of the closed mouth
     const card = makeCard(G.target, { cls: 'boom', edge: '#b98cff' });
     card.style.setProperty('--cw', 27 * u() + 'px');
+    const f = flyer(card).set(m.x, m.y + 4 * u(), 0.15, -20, true);
     const rays = document.createElement('div');
     rays.className = 'rays';
-    card.appendChild(rays);
-    const f = flyer(card).set(m.x, m.y + 4 * u(), 0.1, -20);
+    f.el.insertBefore(rays, f.el.firstChild);                  // behind the card, not turned over with it
     A.sfxPlay('boing');
-    f.to(window.innerWidth / 2, window.innerHeight * 0.53, 1, -4, 700, 'cubic-bezier(.2,.9,.3,1.35)');
+    f.fly(window.innerWidth / 2, window.innerHeight * 0.53, 1, -4, { ms: 820, flip: true, lift: 0.24, arc: 8 * u() });
     if (A.has('t:chomp')) A.say('t:chomp');
     await sleep(900);
     if (tok !== G.token) return;
@@ -380,15 +451,6 @@
     document.querySelectorAll('.player').forEach((el, k) => { el.classList.toggle('on', false); el.classList.toggle('win', k === winner); el.classList.toggle('lose', k !== winner); });
     $('#turn').classList.remove('show');
     $('#rbText').textContent = `Player ${winner + 1} Wins!`;
-    const bw = $('#bigword');
-    bw.innerHTML = '';
-    G.target.toUpperCase().split('').forEach((ch, k) => {
-      const s = document.createElement('span');
-      s.textContent = ch;
-      s.style.setProperty('--c', LETTER_C[k % LETTER_C.length]);
-      s.style.setProperty('--i', k);
-      bw.appendChild(s);
-    });
     A.sfxPlay('fanfare');
     FX.pop(window.innerWidth * 0.25, window.innerHeight * 0.6, 60);
     FX.pop(window.innerWidth * 0.75, window.innerHeight * 0.6, 60);
