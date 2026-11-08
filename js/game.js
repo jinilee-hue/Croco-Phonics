@@ -43,7 +43,7 @@
   const SVG_MIC = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0" fill="none" stroke="#ff7d2e" stroke-width="2.2" stroke-linecap="round"/><path d="M12 17.5V21" stroke="#ff7d2e" stroke-width="2.2" stroke-linecap="round"/></svg>';
   const SVG_OK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg>';
 
-  const G = { screen: 'title', token: 0, busy: true, target: null, nextTarget: null, winner: null, lastTarget: null, teeth: [], pressed: new Set(), turn: 0, starter: 0, got: [[], []], idle: null, said: new Set(), level: 0, bootHowto: null };
+  const G = { screen: 'title', token: 0, busy: true, target: null, nextTarget: null, winner: null, lastTarget: null, teeth: [], pressed: new Set(), turn: 0, starter: 0, got: [[], []], idle: null, said: new Set(), level: 0, bootHowto: null, wins: {} };
 
   // ── the 3D croc (js/croc.js) on the three.js stage (js/stage.js) ─────────────────────────────────────
   Stage.init($('#croc'), { preserve: /[?&]shot\b/.test(location.search) });
@@ -124,13 +124,36 @@
     document.querySelectorAll('.deco > [data-word]').forEach((slot, k) => { slot.dataset.word = pick[k % pick.length]; });
     placeDecor();
     levelText();
+    renderWins();
+  }
+  const lvLabel = L => (L.letter.length > 1 ? cap(L.letter) : cap(L.letter) + L.letter);      // Mm, Aa … (Qu)
+  /* each player's wins, level by level (user: "레벨별 누적 승리 표시도 플레이어한테 있어야하는거 아냐?"): beside the name
+     plate, a chip per level played — its letter, a crown, that player's wins there (the same levels for both players,
+     the current one outlined). Kept for the visit; a reload starts over. */
+  function renderWins(pop = -1) {
+    const lv = [...new Set([...Object.keys(G.wins).map(Number), G.level])].sort((a, b) => a - b);
+    document.querySelectorAll('.player').forEach((pl, p) => {
+      const box = pl.querySelector('.wins');
+      box.innerHTML = lv.map(k => {
+        const L = LEVELS[k], n = (G.wins[k] || [0, 0])[p];
+        return `<span class="wchip${k === G.level ? ' cur' : ''}${n ? '' : ' zero'}" title="Level ${k + 1}"><b>${lvLabel(L)}</b>`
+          + `<img src="assets/img/crown.webp" alt="" draggable="false"><em>${n}</em></span>`;
+      }).join('');
+      box.setAttribute('aria-label', lv.map(k => `${tr('level', { n: k + 1 })}: ${(G.wins[k] || [0, 0])[p]}`).join(', '));
+      const c = p === pop && box.querySelector('.wchip.cur');
+      if (c) {
+        c.animate([{ transform: 'scale(.4)' }, { transform: 'scale(1.45)', offset: 0.55 }, { transform: 'none' }], { duration: 560, easing: 'ease-out' });
+        const r = c.getBoundingClientRect();
+        FX.burst(r.left + r.width / 2, r.top + r.height / 2, { kind: 'stars', n: 14, speed: 0.6 });
+      }
+    });
   }
   function levelText() {
     const L = LV(), t = $('#lvTag'), b = $('#lvUp');
     t.querySelector('.n').textContent = tr('level', { n: G.level + 1 });
     t.querySelector('.s').textContent = L.title;
     b.querySelector('.t').textContent = tr('levelup', { n: G.level + 1 });
-    b.querySelector('.lv-ltr b').textContent = cap(L.letter) + L.letter;
+    b.querySelector('.lv-ltr b').textContent = lvLabel(L);
     b.querySelector('.lv-sub').textContent = L.kind === 'short' ? L.title : '';
   }
 
@@ -516,11 +539,15 @@
     f.el.insertBefore(rays, f.el.firstChild);                  // behind the card, not turned over with it
     A.sfxPlay('boing');
     f.fly(window.innerWidth / 2, window.innerHeight * 0.53, 1, -4, { ms: 820, flip: true, lift: 0.24, arc: 8 * u() });
-    if (A.has('t:chomp')) A.say('t:chomp');
-    await sleep(900);
+    if (A.has('t:chomp')) await say('t:chomp', 900); else await sleep(900);
     if (tok !== G.token) return;
     t.classList.remove('alarm');
     croc.glow(i, 0);
+    // the word that bit, once more (user: "마지막 걸린 단어 다시 한번 음가랑 단어 읽어주고"): its sound, then the word
+    await sayWord(G.target, card, tok);
+    if (tok !== G.token) return;
+    await sleep(200);
+    if (tok !== G.token) return;
     showResult(1 - p, tok);
   }
 
@@ -531,6 +558,8 @@
     document.querySelectorAll('.player').forEach((el, k) => { el.classList.toggle('on', false); el.classList.toggle('win', k === winner); el.classList.toggle('lose', k !== winner); });
     $('#turn').classList.remove('show');
     G.winner = winner;
+    (G.wins[G.level] = G.wins[G.level] || [0, 0])[winner]++;
+    setTimeout(() => { if (tok === G.token) renderWins(winner); }, 650);
     $('#rbText').textContent = tr('wins', { n: winner + 1 });
     A.sfxPlay('fanfare');
     FX.pop(window.innerWidth * 0.25, window.innerHeight * 0.6, 60);
