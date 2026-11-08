@@ -9,6 +9,15 @@
 4. 지시 단어가 숨은 이빨을 누르면 이빨이 보라색으로 빛나고 악어가 **덥석!** 그 사람이 지고, 상대가 이긴다.
 5. Play Again → 새 지시 단어로 다음 판(진 사람이 먼저).
 
+## 게임 설명(악어 튜터 · 첫 판에만)
+처음 START를 누르면 첫 판의 인트로 안에서 악어가 말풍선으로 설명한다. 그 판의 지시 단어를 그대로 쓴다:
+인사 → 지시 단어 카드("Don't press the tooth with this word!") → 번갈아 이빨 누르기(장갑 손 시연) → 카드가 나오면 말하기 → 지시 단어 이빨이면 덥석 → "Ready? Let's play!" → 첫 턴.
+- 시연에 쓰는 이빨과 카드는 진짜 지시 단어 자리를 알려 주지 않는다. 지시 단어가 없는 앞니를 쓰고, 카드는 이번 판 이빨에 없는 단어로 보여 준다.
+- 설명하는 동안 오른쪽 아래에 **Skip** 버튼이 있다. 끝까지 듣거나 Skip하면 이 기기에서는 다시 나오지 않는다(localStorage `croco.howto.v1`).
+  다시 보려면 주소 뒤에 `?howto`를 붙인다(예: http://127.0.0.1:5211/?howto). QA 훅: `window.__test.howto = true`.
+- 말풍선은 악어 머리 옆에 뜬다. 큰 지시 단어 카드가 머리를 가리면 카드 옆, 세로 화면에서는 폭을 줄여 머리 옆에 둔다. 카드·아바타·버튼은 가리지 않는다.
+  말하는 동안 윗턱이 말하듯 천천히 움직인다(입을 다문 동안은 움직이지 않음).
+
 ## 단어 (12개 · `tools/build_words.py`)
 man, map, meat, milk, mirror, mitt, monkey, moon, mop, mouse, mug, mushroom
 - 출처: SAD·FPR 단어 연구 자료집 `~/dev/sadfpr-studio/data/b2_book_FPRK.json` 의 Lesson 1 쪽(p.9–20) 행.
@@ -19,7 +28,8 @@ man, map, meat, milk, mirror, mitt, monkey, moon, mop, mouse, mug, mushroom
 - `실행.command` 더블클릭 → http://127.0.0.1:5211/ (마이크는 http(s) 또는 파일에서 허용 필요)
   서버는 `tools/serve.py`(캐시 안 함: 고친 뒤 그냥 새로고침해도 최신 파일이 보임).
 - `index.html` 더블클릭(file://)도 동작 (음성·폰트는 js/css에 내장).
-- 테스트 훅: `window.__test = { mic:false | heard:true, target:'moon', teeth:[...] }`, `window.__croco`.
+- 테스트 훅: `window.__test = { mic:false | heard:true, target:'moon', teeth:[...], howto:true }`, `window.__croco`.
+- QA(`tools/qa/`): `qa_flow`·`qa_sizes`·`qa_again`·`qa_file`·`qa_cards`(카드 비행)·`qa_tutor`(설명·Skip·첫 판만·긴 단어)·`console`(SDF 경고).
 
 ## 구성
 - `js/croc.js` — 3D 악어(three.js). 악어 이빨 장난감 모양(몸통 없음 · `design/croc_ref.png`)을 SDF로 만든 무광 클레이 모델:
@@ -28,18 +38,20 @@ man, map, meat, milk, mirror, mitt, monkey, moon, mop, mouse, mug, mushroom
   게임 화면에서는 카메라가 위로 올라가고 입을 더 벌려 이빨 10개가 다 보인다.
 - `js/sdf.js` — SDF + Surface Nets 메셔. `js/stage.js` — 카메라·조명·그림자·피킹.
 - `js/game.js` — 진행(지시 단어 → 턴 → 공개/말하기/수집 → 덥석/결과). 카드는 할리갈리처럼 움직인다: 이빨에서 뒷면으로 나와 포물선을 그리며 들렸다가 공중에서 뒤집혀 앞면으로 내려앉고,
-  모을 때는 다시 들려 포물선으로 날아가 카드 더미 위에 사뿐히 놓인다(`flyer().fly`). `js/audio.js` — 음성·효과음·배경음·마이크.
+  모을 때는 다시 들려 포물선으로 날아가 카드 더미 위에 사뿐히 놓인다(`flyer().fly`).
+  긴 단어(mushroom 등)는 카드 안쪽 폭에 맞춰 글자를 줄인다(`wordFit`: 게임 글꼴로 실측, 말하기 강조 1.12배까지 여유). `js/audio.js` — 음성·효과음·배경음·마이크.
 - `js/fx.js` — 반짝이·별·색종이·보라 폭발.
 - 에셋: `assets/img/logo.webp`·`bg.webp`(다운로드의 `croco_logo.png`·`croco_bg.png` → `tools/import_art.py`로 다시 가져옴), `hand.webp`(다른 파닉스 게임의 장갑 손, 대기 힌트), `crown.webp`(매직블록의 3D 왕관, 이긴 사람 머리 위), `p1/p2.webp`(게임 화면 레퍼런스의 아바타 · `tools/crop_avatars.py`), `assets/cards/`, `assets/voice/`.
 - 레퍼런스(사용자 Gemini 이미지)는 `design/*.png` — 용량 때문에 git 제외.
 
 ## 음성
 회사 TTS 소년 목소리(Qwen3 'aiden') = Magic Block과 같은 목소리. 단어 12개, 공식 FPR K /m/ 음원, 공용 대사는 Magic Block에서 재사용.
-게임 전용 새 대사(인사·규칙 "Watch out for this word!"·덥석 등)는 **회사망에서** 아래로 생성:
+게임 전용 새 대사(인사·규칙 "Watch out for this word!"·덥석, 악어 튜터 설명 `tut1`–`tut8`)는 **회사망에서** 아래로 생성:
 ```
 zsh -ic '/Users/jini/.hermes/bin/uv run --with numpy python tools/build_voice.py'
 ```
-(새 대사가 없으면 게임은 그 대사만 건너뛰고 진행)
+(새 대사가 없으면 게임은 그 대사만 건너뛰고 진행한다. 튜터 설명은 말풍선만 읽을 시간만큼 띄운다.
+ "Now say the word."·"Uh-oh!"처럼 기존 음성이 대사 일부를 말해 주는 줄은 그 음성을 쓴다.)
 
 ## 레퍼런스
 - 화면: 사용자 제공 인트로/게임 화면 이미지, 인터랙션: `~/Downloads/gemini_generated_video_46830cdd.mp4`

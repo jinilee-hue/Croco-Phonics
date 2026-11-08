@@ -60,7 +60,7 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
   display: grid; grid-template-rows: minmax(0, 1fr) auto; padding: calc(var(--cw) * .07) calc(var(--cw) * .07) calc(var(--cw) * .045); }
 .card .pic { min-height: 0; position: relative; }
 .card .pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; filter: drop-shadow(0 calc(var(--cw) * .012) calc(var(--cw) * .015) rgba(0,0,0,.12)); }
-.card .word { font: 700 calc(var(--cw) * .19)/1.05 var(--font); text-align: center; color: var(--ink); letter-spacing: .01em; }
+.card .word { font: 700 calc(var(--cw) * var(--wf, .19))/1.05 var(--font); text-align: center; color: var(--ink); letter-spacing: .01em; white-space: nowrap; }
 .card .word b { color: #f27a1f; font-weight: 800; }
 .card .snd { position: absolute; left: 50%; bottom: calc(var(--cw) * -.14); transform: translateX(-50%); display: flex; align-items: center;
   gap: calc(var(--cw) * .045); padding: calc(var(--cw) * .025) calc(var(--cw) * .07) calc(var(--cw) * .025) calc(var(--cw) * .03);
@@ -82,7 +82,7 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 
 /* landscape target card (top centre), like the reference prompt card */
 .card.tgt { aspect-ratio: 1.36; grid-template-rows: minmax(0, 1fr) auto; padding: calc(var(--cw) * .045) calc(var(--cw) * .06) calc(var(--cw) * .1); --edge: #f5b54a; }
-.card.tgt .word { font-size: calc(var(--cw) * .13); }
+.card.tgt .word { font-size: calc(var(--cw) * var(--wf, .13)); }
 .card.tgt .snd { font-size: calc(var(--cw) * .085); bottom: calc(var(--cw) * -.07); }
 .bite { position: absolute; left: calc(var(--cw) * -.07); top: calc(var(--cw) * -.07); width: calc(var(--cw) * .2); height: calc(var(--cw) * .2); border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #ff8a8a, #f0484e 60%, #c93038); box-shadow: 0 calc(var(--cw) * .015) calc(var(--cw) * .03) rgba(180,40,40,.35), inset 0 calc(var(--cw) * -.01) 0 rgba(120,20,20,.3);
@@ -183,6 +183,38 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
   0%, 100% { transform: translate(calc(var(--u) * 1.1), calc(var(--u) * 2.6)) rotate(-6deg); }
   42%, 58% { transform: translate(0, 0) scale(.94); }
 }
+
+/* the croc tutor's speech bubble + Skip (first game only: game.js runTutorial) */
+.bubble { position: absolute; left: 0; top: 0; max-width: calc(var(--u) * 36); z-index: 9; pointer-events: none; --bd: #8fcf8b;
+  padding: calc(var(--u) * 1.9) calc(var(--u) * 2.8) calc(var(--u) * 2.1); background: #fffaf2; border: calc(var(--u) * .6) solid var(--bd);
+  border-radius: calc(var(--u) * 3.2); box-shadow: 0 calc(var(--u) * 1) calc(var(--u) * 2.4) rgba(50,80,60,.22), inset 0 calc(var(--u) * -.45) 0 rgba(150,110,70,.1);
+  opacity: 0; visibility: hidden; transition: opacity .25s, visibility 0s .25s; }
+.bubble.show { opacity: 1; visibility: visible; transition: opacity .2s; }
+.bubble[data-tail="l"] { transform-origin: 0% 62%; }
+.bubble[data-tail="r"] { transform-origin: 100% 62%; }
+.bubble[data-tail="b"] { transform-origin: 50% 100%; }
+.bubble p { margin: 0; font: 800 calc(var(--u) * 3.7)/1.2 var(--font); color: var(--ink); }
+.bubble.narrow { padding: calc(var(--u) * 1.6) calc(var(--u) * 2.2) calc(var(--u) * 1.8); }
+.bubble.narrow p { font-size: calc(var(--u) * 3.2); }
+.bubble[data-tail="t"] { transform-origin: 50% 0%; }
+.bubble::before, .bubble::after { content: ''; position: absolute; width: 0; height: 0; border-style: solid; }
+.bubble[data-tail="l"]::before { left: calc(var(--u) * -2.6); top: 62%; transform: translateY(-50%); border-width: calc(var(--u) * 1.5) calc(var(--u) * 2.4) calc(var(--u) * 1.5) 0; border-color: transparent var(--bd) transparent transparent; }
+.bubble[data-tail="l"]::after { left: calc(var(--u) * -1.55); top: 62%; transform: translateY(-50%); border-width: calc(var(--u) * 1.05) calc(var(--u) * 1.7) calc(var(--u) * 1.05) 0; border-color: transparent #fffaf2 transparent transparent; }
+.bubble[data-tail="r"]::before { right: calc(var(--u) * -2.6); top: 62%; transform: translateY(-50%); border-width: calc(var(--u) * 1.5) 0 calc(var(--u) * 1.5) calc(var(--u) * 2.4); border-color: transparent transparent transparent var(--bd); }
+.bubble[data-tail="r"]::after { right: calc(var(--u) * -1.55); top: 62%; transform: translateY(-50%); border-width: calc(var(--u) * 1.05) 0 calc(var(--u) * 1.05) calc(var(--u) * 1.7); border-color: transparent transparent transparent #fffaf2; }
+.bubble[data-tail="b"]::before { bottom: calc(var(--u) * -2.6); left: 50%; transform: translateX(-50%); border-width: calc(var(--u) * 2.4) calc(var(--u) * 1.5) 0; border-color: var(--bd) transparent transparent; }
+.bubble[data-tail="t"]::before { top: calc(var(--u) * -2.6); left: 50%; transform: translateX(-50%); border-width: 0 calc(var(--u) * 1.5) calc(var(--u) * 2.4); border-color: transparent transparent var(--bd); }
+.bubble[data-tail="t"]::after { top: calc(var(--u) * -1.55); left: 50%; transform: translateX(-50%); border-width: 0 calc(var(--u) * 1.05) calc(var(--u) * 1.7); border-color: transparent transparent #fffaf2; }
+.bubble[data-tail="b"]::after { bottom: calc(var(--u) * -1.55); left: 50%; transform: translateX(-50%); border-width: calc(var(--u) * 1.7) calc(var(--u) * 1.05) 0; border-color: #fffaf2 transparent transparent; }
+.skip { position: absolute; right: calc(var(--u) * 3); bottom: calc(var(--u) * 3.4); z-index: 41; display: flex; align-items: center; gap: calc(var(--u) * .7);
+  padding: calc(var(--u) * 1.3) calc(var(--u) * 2.4) calc(var(--u) * 1.45) calc(var(--u) * 3); border: 0; border-radius: 999px; cursor: pointer;
+  font: 800 calc(var(--u) * 3.6)/1 var(--font); color: var(--ink);
+  background: linear-gradient(rgba(255,255,255,.9), rgba(255,255,255,.62)); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  box-shadow: 0 calc(var(--u) * .6) calc(var(--u) * 1.4) rgba(60,80,110,.2), inset 0 calc(var(--u) * -.35) 0 rgba(120,140,170,.15);
+  opacity: 0; transform: translateY(3vh); pointer-events: none; transition: opacity .3s, transform .4s cubic-bezier(.2,.9,.3,1.3); }
+.skip.show { opacity: 1; transform: none; pointer-events: auto; }
+.skip.show:active { transform: scale(.94); }
+.skip svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 
 /* flying cards (reveal / collect / bite) */
 .cards { position: absolute; inset: 0; pointer-events: none; z-index: 20; }

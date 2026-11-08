@@ -157,6 +157,8 @@
         return S.project(V3(0, 0.17, 0).applyMatrix4(g.matrixWorld));
       },
       mouthScreen: () => S.project(V3(0, 1.35, 0.7)),
+      /* an eye's centre (0, 1) — the tutor's speech bubble sits beside the head */
+      eyeScreen: i => S.project(c.parts.eyes[i].g.getWorldPosition(V3(0, 0, 0))),
       screenBox() {
         const pts = [V3(-2.25, 0.2, 0.8), V3(2.25, 0.2, 0.8), V3(-1.7, 2.0, 0), V3(1.7, 2.0, 0), V3(0, 3.3, -0.2), V3(0, 0, 1.2)].map(S.project);
         return { left: Math.min(...pts.map(p => p.x)), right: Math.max(...pts.map(p => p.x)), top: Math.min(...pts.map(p => p.y)), bottom: Math.max(...pts.map(p => p.y)) };

@@ -386,7 +386,7 @@
   // ── behaviour ───────────────────────────────────────────────────────────────────────────────────────
   function makeApi(P) {
     const st = {
-      open: 1, openTarget: 1, openVel: 0, snap: null, rest: 1,
+      open: 1, openTarget: 1, openVel: 0, snap: null, rest: 1, talk: 0, talkT: 0,
       squint: 0, squintTarget: 0, blink: 0, blinkT: 0, nextBlink: 1.5,
       gaze: null, gazeSm: new THREE.Vector3(0, 2, 9), wander: new THREE.Vector3(), nextWander: 2,
       eyeWide: 0, happy: 0, happyT: 0, surp: 0, surpT: 0, cheerTimer: 0, time: 0,
@@ -405,6 +405,8 @@
       /* how wide the mouth rests open (1 = as in the renders); the game view opens it wider */
       rest(v) { st.rest = v; if (!st.snap && st.openTarget > 0.5) st.openTarget = v; },
       squint(v) { st.squintTarget = v; },
+      /* the tutor speaking (on/off) */
+      talk(v) { st.talkT = v ? 1 : 0; },
       blink() { st.blinkT = 0.0001; },
       wide(v = 1) { st.eyeWide = v; },
       // the toy stays put: no trembling, shaking or bouncing (user: "악어 이빨 누르면 떨림이 있어")
@@ -444,7 +446,10 @@
           const a = (st.openTarget - st.open) * 60 - st.openVel * 11;
           st.openVel += a * dt; st.open += st.openVel * dt;
         }
-        P.lid.rotation.x = OPEN * (1 - clamp(st.open, -0.05, 1.35));
+        st.talk += (st.talkT - st.talk) * Math.min(1, dt * 8);
+        const syl = st.talk * clamp((st.open - 0.25) / 0.5, 0, 1) * 0.15
+          * (0.5 - 0.5 * Math.cos(st.time * 10.5)) * (0.75 + 0.25 * Math.sin(st.time * 3.3 + 1));
+        P.lid.rotation.x = OPEN * (1 - clamp(st.open, -0.05, 1.35) + syl);
         // teeth: sink when pressed, pop back up
         let glowing = null;
         for (const tooth of P.teeth) {

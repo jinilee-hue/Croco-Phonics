@@ -46,6 +46,15 @@ NEW = {
     'safe': 'Phew! Safe!',
     'chomp': 'Chomp! The croc got you!',
     'howto': 'Press a tooth and say the word!',
+    # the croc tutor's explanation (first game only; game.js TUT has the same texts for its bubbles)
+    'tut1': "Hi, friends! I'm Croco!",
+    'tut2': 'This is the trap word.',
+    'tut3': "Don't press the tooth with this word!",
+    'tut4': 'Take turns. Press a tooth.',
+    'tut5': 'A card pops out. Now say the word.',
+    'tut6': 'Uh-oh! The trap word!',
+    'tut7': 'CHOMP! You lose!',
+    'tut8': "Ready? Let's play!",
 }
 
 jv = json.loads((JENGA / 'src/data/voice.json').read_text(encoding='utf-8'))
