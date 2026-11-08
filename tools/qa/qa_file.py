@@ -1,5 +1,5 @@
 """file:// check: the page opened straight from disk must run the whole loop (fonts, voice from base64, 3D)."""
-import time, json
+import time, json, sys, pathlib
 from playwright.sync_api import sync_playwright
 URL = 'file:///Users/jini/Documents/Jini/2026/Phonics/Croco-Phonics/index.html?shot&nohowto'
 with sync_playwright() as p:
@@ -22,7 +22,7 @@ with sync_playwright() as p:
     pg.evaluate("() => { __croco.onTooth(1); }")
     pg.wait_for_function("__croco.G.screen === 'result'", timeout=20000)
     time.sleep(1.5)
-    pg.screenshot(path='shots/file_result.png')
+    pg.screenshot(path=str(pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else '/tmp') / 'file_result.png'))
     print('font', font, 'voice buffers', voice, 'audio', ctx, 'result', pg.evaluate("document.querySelector('#rbText').textContent"))
     print('errors/warnings:', errs[:8])
     b.close()
