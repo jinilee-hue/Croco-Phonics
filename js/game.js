@@ -205,7 +205,6 @@
     A.say(p ? 't:turn2' : 't:turn1');
     croc.look(V3(p ? 4.5 : -4.5, 2.6, 3));
     const left = croc.N_TEETH - G.pressed.size;
-    croc.tremble(left === 1 ? 0.5 : 0);
     armIdle();
   }
 
@@ -224,7 +223,6 @@
       h.style.left = p.x + 'px';
       h.style.top = p.y + 'px';
       h.classList.add('show');
-      croc.bounce(0.3);
       G.idle = setTimeout(armIdle, 4200);
     }, 5200);
   }
@@ -243,11 +241,9 @@
     A.sfxPlay('tap');
     croc.look(croc.toothWorld(i));
     croc.squint(0.55);
-    croc.tremble(1);
     A.sfxPlay('drum');
     await sleep(620);
     if (tok !== G.token) return;
-    croc.tremble(0);
     if (word === G.target) return chomp(i, p, tok);
     await safe(i, p, word, tok);
   }
@@ -255,7 +251,6 @@
   async function safe(i, p, word, tok) {
     croc.squint(0);
     croc.wide(1);
-    croc.bounce(0.6);
     A.sfxPlay('pop');
     A.sfxPlay('sparkle');
     const from = toothScreen(i);
