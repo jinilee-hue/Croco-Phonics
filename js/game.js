@@ -78,7 +78,7 @@
     fitCardWord(el);
     el.innerHTML = `<div class="pic"><img src="${w.card}" alt="" draggable="false"></div>`
       + `<div class="word"><b>${cap(word)[0]}</b>${word.slice(1)}</div>`
-      + (opts.sound ? `<div class="snd" role="button" aria-label="Listen: ${word}"><span class="ltr">M</span><span class="ph">/m/</span>${SVG_SPK}</div>` : '')
+      + (opts.sound ? `<div class="snd" role="button" aria-label="Listen: ${word}"><span class="ltr">M</span>${SVG_SPK}</div>` : '')
       + (opts.mic ? `<div class="ok" aria-hidden="true">${SVG_OK}</div>` : '');
     return el;
   }
