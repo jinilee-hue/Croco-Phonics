@@ -11,7 +11,7 @@ with sync_playwright() as p:
     pg.wait_for_function('window.__ready === true', timeout=60000)
     pg.evaluate("window.__test = {heard: true}")
     # title poke: click the croc's head
-    head = pg.evaluate("__croco.Stage.project(new THREE.Vector3(0, 2.2, 0.6))")
+    head = pg.evaluate("__croco.croc.mouthScreen()")
     pg.mouse.click(head['x'], head['y'])
     time.sleep(0.25)
     print('poke open', round(pg.evaluate('__croco.croc.state.open'), 2), '(expect < .3)')

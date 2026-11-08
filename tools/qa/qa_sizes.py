@@ -7,7 +7,7 @@ from playwright.sync_api import sync_playwright
 out = pathlib.Path(sys.argv[1]); out.mkdir(parents=True, exist_ok=True)
 BASE = sys.argv[2] if len(sys.argv) > 2 else 'http://127.0.0.1:5211/index.html?shot'
 SIZES = [(1024, 768), (1180, 820), (1920, 1080), (820, 1180)]
-TEST = {'mic': False, 'target': 'moon', 'teeth': ['map', 'milk', 'moon', 'mouse', 'monkey', 'mug', 'mop', 'man']}
+TEST = {'mic': False, 'target': 'moon', 'teeth': ['map', 'milk', 'moon', 'mouse', 'monkey', 'mug', 'mop', 'man', 'meat', 'mitt']}
 with sync_playwright() as p:
     b = p.chromium.launch(channel='chrome', headless=True, args=['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'])
     for (W, H) in SIZES:

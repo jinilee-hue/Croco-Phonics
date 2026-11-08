@@ -9,7 +9,7 @@
     frame: { y: 0.66, h: 0.6, el: 20 },         // where the croc sits on screen (centre y as a fraction from the top), its height fraction, camera elevation°
     frameTo: null, onTick: [], pointer: { x: 0, y: 0, inside: false }, ray: new THREE.Raycaster(), fps: 0,
   };
-  const T = new THREE.Vector3(0, 1.6, 0.15);      // the croc's visual centre (feet → eye tops)
+  const T = new THREE.Vector3(0, 1.62, 0.2);       // the croc's visual centre (feet → eye tops)
 
   function contactTexture() {
     const c = document.createElement('canvas');
@@ -41,11 +41,11 @@
     const scene = new THREE.Scene();
     const pm = new THREE.PMREMGenerator(r);
     scene.environment = pm.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
-    scene.environmentIntensity = 0.5;
+    scene.environmentIntensity = 0.65;            // soft studio reflections: the glossy eyes, teeth and tongue
     S.scene = scene;
 
-    scene.add(new THREE.HemisphereLight('#ffffff', '#cdbb9f', 0.85));
-    const key = new THREE.DirectionalLight('#fff4e6', 2.1);
+    scene.add(new THREE.HemisphereLight('#ffffff', '#cdbb9f', 0.6));
+    const key = new THREE.DirectionalLight('#fff4e6', 2.2);
     key.position.set(-3.2, 7.5, 5.5);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
@@ -89,7 +89,7 @@
     const cam = S.camera, f = S.frame;
     cam.aspect = w / h;
     const vfov = cam.fov * Math.PI / 180;
-    const croH = 3.3, croW = 3.7;                           // croc visual size (units): feet → eye tops, foot to foot
+    const croH = 3.3, croW = 4.5;                           // croc visual size (units): feet → eye tops, foot to foot
     let d = croH / (2 * Math.tan(vfov / 2) * f.h);
     const dw = croW / (2 * Math.tan(vfov / 2) * cam.aspect * 0.86);
     d = Math.max(d, dw);
@@ -117,8 +117,10 @@
     const nd = new THREE.Vector2((clientX - rect.left) / rect.width * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
     S.ray.setFromCamera(nd, S.camera);
     // the tooth actually under the finger first; the larger invisible pads only when no tooth is hit
-    let hits = S.ray.intersectObjects(S.croc.toothMeshes, false);
-    if (!hits.length) hits = S.ray.intersectObjects(S.croc.hitMeshes, false);
+    // (the upper jaw in front of a tooth blocks it)
+    let hits = S.ray.intersectObjects(S.croc.toothMeshes.concat(S.croc.occluders || []), false);
+    if (hits.length) return hits[0].object.userData.tooth != null ? hits[0].object.userData.tooth : -1;
+    hits = S.ray.intersectObjects(S.croc.hitMeshes, false);
     return hits.length ? hits[0].object.userData.tooth : -1;
   };
   /* is the croc (any part) under a client point? */
@@ -128,6 +130,42 @@
     const nd = new THREE.Vector2((clientX - rect.left) / rect.width * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
     S.ray.setFromCamera(nd, S.camera);
     return S.ray.intersectObject(S.croc.root, true).length > 0;
+  };
+
+  /* the croc as game.js sees it: the model's api plus screen-space helpers (client px) */
+  S.view = function (c) {
+    const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+    const plane = new THREE.Plane(V3(0, 0, 1), -2.4), hitP = V3(0, 0, 0);
+    const toWorld = p => {
+      const r = S.canvas.getBoundingClientRect();
+      S.ray.setFromCamera({ x: (p.x - r.left) / r.width * 2 - 1, y: -((p.y - r.top) / r.height) * 2 + 1 }, S.camera);
+      return S.ray.ray.intersectPlane(plane, hitP) ? hitP.clone() : null;
+    };
+    const v = Object.create(c);
+    return Object.assign(v, {
+      ready: true,
+      setFrame: (f, ms) => S.setFrame(f, ms),
+      /* the middle of a tooth's face (where a finger presses) */
+      toothScreen(i) {
+        // a visible point of the tooth (side teeth hide each other's faces): face middle, upper face, crown
+        const g = c.teeth[i].g;
+        g.updateWorldMatrix(true, false);
+        for (const [x, y, z] of [[0, 0.0, 0.17], [0, 0.11, 0.14], [0, 0.17, 0.02], [0, 0.16, -0.08]]) {
+          const p = S.project(V3(x, y, z).applyMatrix4(g.matrixWorld));
+          if (S.pick(p.x, p.y) === i) return p;
+        }
+        return S.project(V3(0, 0.17, 0).applyMatrix4(g.matrixWorld));
+      },
+      mouthScreen: () => S.project(V3(0, 1.35, 0.7)),
+      screenBox() {
+        const pts = [V3(-2.25, 0.2, 0.8), V3(2.25, 0.2, 0.8), V3(-1.7, 2.0, 0), V3(1.7, 2.0, 0), V3(0, 3.3, -0.2), V3(0, 0, 1.2)].map(S.project);
+        return { left: Math.min(...pts.map(p => p.x)), right: Math.max(...pts.map(p => p.x)), top: Math.min(...pts.map(p => p.y)), bottom: Math.max(...pts.map(p => p.y)) };
+      },
+      pick: (x, y) => S.pick(x, y),
+      hitCroc: (x, y) => S.hitCroc(x, y),
+      /* a client point to look at (null = wander) */
+      look: p => c.look(p ? toWorld(p) : null),
+    });
   };
 
   let last = 0, acc = 0, frames = 0;

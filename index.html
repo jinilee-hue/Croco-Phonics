@@ -11,17 +11,15 @@
 </head>
 <body>
 <div id="app" data-screen="title" data-turn="0">
-  <!-- painted playroom (blurred, like the reference renders' depth of field) -->
+  <!-- playroom backdrop (the user's croco_bg.png → assets/img/bg.webp) + floating sparkles -->
   <div class="room" aria-hidden="true">
-    <i class="win"></i><i class="win2"></i><i class="shelf"></i><i class="sofa"></i><i class="chair"></i><i class="lamp"></i>
-    <i class="table"></i><i class="glow"></i>
     <i class="mote" style="--x:31%;--y:13%;--c:#ff9fc4;--d:0s"></i><i class="mote" style="--x:63%;--y:11%;--c:#b3a2ff;--d:-1.2s"></i>
     <i class="mote" style="--x:73%;--y:24%;--c:#ff9fc4;--d:-2.4s"></i><i class="mote" style="--x:24%;--y:29%;--c:#8fe0b6;--d:-.6s"></i>
     <i class="mote" style="--x:69%;--y:35%;--c:#ffc36b;--d:-3.1s"></i><i class="mote" style="--x:38%;--y:40%;--c:#8fd6ff;--d:-1.7s"></i>
     <i class="mote" style="--x:58%;--y:31%;--c:#8fe0b6;--d:-2.9s"></i><i class="mote" style="--x:27%;--y:46%;--c:#b3a2ff;--d:-.9s"></i>
   </div>
 
-  <canvas id="gl" aria-label="Crocodile — tap a tooth"></canvas>
+  <canvas id="croc" aria-label="Crocodile — tap a tooth"></canvas>
 
   <!-- floating clay letters + picture cards (decor) -->
   <div class="deco" aria-hidden="true">
@@ -57,7 +55,7 @@
     </div>
     <div class="target" id="target" aria-live="polite"></div>
     <div class="turn" id="turn"><span class="t">Player 1's Turn!</span><span class="hand-ico" aria-hidden="true"></span></div>
-    <div class="hint" id="hint" aria-hidden="true"></div>
+    <div class="hint" id="hint" aria-hidden="true"><img src="assets/img/hand.webp" alt="" draggable="false"></div>
   </section>
   <div class="cards" id="cards"></div>
 
@@ -82,10 +80,10 @@
   <div class="loading" id="loading"><i></i></div>
 </div>
 
-<script src="vendor/three.iife.js"></script>
 <script src="js/words.js"></script>
 <script src="js/voice.js"></script>
 <script src="js/voice-data.js"></script>
+<script src="vendor/three.iife.js"></script>
 <script src="js/sdf.js"></script>
 <script src="js/croc.js"></script>
 <script src="js/stage.js"></script>

@@ -19,7 +19,11 @@
   const cap = w => w[0].toUpperCase() + w.slice(1);
   const EDGES = ['#f6b043', '#86c3ec', '#94d38a', '#f59ab8', '#b9a2f0', '#f7c95c', '#7fd6c8'];
   const LETTER_C = ['#ff7fb0', '#ffb547', '#5fd0a4', '#58b8f2', '#a98bff', '#ff8a4c', '#f06292', '#4fc3f7'];
-  const FRAME = { title: { y: 0.685, h: 0.56, el: 13 }, game: { y: 0.692, h: 0.53, el: 12 } };
+  // croc framing: horizontal centre, bottom edge, height (fractions of the viewport)
+  // camera framing: croc centre (fraction from the top), its height fraction, camera elevation (°). In the game the
+  // camera swings up to look into the mouth so every tooth shows (user: "화면 돌려서 악어 이빨이 다 잘 보이게")
+  const FRAME = { title: { y: 0.68, h: 0.6, el: 12 }, game: { y: 0.635, h: 0.64, el: 35 } };
+  const OPEN_REST = { title: 1, game: 1.32 };          // the game opens the mouth wider: the back teeth clear the upper jaw
   const portrait = () => window.innerWidth < window.innerHeight;
   const u = () => Math.min(window.innerHeight / 100, window.innerWidth * (portrait() ? 0.0095 : 0.0062));
   const SVG_SPK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9.5v5a1 1 0 0 0 1 1h3l4.4 3.7a.8.8 0 0 0 1.3-.6V5.4a.8.8 0 0 0-1.3-.6L7 8.5H4a1 1 0 0 0-1 1z"/><path d="M15.6 8.2a5 5 0 0 1 0 7.6M18.3 5.6a8.6 8.6 0 0 1 0 12.8" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>';
@@ -29,18 +33,22 @@
 
   const G = { screen: 'title', token: 0, busy: true, target: null, lastTarget: null, teeth: [], pressed: new Set(), turn: 0, starter: 0, got: [[], []], idle: null, said: new Set() };
 
-  // ── 3D stage ─────────────────────────────────────────────────────────────────────────────────────────
-  Stage.init($('#gl'), { preserve: /[?&]shot\b/.test(location.search) });
-  const croc = Croc.build(Stage.scene);
+  // ── the 3D croc (js/croc.js) on the three.js stage (js/stage.js) ─────────────────────────────────────
+  Stage.init($('#croc'), { preserve: /[?&]shot\b/.test(location.search) });
+  const croc = Stage.view(Croc.build(Stage.scene));
   Stage.setCroc(croc);
-  Stage.setFrame(FRAME.title);
+  croc.setFrame(FRAME.title);
   Stage.start();
-  requestAnimationFrame(() => requestAnimationFrame(() => $('#loading').classList.add('done')));
   if (document.fonts && document.fonts.load) document.fonts.load('700 100px "Baloo 2"').then(() => croc.refreshLetters()).catch(() => {});
+  // ready once the croc's parts are loaded (QA waits for window.__ready)
+  (function waitCroc() {
+    if (croc.ready && window.__croco) { $('#loading').classList.add('done'); window.__ready = true; } else setTimeout(waitCroc, 50);
+  })();
+  const cvCroc = $('#croc');
 
-  const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
-  const toothScreen = i => Stage.project(croc.toothWorld(i).add(V3(0, 0.22, 0)));
-  const mouthScreen = () => Stage.project(V3(0, 1.45, 0.6));
+  const toothScreen = i => croc.toothScreen(i);
+  const mouthScreen = () => croc.mouthScreen();
+  const avatarPoint = p => { const r = document.querySelector(`.player.p${p + 1} .ava`).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
 
   // ── cards ────────────────────────────────────────────────────────────────────────────────────────────
   let edgeN = 0;
@@ -86,7 +94,7 @@
   function revealSlot(p) {
     const W = window.innerWidth, H = window.innerHeight, cw = 27 * u();
     if (portrait()) return { x: W / 2 + (p ? 1 : -1) * Math.min(W * 0.22, cw * 0.62), y: H * 0.42, r: p ? 6 : -6 };
-    const left = Stage.project(V3(-1.55, 1.5, 0.4)).x, right = Stage.project(V3(1.55, 1.5, 0.4)).x;
+    const box = croc.screenBox(), left = box.left, right = box.right;
     const x = p === 0 ? Math.max(cw * 0.5 + 2 * u(), Math.min(left - cw * 0.45, left * 0.52)) : Math.min(W - cw * 0.5 - 2 * u(), Math.max(right + cw * 0.45, right + (W - right) * 0.48));
     return { x, y: H * 0.47, r: p === 0 ? -6 : 6 };
   }
@@ -182,7 +190,7 @@
     A.sfxPlay('chomp');
     card.querySelector('.bite').animate([{ transform: 'scale(1)' }, { transform: 'scale(1.5) rotate(-12deg)' }, { transform: 'scale(1)' }], { duration: 520, easing: 'ease-out' });
     await sleep(300);
-    croc.setOpen(1);
+    croc.reopen();
     await sleep(450);
     if (tok !== G.token) return;
     t.classList.remove('intro');
@@ -203,7 +211,7 @@
     t.classList.add('show');
     G.busy = false;
     A.say(p ? 't:turn2' : 't:turn1');
-    croc.look(V3(p ? 4.5 : -4.5, 2.6, 3));
+    croc.look(avatarPoint(p));
     const left = croc.N_TEETH - G.pressed.size;
     armIdle();
   }
@@ -216,7 +224,7 @@
       if (G.busy || G.screen !== 'game') return;
       const free = [...Array(croc.N_TEETH).keys()].filter(i => !G.pressed.has(i));
       if (!free.length) return;
-      const front = free.filter(i => i >= 2 && i <= 7);
+      const front = free.filter(i => croc.frontTeeth.includes(i));
       const i = (front.length ? front : free)[rand((front.length ? front : free).length)];
       const p = toothScreen(i);
       const h = $('#hint');
@@ -229,7 +237,7 @@
 
   // ── a tooth is pressed ───────────────────────────────────────────────────────────────────────────────
   async function onTooth(i) {
-    if (G.screen !== 'game' || G.busy) return;
+    if (G.screen !== 'game' || G.busy || !(i >= 0 && i < croc.N_TEETH)) return;
     if (G.pressed.has(i)) { A.sfxPlay('tick'); return; }
     const tok = G.token, p = G.turn, word = G.teeth[i];
     G.busy = true;
@@ -239,8 +247,7 @@
     croc.hover(-1);
     croc.press(i);
     A.sfxPlay('tap');
-    croc.look(croc.toothWorld(i));
-    croc.squint(0.55);
+    croc.look(toothScreen(i));
     A.sfxPlay('drum');
     await sleep(620);
     if (tok !== G.token) return;
@@ -338,7 +345,6 @@
       if (tok !== G.token) return;
     }
     croc.chomp();
-    croc.shake(1);
     A.sfxPlay('chomp');
     app.classList.remove('shake');
     void app.offsetWidth;
@@ -393,7 +399,8 @@
   function goGame() {
     G.screen = 'game';
     app.dataset.screen = 'game';
-    Stage.setFrame(FRAME.game, 900);
+    croc.setFrame(FRAME.game, 900);
+    croc.rest(OPEN_REST.game);
     startRound();
   }
   function goTitle() {
@@ -407,7 +414,8 @@
     $('#turn').classList.remove('show');
     $('#target').classList.remove('alarm', 'intro');
     document.querySelectorAll('.player').forEach(p => p.classList.remove('win', 'lose', 'on'));
-    Stage.setFrame(FRAME.title, 900);
+    croc.setFrame(FRAME.title, 900);
+    croc.rest(OPEN_REST.title);
     croc.reopen();
     croc.resetTeeth(0.04);
     for (let i = 0; i < croc.N_TEETH; i++) croc.glow(i, 0);
@@ -455,41 +463,35 @@
     }
   }, true);
 
-  // ── pointer on the 3D croc ───────────────────────────────────────────────────────────────────────────
-  const gl = $('#gl');
-  const ray = new THREE.Raycaster(), plane = new THREE.Plane(V3(0, 0, 1), -2.4), hitP = V3(0, 0, 0);
+  // ── pointer: the croc's eyes follow it; teeth light up under it ─────────────────────────────────────
   let lookTimer = null;
   function lookAtPointer(e) {
-    const r = gl.getBoundingClientRect();
-    ray.setFromCamera({ x: (e.clientX - r.left) / r.width * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1 }, Stage.camera);
-    if (ray.ray.intersectPlane(plane, hitP)) {
-      croc.look(hitP);
-      clearTimeout(lookTimer);
-      lookTimer = setTimeout(() => croc.look(G.screen === 'game' && !G.busy ? V3(G.turn ? 4.5 : -4.5, 2.6, 3) : null), 2200);
-    }
+    croc.look({ x: e.clientX, y: e.clientY });
+    clearTimeout(lookTimer);
+    lookTimer = setTimeout(() => croc.look(G.screen === 'game' && !G.busy ? avatarPoint(G.turn) : null), 2200);
   }
-  gl.addEventListener('pointermove', e => {
+  window.addEventListener('pointermove', e => {
     lookAtPointer(e);
-    if (G.screen !== 'game' || G.busy || e.pointerType === 'touch') { croc.hover(-1); gl.classList.remove('point'); return; }
-    const i = Stage.pick(e.clientX, e.clientY);
+    if (G.screen !== 'game' || G.busy || e.pointerType === 'touch') { croc.hover(-1); cvCroc.classList.remove('point'); return; }
+    const i = croc.pick(e.clientX, e.clientY);
     const ok = i >= 0 && !G.pressed.has(i);
     croc.hover(ok ? i : -1);
-    gl.classList.toggle('point', ok);
+    cvCroc.classList.toggle('point', ok);
   });
-  gl.addEventListener('pointerdown', e => {
+  cvCroc.addEventListener('pointerdown', e => {
     A.unlock();
     lookAtPointer(e);
     if (G.screen === 'title') {
       // poke the croc on the title: a playful snap
-      if (Stage.hitCroc(e.clientX, e.clientY) && !G.poking) {
+      if (croc.hitCroc(e.clientX, e.clientY) && !G.poking) {
         G.poking = true;
-        croc.chomp(); A.sfxPlay('chomp'); croc.shake(0.5);
+        croc.chomp(); A.sfxPlay('chomp');
         setTimeout(() => { croc.reopen(); A.sfxPlay('boing'); }, 650);
         setTimeout(() => { G.poking = false; }, 1100);
       }
       return;
     }
-    const i = Stage.pick(e.clientX, e.clientY);
+    const i = croc.pick(e.clientX, e.clientY);
     if (i >= 0) onTooth(i);
   });
   window.addEventListener('keydown', e => {
@@ -498,6 +500,5 @@
   });
 
   // QA hooks (headless checks)
-  window.__croco = { G, croc, Stage, goGame, goTitle, onTooth, startRound, showResult, toothScreen, revealSlot };
-  window.__ready = true;
+  window.__croco = { G, croc, goGame, goTitle, onTooth, startRound, showResult, toothScreen, revealSlot };
 })();

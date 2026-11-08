@@ -1,9 +1,12 @@
 /* Croco Phonics — the 3D crocodile (procedural SDF clay model, three.js).
- * Built after the user's reference renders (design/intro_ref.png, game_ref.png): a green toy crocodile whose
- * upper jaw is a hinged lid; big white eyes on top, nostril bumps, coral gum ring with white teeth, a tongue,
- * short legs with yellow claws. Every tooth can sink (pressed) and the lid can snap shut (chomp).
+ * Shaped after the user's renders (design/intro_ref.png, game_ref.png), measured on the title render with
+ * 1 unit ≈ 300 px there: a round hood (upper jaw) with two big glossy eyes sunk in green sockets, nostril mounds,
+ * a thick lip with a dark-red palate band and blunt upper teeth; a coral tray with a raised rim holding 10 chunky
+ * teeth (4 in front, 3 along each side), a big tongue, a green tub underneath, splayed legs with yellow claws.
  *
- * Coordinates: y up, the croc faces +z, the table is y = 0. One unit ≈ 1/2.5 of the jaw width.
+ * Coordinates: y up, the croc faces +z, the table is y = 0.
+ * The hood is modelled in its resting OPEN pose (as in the renders). Its underside is the plane through the hinge
+ * tilted by OPEN, so chomp() turns it shut about the hinge and that plane lands flat on the tray.
  * Croc.build(THREE.Scene) → api (see bottom).
  */
 (function () {
@@ -13,141 +16,153 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
-  // ── dimensions ───────────────────────────────────────────────────────────────────────────────────────
-  const JAW = { hx: 1.25, hz: 1.05, rc: 0.8, y0: 0.16, y1: 0.97, wall: 0.3, floor: 0.74 };
-  const GUM = { inset: 0.15, half: 0.17, y0: 0.88, y1: 1.07 };
-  // lid (upper jaw) is modelled CLOSED: a puffy hood resting over the tray, hinged at the back. Opened by OPEN its
-  // front wall becomes the face we see (nostrils), the eyes stand on top and the palate shows under the lip —
-  // the look of the user's reference renders.
-  const LID = { hx: 1.42, hz: 1.2, zc: 0.05, rc: 0.95, y0: 1.13, y1: 2.04, round: 0.5, wall: 0.17, ceil: 1.74 };
-  const HINGE = { y: 0.98, z: -0.86 };
-  const OPEN = 0.42;                      // rad, resting open angle (front of the lid lifted)
-  const TOOTH = { hx: 0.155, hy: 0.2, hz: 0.1, r: 0.075, sink: 0.08, press: 0.19 };
-  const N_TEETH = 8;                     // big, all on the front arc: easy to see and tap
-  // features are placed where they should sit in the OPEN pose (world), stored in closed-frame coordinates
-  const toClosed = (wy, wz) => {
-    const ry = wy - HINGE.y, rz = wz - HINGE.z, c = Math.cos(OPEN), s = Math.sin(OPEN);
-    return [HINGE.y + c * ry - s * rz, HINGE.z + s * ry + c * rz];
-  };
-  const EYE = (() => { const [y, z] = toClosed(2.84, -0.1); return { x: 0.5, y, z, r: 0.35 }; })();
-  const NOSE = (() => { const [y, z] = toClosed(2.3, 0.78); return { x: 0.27, y, z }; })();
+  // ── dimensions (resting pose) ────────────────────────────────────────────────────────────────────────
+  const BOWL = { hx: 1.56, hz: 1.2, rc: 0.62, top: 0.6 };
+  const TRAY = { hx: 1.48, hz: 1.13, rc: 0.56, y0: 0.34, top: 0.8, ring: 0.15, floor: 0.66 };
+  const HINGE = { y: 1.0, z: -0.25 };                 // the pegs on the side walls
+  const OPEN = 0.7;                                    // rad: the hood's resting open angle
+  const cO = Math.cos(OPEN), sO = Math.sin(OPEN);
+  const HEAD = { cy: 1.93, cz: -0.1, rx: 1.56, ry: 0.48, rz: 1.12, wall: 0.17 };
+  const FLAP = { x0: 1.42, x1: 1.7, y0: 0.56, z0: -0.95, z1: 0.42, lean: 0.1 };   // side walls hanging down to the bowl
+  const EYE = { x: 0.62, y: 2.72, z: -0.02, r: 0.42 };
+  const SOCKET = { dy: -0.03, dz: -0.25, r: 0.53 };
+  const NOSE = { x: 0.38, y: 2.47, z: 0.6, r: 0.2 };
+  // a lower tooth: local y = 0 is the middle of the part above the rim (the letter's centre)
+  const TOOTH = { hx: 0.22, top: 0.19, bot: -0.4, hz: 0.175, r: 0.1, press: 0.2 };
+  const TOOTH_Y = TRAY.top + 0.12;
+  const N_TEETH = 10;
+  // distance above the hood's underside plane (> 0 = inside the hood's half-space)
+  const above = (y, z) => (y - HINGE.y) * cO - (z - HINGE.z) * sO;
 
   const COLORS = {
-    skin: '#50ad57', skinDeep: '#3f9a4a', palate: '#f07f62', gum: '#ef6b5f', tongue: '#e2575a',
-    tooth: '#fbf8f0', eye: '#ffffff', pupil: '#1c1c22', claw: '#f3d143', throat: '#2f6e3c',
+    skin: '#4a834e', interior: '#d98880', palate: '#c96a60', gum: '#ef6c58', tongue: '#e0645c', blush: '#f59aa2',
+    tooth: '#fbf6ee', eye: '#f8f5ef', pupil: '#16171a', claw: '#ecd35a',
   };
-  const LETTER_COLORS = ['#3d9be9', '#26b394', '#f0782f', '#ec5d9b', '#8d6be6'];
-  const TOOTH_WHITE = new THREE.Color('#fbf8f0');
+  // the render's letter inks: blue, mint, teal, orange (front teeth in that order)
+  const LETTER_COLORS = ['#3f95df', '#35b98a', '#2fa6cf', '#ef6636'];
+  const TOOTH_WHITE = new THREE.Color(COLORS.tooth);
 
-  // ── SDF parts ─────────────────────────────────────────────────────────────────────────────────────────
+  // ── lower body ───────────────────────────────────────────────────────────────────────────────────────
+  const LEGS = [
+    { hip: [1.36, 0.42, 0.1], foot: [1.95, 0.19, 0.36], toe: [0.36, 0.93] },
+    { hip: [1.3, 0.42, -0.85], foot: [1.86, 0.18, -1.02], toe: [0.66, -0.75] },
+  ];
   function fBody(x, y, z) {
-    const o = rrect(x, z, JAW.hx, JAW.hz, JAW.rc);
-    let f = extrude(o, y, JAW.y0, JAW.y1, 0.2);
-    // body under the jaw + four short legs
-    f = smin(f, ellipsoid(x, y, z, 0, 0.34, -0.12, 1.16, 0.36, 1.0), 0.2);
+    // the tub, tucked in toward the table
+    const tuck = y < 0.44 ? 0.32 * (1 - y / 0.44) * (1 - y / 0.44) : 0;
+    let f = extrude(rrect(x, z, BOWL.hx - tuck, BOWL.hz - tuck, BOWL.rc), y, -0.3, BOWL.top, 0.17);
     const ax = Math.abs(x);
-    let legs = roundCone(ax, y, z, 1.02, 0.3, 0.42, 1.24, 0.15, 0.66, 0.27, 0.22);
-    legs = smin(legs, ellipsoid(ax, y, z, 1.3, 0.12, 0.76, 0.29, 0.14, 0.3), 0.12);
-    let back = roundCone(ax, y, z, 1.02, 0.3, -0.66, 1.26, 0.15, -0.84, 0.27, 0.22);
-    back = smin(back, ellipsoid(ax, y, z, 1.33, 0.12, -0.92, 0.29, 0.14, 0.28), 0.12);
-    f = smin(f, smin(legs, back, 0.05), 0.2);
-    // mouth cavity (the gum ring + tongue sit in it)
-    const oi = rrect(x, z, JAW.hx - JAW.wall, JAW.hz - JAW.wall, JAW.rc - JAW.wall);
-    f = smax(f, -extrude(oi, y, JAW.floor, 3, 0.1), 0.06);
-    // flat soles on the table
-    return smax(f, -y, 0.03);
+    for (const L of LEGS) {
+      const [hx, hy, hz] = L.hip, [fx, fy, fz] = L.foot;
+      let leg = roundCone(ax, y, z, hx, hy, hz, fx, fy, fz, 0.36, 0.24);
+      leg = smin(leg, ellipsoid(ax, y, z, fx + L.toe[0] * 0.08, 0.17, fz + L.toe[1] * 0.08, 0.42, 0.2, 0.38), 0.16);
+      f = smin(f, leg, 0.2);
+    }
+    return smax(f, -y, 0.02);
   }
-  const CLAW_FEET = [[1.3, 0.76, 1], [1.33, -0.92, -1]];
   function fClaws(x, y, z) {
     const ax = Math.abs(x);
     let f = 1e9;
-    for (const [fx, fz, dir] of CLAW_FEET) {
+    for (const L of LEGS) {
+      const [fx, , fz] = L.foot;
+      const base = Math.atan2(L.toe[0], L.toe[1]);
       for (let k = -1; k <= 1; k++) {
-        const a = k * 0.5 + (dir > 0 ? 0.3 : 0.45);                      // fan out, turned a little outward
-        const bx = fx + Math.sin(a) * 0.2, bz = fz + dir * Math.cos(a) * 0.22;
-        const tx = fx + Math.sin(a) * 0.36, tz = fz + dir * Math.cos(a) * 0.38;
-        f = Math.min(f, roundCone(ax, y, z, bx, 0.1, bz, tx, 0.075, tz, 0.1, 0.065));
+        const a = base + k * 0.42, dx = Math.sin(a), dz = Math.cos(a);
+        f = Math.min(f, roundCone(ax, y, z, fx + dx * 0.28, 0.14, fz + dz * 0.28, fx + dx * 0.58, 0.085, fz + dz * 0.58, 0.15, 0.08));
       }
     }
     return smax(f, -y, 0.02);
   }
-  function fGum(x, y, z) {
-    const c = rrect(x, z, JAW.hx - GUM.inset, JAW.hz - GUM.inset, JAW.rc - GUM.inset);
-    return extrude(Math.abs(c) - GUM.half, y, GUM.y0, GUM.y1, 0.085);
+  function fTray(x, y, z) {
+    return extrude(rrect(x, z, TRAY.hx, TRAY.hz, TRAY.rc), y, TRAY.y0, TRAY.top, 0.1);
   }
   function fTongue(x, y, z) {
-    let f = ellipsoid(x, y, z, 0, 0.8, -0.1, 0.74, 0.2, 0.6);
-    f = smin(f, ellipsoid(x, y, z, 0, 0.76, 0.3, 0.5, 0.14, 0.3), 0.15);
-    // a soft groove down the middle
-    f = smax(f, -ellipsoid(x, y, z, 0, 1.0, 0.0, 0.05, 0.08, 0.5), 0.06);
-    return f;
+    let f = ellipsoid(x, y, z, 0, 0.84, -0.2, 0.84, 0.27, 0.66);
+    f = smin(f, ellipsoid(x, y, z, 0, 0.8, 0.18, 0.58, 0.18, 0.32), 0.18);
+    return smax(f, -ellipsoid(x, y, z, 0, 1.1, -0.08, 0.05, 0.08, 0.5), 0.06);     // a soft groove
   }
 
-  // lid (upper jaw) — modelled CLOSED, resting over the tray; hinge at the back
-  function lidOuter(x, y, z) {
-    const o = rrect(x, z - LID.zc, LID.hx, LID.hz, LID.rc);
-    let f = extrude(o, y, LID.y0, LID.y1, LID.round);
-    f = smin(f, ellipsoid(x, y, z, 0, 1.94, -0.42, 1.12, 0.34, 0.7), 0.3);              // skull
+  // ── hood (upper jaw), resting open pose ──────────────────────────────────────────────────────────────
+  function hoodSolid(x, y, z) {
     const ax = Math.abs(x);
-    f = smin(f, sphere(ax, y, z, EYE.x, EYE.y - 0.12, EYE.z - 0.07, EYE.r + 0.035), 0.24);  // eye sockets
-    f = smin(f, sphere(ax, y, z, NOSE.x, NOSE.y, NOSE.z, 0.13), 0.12);                   // nostril bumps
-    f = smax(f, -ellipsoid(ax, y, z, NOSE.x, NOSE.y + 0.03, NOSE.z + 0.12, 0.05, 0.055, 0.07), 0.035);
-    return f;
+    let f = ellipsoid(x, y, z, 0, HEAD.cy, HEAD.cz, HEAD.rx, HEAD.ry, HEAD.rz);                      // wide snout
+    f = smin(f, ellipsoid(x, y, z, 0, 2.3, -0.25, 1.2, 0.55, 0.96), 0.45);                           // narrower skull: a bell
+    f = smin(f, ellipsoid(x, y, z, 0, 2.52, -0.36, 0.98, 0.44, 0.78), 0.3);                          // brow
+    f = smin(f, sphere(ax, y, z, EYE.x, EYE.y + SOCKET.dy, EYE.z + SOCKET.dz, SOCKET.r), 0.18);      // eye sockets
+    f = smin(f, ellipsoid(x, y, z, 0, 2.3, 0.3, 0.74, 0.26, 0.5), 0.25);                              // snout bridge
+    f = smin(f, sphere(ax, y, z, NOSE.x, NOSE.y, NOSE.z, NOSE.r), 0.16);                             // nostril mounds
+    // cheeks: the outline carried down (the underside plane trims it)
+    return smin(f, extrude(rrect(x, z - HEAD.cz, HEAD.rx - 0.03, HEAD.rz - 0.02, 0.92), y, 0.2, HEAD.cy, 0.22), 0.3);
   }
-  function lidCavity(x, y, z) {
-    const oi = rrect(x, z - LID.zc, LID.hx - LID.wall, LID.hz - LID.wall, LID.rc - LID.wall);
-    return extrude(oi, y, -2, LID.ceil, 0.3);
+  function fFlaps(x, y, z) {
+    const ax = Math.abs(x);
+    const cx = (FLAP.x0 + FLAP.x1) / 2, cz = (FLAP.z0 + FLAP.z1) / 2, cy = (FLAP.y0 + 2.0) / 2;
+    const sx = ax + FLAP.lean * (y - 2.0) / (2.0 - FLAP.y0);          // leaning out toward the bottom
+    let f = roundBox(sx, y, z, cx - FLAP.lean, cy, cz, (FLAP.x1 - FLAP.x0) / 2, (2.0 - FLAP.y0) / 2, (FLAP.z1 - FLAP.z0) / 2, 0.12);
+    // round the front-bottom corner (the flap's leading edge sweeps back toward the peg)
+    f = smax(f, ellipsoid(sx, y, z, cx - FLAP.lean, 1.5, -0.3, 0.6, 1.1, 0.95), 0.12);
+    return smin(f, roundCone(ax, y, z, FLAP.x1 - 0.04, HINGE.y, HINGE.z, FLAP.x1 + 0.08, HINGE.y, HINGE.z, 0.15, 0.13), 0.05);   // peg
   }
-  // cheeks: the hood's side walls reach down toward the hinge, so the open mouth is closed at the sides
-  function lidSkirt(x, y, z) {
-    const o = rrect(x, z - LID.zc, LID.hx, LID.hz, LID.rc);
-    const band = Math.abs(o + 0.11) - 0.11;
-    const yb = 0.64 + Math.max(0, z + 0.6) * 0.62;
-    return smax(smax(band, yb - y, 0.12), y - 1.7, 0.1);
+  function hoodCavity(x, y, z) {
+    const w = HEAD.wall;
+    const f = ellipsoid(x, y, z, 0, HEAD.cy - 0.06, HEAD.cz - 0.02, HEAD.rx - w, HEAD.ry - w - 0.1, HEAD.rz - w);
+    return smin(f, extrude(rrect(x, z - HEAD.cz, HEAD.rx - 0.03 - w, HEAD.rz - 0.02 - w, 0.92 - w), y, -1, HEAD.cy - 0.08, 0.2), 0.24);
   }
-  function lidShell(x, y, z) { return smin(lidOuter(x, y, z), lidSkirt(x, y, z), 0.14); }
-  function fLid(x, y, z) {
-    return smax(lidShell(x, y, z), -lidCavity(x, y, z), 0.08);
+  const NOSTRIL = (() => {            // hole on each mound's top-front
+    const d = [0, 0.55, 0.835];
+    return { x: NOSE.x - 0.02, y: NOSE.y + d[1] * NOSE.r, z: NOSE.z + d[2] * NOSE.r };
+  })();
+  function fHood(x, y, z) {
+    const ax = Math.abs(x);
+    let f = smax(hoodSolid(x, y, z), -hoodCavity(x, y, z), 0.06);
+    f = smax(f, -above(y, z), 0.06);
+    f = smin(f, fFlaps(x, y, z), 0.1);
+    f = smax(f, -sphere(ax, y, z, EYE.x, EYE.y, EYE.z, EYE.r - 0.006), 0.02);                       // eyeball seats
+    return smax(f, -ellipsoid(ax, y, z, NOSTRIL.x, NOSTRIL.y, NOSTRIL.z, 0.062, 0.05, 0.062), 0.035);
   }
+  // where the lip's outer edge is at a given x: walk the underside plane from the front until inside the hood
+  function lipAt(x) {
+    for (let z = 1.6; z > -1.2; z -= 0.004) {
+      const y = HINGE.y + (z - HINGE.z) * sO / cO;
+      if (hoodSolid(x, y, z) < 0) return { y, z };
+    }
+    return { y: HINGE.y, z: HINGE.z };
+  }
+
+  // ── teeth ────────────────────────────────────────────────────────────────────────────────────────────
   function fTooth(x, y, z) {
-    // a rounded block, a bit narrower at the root and with a softly domed front face
-    const w = TOOTH.hx * (1 - 0.1 * smooth(TOOTH.hy, -TOOTH.hy, y));
-    let f = roundBox(x, y, z, 0, 0, 0, w, TOOTH.hy, TOOTH.hz, TOOTH.r);
-    f = smin(f, ellipsoid(x, y, z, 0, 0.01, 0.02, TOOTH.hx * 0.92, TOOTH.hy * 0.95, TOOTH.hz * 1.18), 0.03);
-    return f;
+    const t = clamp((y - TOOTH.bot) / (TOOTH.top - TOOTH.bot), 0, 1);
+    const w = TOOTH.hx * (1 - 0.07 * t);                        // a little narrower toward the crown
+    const cy = (TOOTH.top + TOOTH.bot) / 2, hy = (TOOTH.top - TOOTH.bot) / 2;
+    const f = roundBox(x, y, z, 0, cy, 0, w, hy, TOOTH.hz, TOOTH.r);
+    return smin(f, ellipsoid(x, y, z, 0, cy + 0.02, 0, w * 0.96, hy * 0.98, TOOTH.hz * 1.12), 0.03);   // domed faces
   }
   function fUpperTooth(x, y, z) {
-    return roundCone(x, y, z, 0, 0.14, 0, 0, -0.12, 0.015, 0.11, 0.08);
+    // hangs along −y from its root at y = 0.06: a blunt rounded peg, a bit narrower at the tip
+    const k = 0.6;
+    return roundCone(x, y, z / k, 0, 0.0, 0, 0, -0.15, 0, 0.19, 0.16) * k;
   }
-
-  // teeth sit along the gum's centre line: left side → front → right side
-  function toothPath() {
-    const hx = JAW.hx - GUM.inset, hz = JAW.hz - GUM.inset, r = JAW.rc - GUM.inset;
-    const cx = hx - r, cz = hz - r, zBack = 0.0;
-    const segs = [
-      { len: cz - zBack, at: t => [-hx, zBack + t, -1, 0] },
-      { len: Math.PI / 2 * r, at: t => { const a = Math.PI - t / r; return [-cx + r * Math.cos(a), cz + r * Math.sin(a), Math.cos(a), Math.sin(a)]; } },
-      { len: 2 * cx, at: t => [-cx + t, hz, 0, 1] },
-      { len: Math.PI / 2 * r, at: t => { const a = Math.PI / 2 - t / r; return [cx + r * Math.cos(a), cz + r * Math.sin(a), Math.cos(a), Math.sin(a)]; } },
-      { len: cz - zBack, at: t => [hx, cz - t, 1, 0] },
-    ];
-    const L = segs.reduce((s, g) => s + g.len, 0);
+  // left back → left side → front row → right side → right back (keys 1…9, 0)
+  function toothLayout() {
+    const side = [[1.12, -0.68, 1.0], [1.13, -0.19, 0.82], [1.12, 0.29, 0.64]];       // x, z, turn (back → front)
     const out = [];
-    for (let i = 0; i < N_TEETH; i++) {
-      let s = (i + 0.5) / N_TEETH * L;
-      for (const g of segs) { if (s <= g.len + 1e-9) { out.push(g.at(s)); break; } s -= g.len; }
-    }
+    for (const [x, z, a] of side) out.push({ x: -x, z, ry: -a });
+    for (const k of [-1.5, -0.5, 0.5, 1.5]) out.push({ x: k * 0.48, z: 0.66 - 0.05 * k * k, ry: -0.08 * k, front: true });
+    for (const [x, z, a] of side.slice().reverse()) out.push({ x, z, ry: a });
     return out;
   }
 
+  // ── letters on the teeth ─────────────────────────────────────────────────────────────────────────────
   function drawLetter(c, ch, color) {
     const g = c.getContext('2d');
     g.clearRect(0, 0, 256, 256);
-    g.fillStyle = color;
     g.textAlign = 'center';
     g.textBaseline = 'alphabetic';
-    g.font = '700 200px "Baloo 2", "Arial Rounded MT Bold", "Nunito", sans-serif';
-    g.fillText(ch, 128, 196);
+    g.font = '700 190px "Baloo 2", "Arial Rounded MT Bold", "Nunito", sans-serif';
+    g.fillStyle = 'rgba(30,40,70,0.16)';                 // a soft print shadow
+    g.fillText(ch, 131, 186);
+    g.fillStyle = color;
+    g.fillText(ch, 128, 182);
   }
   function letterTexture(ch, color) {
     const c = document.createElement('canvas');
@@ -159,24 +174,23 @@
     t.userData = { ch, color };
     return t;
   }
-
-  /* decal = the tooth's front-facing triangles, pushed out a hair along their normals, UVs projected along z */
+  /* decal = the tooth's front triangles, pushed out a hair along their normals, UVs projected along z */
   function decalGeometry(src) {
     const P = src.getAttribute('position'), N = src.getAttribute('normal'), I = src.getIndex();
     const keep = [];
     for (let k = 0; k < I.count; k += 3) {
       const a = I.getX(k), b = I.getX(k + 1), c = I.getX(k + 2);
-      if (N.getZ(a) > 0.2 && N.getZ(b) > 0.2 && N.getZ(c) > 0.2) keep.push(a, b, c);
+      if (N.getZ(a) > 0.25 && N.getZ(b) > 0.25 && N.getZ(c) > 0.25 && P.getY(a) > -0.22) keep.push(a, b, c);
     }
     const map = new Map(), pos = [], nor = [], uv = [], idx = [];
-    const sx = TOOTH.hx * 2.1, sy = TOOTH.hy * 2.1;
+    const S = 0.44;                                       // texture size on the face
     for (const v of keep) {
       if (!map.has(v)) {
         map.set(v, pos.length / 3);
         const nx = N.getX(v), ny = N.getY(v), nz = N.getZ(v);
         const x = P.getX(v) + nx * 0.004, y = P.getY(v) + ny * 0.004, z = P.getZ(v) + nz * 0.004;
         pos.push(x, y, z); nor.push(nx, ny, nz);
-        uv.push(x / sx + 0.5, y / sy + 0.5);
+        uv.push(x / S + 0.5, (y - 0.035) / S + 0.5);          // letter centred on the face above the tray
       }
       idx.push(map.get(v));
     }
@@ -187,23 +201,37 @@
     g.setIndex(idx);
     return g;
   }
+  function glintTexture() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d');
+    const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grd.addColorStop(0, 'rgba(255,255,255,1)');
+    grd.addColorStop(0.5, 'rgba(255,255,255,0.95)');
+    grd.addColorStop(0.75, 'rgba(255,255,255,0.35)');
+    grd.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grd;
+    g.fillRect(0, 0, 64, 64);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
 
   function build(scene, opts = {}) {
-    const q = opts.quality || 1;                 // 1 = full, 0.75 = lighter grids
+    const q = opts.quality || 1;
     const H = 0.03 / q;
     const t0 = performance.now();
-    const mat = (hex, o = {}) => new THREE.MeshPhysicalMaterial(Object.assign({ color: hex, roughness: 0.45, metalness: 0 }, o));
+    const mat = (hex, o = {}) => new THREE.MeshPhysicalMaterial(Object.assign({ color: hex, roughness: 0.5, metalness: 0 }, o));
+    const skinOpts = { roughness: 0.52, clearcoat: 0.28, clearcoatRoughness: 0.42, sheen: 0.35, sheenColor: '#e4ffdc', sheenRoughness: 0.65 };
     const M = {
-      skin: mat(COLORS.skin, { roughness: 0.42, clearcoat: 0.3, clearcoatRoughness: 0.4, sheen: 0.25, sheenColor: '#d9ffd0', sheenRoughness: 0.6 }),
-      lid: mat('#ffffff', { vertexColors: true, roughness: 0.42, clearcoat: 0.3, clearcoatRoughness: 0.4, sheen: 0.25, sheenColor: '#d9ffd0', sheenRoughness: 0.6 }),
-      gum: mat(COLORS.gum, { roughness: 0.5, clearcoat: 0.25, clearcoatRoughness: 0.5 }),
-      tongue: mat(COLORS.tongue, { roughness: 0.55, clearcoat: 0.2 }),
-      throat: mat(COLORS.throat, { roughness: 0.85 }),
-      claw: mat(COLORS.claw, { roughness: 0.38, clearcoat: 0.4 }),
-      tooth: mat(COLORS.tooth, { roughness: 0.3, clearcoat: 0.6, clearcoatRoughness: 0.25, emissive: '#000000' }),
-      eye: mat(COLORS.eye, { roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.08 }),
-      pupil: mat(COLORS.pupil, { roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.05 }),
-      shine: new THREE.MeshBasicMaterial({ color: '#ffffff' }),
+      skin: mat(COLORS.skin, skinOpts),
+      hood: mat('#ffffff', Object.assign({ vertexColors: true }, skinOpts)),
+      gum: mat(COLORS.gum, { roughness: 0.48, clearcoat: 0.3, clearcoatRoughness: 0.45 }),
+      tongue: mat(COLORS.tongue, { roughness: 0.4, clearcoat: 0.45, clearcoatRoughness: 0.35 }),
+      claw: mat(COLORS.claw, { roughness: 0.38, clearcoat: 0.45, clearcoatRoughness: 0.3 }),
+      tooth: mat(COLORS.tooth, { roughness: 0.3, clearcoat: 0.7, clearcoatRoughness: 0.18, emissive: '#000000' }),
+      eye: mat(COLORS.eye, { roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.14, envMapIntensity: 0.9 }),
+      pupil: mat(COLORS.pupil, { roughness: 0.55, clearcoat: 0.25, clearcoatRoughness: 0.4, envMapIntensity: 0.08 }),
     };
     const shadowy = m => { m.castShadow = true; m.receiveShadow = true; return m; };
 
@@ -212,100 +240,110 @@
     scene.add(root);
     const base = new THREE.Group();
     root.add(base);
+    base.add(shadowy(new THREE.Mesh(mesh(fBody, [-2.3, -0.05, -1.45, 2.3, 0.82, 1.45], H), M.skin)));
+    base.add(shadowy(new THREE.Mesh(mesh(fClaws, [-2.3, -0.05, -1.4, 2.3, 0.22, 1.35], H * 0.6), M.claw)));
+    base.add(shadowy(new THREE.Mesh(mesh(fTray, [-1.5, 0.3, -1.18, 1.5, 0.84, 1.18], H * 0.8), M.gum)));
+    base.add(shadowy(new THREE.Mesh(mesh(fTongue, [-0.9, 0.6, -0.9, 0.9, 1.14, 0.55], H), M.tongue)));
 
-    const body = shadowy(new THREE.Mesh(mesh(fBody, [-1.95, -0.05, -1.5, 1.95, 1.08, 1.5], H), M.skin));
-    const claws = shadowy(new THREE.Mesh(mesh(fClaws, [-2.0, -0.05, -1.5, 2.0, 0.24, 1.35], H * 0.7), M.claw));
-    const gum = shadowy(new THREE.Mesh(mesh(fGum, [-1.4, 0.82, -1.2, 1.4, 1.14, 1.2], H * 0.85), M.gum));
-    const tongue = shadowy(new THREE.Mesh(mesh(fTongue, [-0.85, 0.5, -0.8, 0.85, 1.05, 0.7], H), M.tongue));
-    base.add(body, claws, gum, tongue);
-
-    // lid: pivot at the hinge, children in croc coordinates
+    // hood: pivot at the hinge, children in croc coordinates
     const lid = new THREE.Group();
     lid.position.set(0, HINGE.y, HINGE.z);
     root.add(lid);
     const lidIn = new THREE.Group();
     lidIn.position.set(0, -HINGE.y, -HINGE.z);
     lid.add(lidIn);
-    const cSkin = new THREE.Color(COLORS.skin), cPal = new THREE.Color(COLORS.palate);
-    const lidGeo = mesh(fLid, [-1.64, 0.5, -1.45, 1.64, EYE.y + 0.3, 1.55], H, {
+    const cSkin = new THREE.Color(COLORS.skin), cPal = new THREE.Color(COLORS.palate), cIn = new THREE.Color(COLORS.interior);
+    const cBlush = new THREE.Color(COLORS.blush);
+    const hoodGeo = mesh(fHood, [-1.82, 0.45, -1.42, 1.82, EYE.y + SOCKET.r + 0.05, 1.25], H, {
       color(x, y, z, out) {
-        // palate where the cavity wall is the active surface, skin elsewhere (narrow blend)
-        const pal = smooth(-0.012, 0.012, -lidCavity(x, y, z) - lidShell(x, y, z));
-        out[0] = cSkin.r + (cPal.r - cSkin.r) * pal;
-        out[1] = cSkin.g + (cPal.g - cSkin.g) * pal;
-        out[2] = cSkin.b + (cPal.b - cSkin.b) * pal;
+        // outer skin; the inside: a dark-red palate band along the lip, dark green deeper in (always in shadow)
+        const solid = hoodSolid(x, y, z), cav = -hoodCavity(x, y, z), cut = -above(y, z);
+        const flap = smooth(-0.02, 0.02, Math.max(solid, cav, cut) - fFlaps(x, y, z));   // 1 where a side wall is the surface
+        const onCut = smooth(-0.02, 0.02, cut - Math.max(solid, cav)) * (1 - flap);
+        const onIn = smooth(-0.02, 0.02, cav - solid) * (1 - onCut) * (1 - flap);
+        const band = smooth(0.32, 0.16, above(y, z)) * smooth(-0.1, 0.35, z);
+        const pal = Math.min(1, onCut + onIn * band), inr = onIn * (1 - band);
+        const sk = Math.max(0, 1 - pal - inr);
+        // rosy cheeks on the snout's sides, under the eyes
+        const dx = Math.abs(x) - 1.0, dy = y - 2.2, dz = z - 0.5;
+        const bl = 0.8 * Math.exp(-(dx * dx + dy * dy * 2.2 + dz * dz * 0.8) / 0.045);
+        const r = cSkin.r + (cBlush.r - cSkin.r) * bl, g = cSkin.g + (cBlush.g - cSkin.g) * bl, b = cSkin.b + (cBlush.b - cSkin.b) * bl;
+        out[0] = r * sk + cPal.r * pal + cIn.r * inr;
+        out[1] = g * sk + cPal.g * pal + cIn.g * inr;
+        out[2] = b * sk + cPal.b * pal + cIn.b * inr;
       },
     });
-    const head = shadowy(new THREE.Mesh(lidGeo, M.lid));
+    const head = shadowy(new THREE.Mesh(hoodGeo, M.hood));
     lidIn.add(head);
 
-    // upper teeth hang from the palate's front edge; tilted back by OPEN so they point down when the mouth is open
-    const utGeo = mesh(fUpperTooth, [-0.16, -0.24, -0.15, 0.16, 0.28, 0.15], H * 0.45);
+    // upper teeth hang from the palate band, square to the underside plane (straight down once shut)
+    const utGeo = mesh(fUpperTooth, [-0.22, -0.4, -0.14, 0.22, 0.12, 0.14], H * 0.45);
     const upper = [];
-    const ihz = LID.zc + LID.hz - LID.wall, ihx = LID.hx - LID.wall, irr = LID.rc - LID.wall;
-    for (const [x, sc] of [[-0.34, 1], [0.34, 1], [-0.95, 0.8], [0.95, 0.8]]) {
+    for (const [x, sc, inset] of [[-0.58, 0.92, 0.13], [0.58, 0.92, 0.13], [-1.06, 0.46, 0.12], [1.06, 0.46, 0.12], [-1.24, 0.42, 0.12], [1.24, 0.42, 0.12]]) {
+      const lp = lipAt(x);
       const t = new THREE.Mesh(utGeo, M.tooth);
-      let z = ihz;
-      if (Math.abs(x) > ihx - irr) { const dx = Math.abs(x) - (ihx - irr); z = LID.zc + (LID.hz - LID.wall - irr) + Math.sqrt(Math.max(0, irr * irr - dx * dx)); }
-      t.position.set(x, LID.y0 + 0.05 * sc, z - 0.11 * sc);
-      t.rotation.x = OPEN;
-      t.scale.setScalar(sc);
+      // root just inside the lip, on the plane; inward = back along the plane
+      t.position.set(x, lp.y - inset * sO + 0.02 * cO, lp.z - inset * cO - 0.02 * sO);
+      t.rotation.x = -OPEN;
+      t.scale.set(sc, sc * 1.05, sc);
       t.castShadow = true;
       lidIn.add(t);
       upper.push(t);
     }
 
-    // eyes (in the lid): eyeball + pupil (turns to look) + glint, eyelid shell for blinks/squints
+    // eyes: glossy ball + pupil cap (turns to look) + soft glints, an eyelid shell for blinks/squints
     const eyes = [];
-    const eyeGeo = new THREE.SphereGeometry(EYE.r, 48, 32);
-    const pupilGeo = new THREE.SphereGeometry(1, 40, 24);
-    const glintGeo = new THREE.SphereGeometry(1, 16, 12);
-    const lidCapGeo = new THREE.SphereGeometry(EYE.r * 1.045, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2);
+    const eyeGeo = new THREE.SphereGeometry(EYE.r, 64, 48);
+    const pupilGeo = new THREE.SphereGeometry(EYE.r * 1.004, 48, 12, 0, Math.PI * 2, 0, 0.53);
+    pupilGeo.rotateX(Math.PI / 2);                                      // cap around +z
+    const lidCapGeo = new THREE.SphereGeometry(EYE.r * 1.04, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2);
+    const glintMat = new THREE.SpriteMaterial({ map: glintTexture(), transparent: true, depthWrite: false });
     for (const sx of [-1, 1]) {
       const g = new THREE.Group();
       g.position.set(sx * EYE.x, EYE.y, EYE.z);
       lidIn.add(g);
+      const sg = new THREE.Group();                 // ball + pupil + glints (scaled together when wide-eyed)
+      g.add(sg);
       const ball = shadowy(new THREE.Mesh(eyeGeo, M.eye));
-      g.add(ball);
-      const look = new THREE.Group();          // +z → gaze direction
-      g.add(look);
+      sg.add(ball);
+      const look = new THREE.Group();
+      sg.add(look);
       const pupil = new THREE.Mesh(pupilGeo, M.pupil);
-      pupil.scale.set(EYE.r * 0.62, EYE.r * 0.62, EYE.r * 0.3);
-      pupil.position.z = EYE.r * 0.78;
       look.add(pupil);
-      const glint = new THREE.Mesh(glintGeo, M.shine);
-      glint.scale.setScalar(EYE.r * 0.12);
-      glint.position.set(-EYE.r * 0.2, EYE.r * 0.24, EYE.r * 1.08);
-      look.add(glint);
-      const glint2 = new THREE.Mesh(glintGeo, M.shine);
-      glint2.scale.setScalar(EYE.r * 0.055);
-      glint2.position.set(EYE.r * 0.14, -EYE.r * 0.12, EYE.r * 1.1);
-      look.add(glint2);
-      // eyelid: cap that swings from the top (open: hidden) down over the front (closed)
+      // sparkles on the pupil (upper left big, lower right small): they ride with the gaze
+      const glints = [];
+      for (const [dx, dy, s] of [[-0.2, 0.22, 0.15], [0.19, -0.17, 0.06]]) {
+        const sp = new THREE.Sprite(glintMat);
+        const d = new THREE.Vector3(dx, dy, 1).normalize().multiplyScalar(EYE.r * 1.02);
+        sp.position.copy(d);
+        sp.scale.setScalar(s);
+        sp.renderOrder = 3;
+        look.add(sp);
+        glints.push(sp);
+      }
       const lidPivot = new THREE.Group();
-      lidPivot.rotation.x = OPEN;             // compensate the lid's tilt so blinks close top → down on screen
       g.add(lidPivot);
       const cap = new THREE.Mesh(lidCapGeo, M.skin);
       cap.castShadow = true;
       cap.visible = false;
       lidPivot.add(cap);
-      eyes.push({ g, ball, look, pupil, cap, side: sx });
+      eyes.push({ g, sg, ball, look, pupil, glints, cap, side: sx });
     }
 
-    // teeth
-    const toothGeo = mesh(fTooth, [-0.21, -0.26, -0.17, 0.21, 0.26, 0.18], H * 0.52);
+    // lower teeth
+    const toothGeo = mesh(fTooth, [-0.26, -0.46, -0.22, 0.26, 0.26, 0.23], H * 0.5);
     const decalGeo = decalGeometry(toothGeo);
-    const hitGeo = new THREE.BoxGeometry(TOOTH.hx * 2.7, TOOTH.hy * 3.0, TOOTH.hz * 3.4);
+    const hitGeo = new THREE.BoxGeometry(TOOTH.hx * 2.5, 0.5, TOOTH.hz * 3.2);
     const hitMat = new THREE.MeshBasicMaterial({ visible: false });
-    const teeth = toothPath().map(([x, z, nx, nz], i) => {
+    const layout = toothLayout();
+    const teeth = layout.map((p, i) => {
       const g = new THREE.Group();
-      const yRest = GUM.y1 - TOOTH.sink + TOOTH.hy;
-      g.position.set(x, yRest, z);
-      g.rotation.y = Math.atan2(nx, nz);
+      g.position.set(p.x, TOOTH_Y, p.z);
+      g.rotation.y = p.ry;
       base.add(g);
       const m = shadowy(new THREE.Mesh(toothGeo, M.tooth.clone()));
       g.add(m);
-      const color = LETTER_COLORS[i % LETTER_COLORS.length];
+      const color = LETTER_COLORS[(i + 1) % LETTER_COLORS.length];
       const dm = new THREE.MeshPhysicalMaterial({
         map: letterTexture('m', color), transparent: true, roughness: 0.35, clearcoat: 0.5,
         polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, depthWrite: false,
@@ -314,11 +352,11 @@
       decal.renderOrder = 2;
       g.add(decal);
       const hit = new THREE.Mesh(hitGeo, hitMat);
-      hit.position.set(0, 0.05, 0.04);
+      hit.position.set(0, 0.02, 0.05);
       hit.userData.tooth = i;
       g.add(hit);
       m.userData.tooth = i; decal.userData.tooth = i;
-      return { i, g, mesh: m, decal, hit, yRest, depth: 0, pressed: false, glow: 0, glowColor: new THREE.Color('#a463ff'), hover: 0 };
+      return { i, g, mesh: m, decal, hit, front: !!p.front, yRest: TOOTH_Y, depth: 0, pressed: false, glow: 0, glowColor: new THREE.Color('#a463ff'), hover: 0 };
     });
 
     const glowLight = new THREE.PointLight('#a35bff', 0, 3, 1.4);
@@ -333,84 +371,75 @@
   // ── behaviour ───────────────────────────────────────────────────────────────────────────────────────
   function makeApi(P) {
     const st = {
-      open: 1, openTarget: 1, openVel: 0, snap: null,
+      open: 1, openTarget: 1, openVel: 0, snap: null, rest: 1,
       squint: 0, squintTarget: 0, blink: 0, blinkT: 0, nextBlink: 1.5,
-      gaze: null, gazeSm: new THREE.Vector3(0, 1.6, 8), wander: new THREE.Vector3(), nextWander: 2,
-      shake: 0, tremble: 0, breathe: 0, bounce: 0, eyeWide: 0, happy: 0, time: 0,
+      gaze: null, gazeSm: new THREE.Vector3(0, 2, 9), wander: new THREE.Vector3(), nextWander: 2,
+      eyeWide: 0, time: 0,
     };
-    const tmpV = new THREE.Vector3(), eyeW = new THREE.Vector3(), dir = new THREE.Vector3();
+    const tmpV = new THREE.Vector3(), eyeW = new THREE.Vector3(), dir = new THREE.Vector3(), inv = new THREE.Quaternion();
 
     const api = {
       parts: P, OPEN, teeth: P.teeth, N_TEETH,
+      frontTeeth: P.teeth.filter(t => t.front).map(t => t.i),
       get root() { return P.root; },
-      /* 0 = shut, 1 = resting open */
-      setOpen(v, instant) { st.openTarget = v; if (instant) { st.open = v; st.openVel = 0; } },
-      /* fast bite: overshoot then rest shut */
-      chomp() { st.snap = { t: 0 }; st.openTarget = 0; st.squintTarget = 0.8; },
-      reopen() { st.snap = null; st.openTarget = 1; st.squintTarget = 0; },
+      /* 0 = shut, 1 = resting open (> 1 opens wider) */
+      setOpen(v, instant) { st.snap = null; st.openTarget = v; if (instant) { st.open = v; st.openVel = 0; } },
+      /* fast bite: shut with a small rebound, then rest shut */
+      chomp() { st.snap = { t: 0, from: st.open }; st.openTarget = 0; st.squintTarget = 0.8; },
+      reopen() { st.snap = null; st.openTarget = st.rest; st.squintTarget = 0; },
+      /* how wide the mouth rests open (1 = as in the renders); the game view opens it wider */
+      rest(v) { st.rest = v; if (!st.snap && st.openTarget > 0.5) st.openTarget = v; },
       squint(v) { st.squintTarget = v; },
       blink() { st.blinkT = 0.0001; },
       wide(v = 1) { st.eyeWide = v; },
-      happy(v = 1) { st.happy = v; },
-      tremble(v) { st.tremble = v; },
-      shake(v = 1) { st.shake = v; },
-      bounce(v = 1) { st.bounce = v; },
-      /* world-space point to look at (null = wander / viewer) */
+      // the toy stays put: no trembling, shaking or bouncing (user: "악어 이빨 누르면 떨림이 있어")
+      tremble() {}, shake() {}, bounce() {}, happy() {},
+      /* world-space point to look at (null = wander around the viewer) */
       look(p) { st.gaze = p ? p.clone() : null; },
-      press(i) { const t = P.teeth[i]; t.pressed = true; },
-      release(i) { const t = P.teeth[i]; t.pressed = false; },
+      press(i) { P.teeth[i].pressed = true; },
+      release(i) { P.teeth[i].pressed = false; },
       /* redraw the tooth letters once the web font has loaded */
       refreshLetters() {
         for (const t of P.teeth) { const tex = t.decal.material.map; drawLetter(tex.image, tex.userData.ch, tex.userData.color); tex.needsUpdate = true; }
       },
-      resetTeeth(stagger = 0.06) {
+      resetTeeth(stagger = 0.05) {
         P.teeth.forEach((t, k) => setTimeout(() => { t.pressed = false; }, k * stagger * 1000));
       },
       glow(i, v, color) { const t = P.teeth[i]; t.glow = v; if (color) t.glowColor.set(color); },
       hover(i) { P.teeth.forEach(t => { t.hoverTarget = t.i === i ? 1 : 0; }); },
       toothWorld(i, out = new THREE.Vector3()) { return P.teeth[i].g.getWorldPosition(out); },
       hitMeshes: P.teeth.map(t => t.hit),
+      occluders: [P.head, ...P.upper],
       toothMeshes: P.teeth.map(t => t.mesh),
       state: st,
       update(dt, camera) {
         st.time += dt;
         const t = st.time;
-        // jaw: spring toward target; a snap is a near-instant close with a rebound
+        // jaw: spring toward the target; a snap shuts in ~0.1 s with a small rebound
         if (st.snap) {
           st.snap.t += dt;
           const k = st.snap.t;
-          st.open = k < 0.09 ? 1 - k / 0.09 : Math.max(0, 0.08 * Math.exp(-(k - 0.09) * 9) * Math.cos((k - 0.09) * 30));
-          if (k > 0.7) { st.open = 0; }
+          st.open = k < 0.1 ? st.snap.from * (1 - (k / 0.1) * (k / 0.1)) : Math.max(0, 0.07 * Math.exp(-(k - 0.1) * 10) * Math.sin((k - 0.1) * 28));
+          if (k > 0.7) st.open = 0;
         } else {
-          const kS = 60, dS = 11;
-          const a = (st.openTarget - st.open) * kS - st.openVel * dS;
+          const a = (st.openTarget - st.open) * 60 - st.openVel * 11;
           st.openVel += a * dt; st.open += st.openVel * dt;
         }
-        st.tremble = Math.max(0, st.tremble - dt * 0.0);
-        const trem = st.tremble ? Math.sin(t * 55) * 0.012 * st.tremble + Math.sin(t * 31) * 0.006 * st.tremble : 0;
-        P.lid.rotation.x = -OPEN * clamp(st.open, -0.1, 1.15) + trem;
-        // body: breathing + bounce + shake
-        st.breathe = Math.sin(t * 2.1);
-        st.bounce = Math.max(0, st.bounce - dt * 2.2);
-        st.shake = Math.max(0, st.shake - dt * 2.5);
-        const b = st.bounce;
-        P.root.scale.set(1 + 0.004 * st.breathe + 0.03 * Math.sin(b * Math.PI) * b, 1 - 0.006 * st.breathe - 0.04 * Math.sin(b * 9) * b, 1);
-        P.root.position.x = st.shake ? Math.sin(t * 70) * 0.05 * st.shake : 0;
-        P.root.rotation.z = st.shake ? Math.sin(t * 47) * 0.02 * st.shake : 0;
-        // teeth: sink when pressed, pop back with a little overshoot
+        P.lid.rotation.x = OPEN * (1 - clamp(st.open, -0.05, 1.35));
+        // teeth: sink when pressed, pop back up
         let glowing = null;
         for (const tooth of P.teeth) {
           const target = tooth.pressed ? -TOOTH.press : 0;
-          tooth.vel = (tooth.vel || 0) + ((target - tooth.depth) * 320 - (tooth.vel || 0) * 22) * dt;
+          tooth.vel = (tooth.vel || 0) + ((target - tooth.depth) * 320 - (tooth.vel || 0) * 24) * dt;
           tooth.depth += tooth.vel * dt;
           tooth.hover = (tooth.hover || 0) + ((tooth.hoverTarget || 0) - (tooth.hover || 0)) * Math.min(1, dt * 14);
-          tooth.g.position.y = tooth.yRest + tooth.depth + tooth.hover * 0.025;
+          tooth.g.position.y = tooth.yRest + tooth.depth + tooth.hover * 0.02;
           const e = tooth.mesh.material.emissive;
           const glowAmt = tooth.glow * (0.7 + 0.3 * Math.sin(t * 9));
           e.copy(tooth.glowColor).multiplyScalar(glowAmt * 1.6);
           tooth.mesh.material.color.copy(TOOTH_WHITE).lerp(tooth.glowColor, Math.min(1, tooth.glow) * 0.55);
-          if (tooth.glow > 0.01) { glowing = tooth; }
-          e.r += tooth.hover * 0.06; e.g += tooth.hover * 0.06; e.b += tooth.hover * 0.07;
+          if (tooth.glow > 0.01) glowing = tooth;
+          e.r += tooth.hover * 0.07; e.g += tooth.hover * 0.07; e.b += tooth.hover * 0.08;
         }
         if (glowing) {
           glowing.g.getWorldPosition(P.glowLight.position);
@@ -432,29 +461,34 @@
         const close = clamp(Math.max(st.squint, st.blink), 0, 1);
         for (const e of P.eyes) {
           e.cap.visible = close > 0.02;
-          // cap rotation: -0.25π (tucked at the back) → +0.5π (covers the front)
-          e.cap.parent.rotation.x = OPEN + (-0.6 + close * 2.05);
-          const w = 1 + 0.12 * Math.sin(Math.min(1, st.eyeWide) * Math.PI / 2) * (st.eyeWide > 0 ? 1 : 0);
-          e.ball.scale.setScalar(w);
-          e.look.scale.setScalar(w);
-          e.pupil.scale.set(EYE.r * 0.62 * (1 - 0.2 * st.eyeWide), EYE.r * 0.62 * (1 - 0.2 * st.eyeWide), EYE.r * 0.3);
+          e.cap.parent.rotation.x = -0.62 + close * 2.06;        // tucked at the back → over the front
+          for (const gl of e.glints) gl.visible = close < 0.55;
+          const w = 1 + 0.1 * Math.sin(Math.min(1, st.eyeWide) * Math.PI / 2) * (st.eyeWide > 0 ? 1 : 0);
+          e.sg.scale.setScalar(w);
         }
-        // gaze: target (smoothed) or gentle wandering around the viewer
+        // gaze: the target (smoothed) or a gentle wander around the viewer
         st.nextWander -= dt;
         if (st.nextWander <= 0) {
           st.nextWander = 1.6 + Math.random() * 2.5;
-          st.wander.set((Math.random() - 0.5) * 3, (Math.random() - 0.4) * 1.6, 0);
+          st.wander.set((Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 0.8, 0);
         }
-        const goal = st.gaze ? tmpV.copy(st.gaze) : tmpV.copy(camera.position).add(st.wander);
+        let goal;
+        if (st.gaze) goal = tmpV.copy(st.gaze);
+        else {
+          P.eyes[0].g.getWorldPosition(eyeW);
+          goal = tmpV.set(0, eyeW.y, eyeW.z).lerp(camera.position, 0.45).add(st.wander);
+          goal.y += 1.3;                             // the render's pupils sit high and in
+        }
         st.gazeSm.lerp(goal, Math.min(1, dt * (st.gaze ? 10 : 3)));
         for (const e of P.eyes) {
-          // keep the pupils in the visible upper-front part of the eye: clamp the gaze's pitch and yaw
+          // keep the pupil in the eye's visible front: clamp yaw and pitch in the eye's own frame
           e.g.getWorldPosition(eyeW);
           dir.copy(st.gazeSm).sub(eyeW);
-          const yaw = clamp(Math.atan2(dir.x, dir.z), -0.75, 0.75);
-          const pitch = clamp(Math.atan2(dir.y, Math.hypot(dir.x, dir.z)), -0.06, 0.55);
-          dir.set(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
-          e.look.lookAt(eyeW.add(dir));
+          e.g.getWorldQuaternion(inv).invert();
+          dir.applyQuaternion(inv);
+          const yaw = clamp(Math.atan2(dir.x, dir.z), -0.7, 0.7);
+          const pitch = clamp(Math.atan2(dir.y, Math.hypot(dir.x, dir.z)), -0.3, 0.5);
+          e.look.rotation.set(-pitch, yaw, 0, 'YXZ');
         }
       },
     };
