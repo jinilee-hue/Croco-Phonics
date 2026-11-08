@@ -9,14 +9,25 @@
 4. 지시 단어가 숨은 이빨을 누르면 이빨이 보라색으로 빛나고 악어가 **덥석!** 그 사람이 지고, 상대가 이긴다.
 5. Play Again → 새 지시 단어로 다음 판(진 사람이 먼저).
 
-## 게임 설명(악어 튜터 · 첫 판에만)
-처음 START를 누르면 첫 판의 인트로 안에서 악어가 말풍선으로 설명한다. 그 판의 지시 단어를 그대로 쓴다:
-인사 → 지시 단어 카드("Don't press the tooth with this word!") → 번갈아 이빨 누르기(장갑 손 시연) → 카드가 나오면 말하기 → 지시 단어 이빨이면 덥석 → "Ready? Let's play!" → 첫 턴.
-- 시연에 쓰는 이빨과 카드는 진짜 지시 단어 자리를 알려 주지 않는다. 지시 단어가 없는 앞니를 쓰고, 카드는 이번 판 이빨에 없는 단어로 보여 준다.
-- 설명하는 동안 오른쪽 아래에 **Skip** 버튼이 있다. 끝까지 듣거나 Skip하면 이 기기에서는 다시 나오지 않는다(localStorage `croco.howto.v1`).
+## 인트로(타이틀 화면)
+- 등장 모션: 로딩이 끝나면 로고가 위에서 떨어지며 자리 잡고, 악어가 반 바퀴 돌며 커지고(튀지 않음) 입을 벌린다.
+  옆 그림카드는 할리갈리 카드처럼 양옆에서 날아 들어오고, 글자가 톡톡 나타난 뒤 START가 나온다. 홈 버튼으로 돌아와도 다시 나온다.
+- **게임 설명(악어 튜터 · 이 기기에서 처음 START를 누를 때만)**: 인트로 화면에서 악어가 말풍선으로 설명하고, 끝나면 게임 화면으로 넘어간다.
+  인사 → 지시 단어 카드(크게 → 왼쪽 위로 이동) → 두 플레이어가 아래에서 나와 번갈아 빛나고 장갑 손이 이빨을 누름 → 카드가 나오면 말하기
+  → 지시 단어 이빨이면 보라색 + 덥석 → "Ready? Let's play!" → 게임(설명에 쓴 지시 단어로 첫 판 시작).
+- 설명하는 동안 START 자리에 **Skip**(건너뛰기) 버튼이 나온다. 끝까지 듣거나 Skip하면 이 기기에서는 다시 나오지 않는다(localStorage `croco.howto.v1`).
   다시 보려면 주소 뒤에 `?howto`를 붙인다(예: http://127.0.0.1:5211/?howto). QA 훅: `window.__test.howto = true`.
-- 말풍선은 악어 머리 옆에 뜬다. 큰 지시 단어 카드가 머리를 가리면 카드 옆, 세로 화면에서는 폭을 줄여 머리 옆에 둔다. 카드·아바타·버튼은 가리지 않는다.
-  말하는 동안 윗턱이 말하듯 천천히 움직인다(입을 다문 동안은 움직이지 않음).
+- 말풍선은 악어 머리 옆에 뜨고 카드·아바타·로고·버튼은 가리지 않는다. 말하는 동안 윗턱이 말하듯 천천히 움직인다.
+
+## 언어 EN | 한
+- 위쪽 오른쪽 기본 버튼 줄의 국기 토글(매직블록과 같은 모양). 고른 언어는 기억한다(localStorage `croco.lang.v1`).
+- 바뀌는 것: 악어 설명(말풍선 + 음성), 게임 중 악어 대사(차례·말해 봐·칭찬·앗·승리·한 번 더), 화면 글자(플레이어·차례·승리·다시 하기·건너뛰기).
+  단어와 /m/ 음가는 항상 영어. 설명 중에 바꾸면 그 줄을 바로 다른 언어로 다시 말한다.
+- 한국어 글꼴: Jua(매직블록과 같음) — 쓰는 글자만 잘라 `css/font-ko.css`에 내장(`tools/make_ko_font.py`, 한국어 문구를 바꾸면 다시 실행).
+
+## 화면 배치
+- 위: 왼쪽 로고, 가운데 지시 단어 카드, 오른쪽 EN|한 · 소리 · 홈. 아래 양쪽 구석: 플레이어(아바타 + 모은 카드), 차례 표시는 그 플레이어 위.
+- 말해 보기 마이크는 화면 가운데, 악어 아래턱(앞니 아래 빨간 입술)에 겹쳐 나온다(`placeMic` → `jawScreen`).
 
 ## 단어 (12개 · `tools/build_words.py`)
 man, map, meat, milk, mirror, mitt, monkey, moon, mop, mouse, mug, mushroom
@@ -29,7 +40,8 @@ man, map, meat, milk, mirror, mitt, monkey, moon, mop, mouse, mug, mushroom
   서버는 `tools/serve.py`(캐시 안 함: 고친 뒤 그냥 새로고침해도 최신 파일이 보임).
 - `index.html` 더블클릭(file://)도 동작 (음성·폰트는 js/css에 내장).
 - 테스트 훅: `window.__test = { mic:false | heard:true, target:'moon', teeth:[...], howto:true }`, `window.__croco`.
-- QA(`tools/qa/`): `qa_flow`·`qa_sizes`·`qa_again`·`qa_file`·`qa_cards`(카드 비행)·`qa_tutor`(설명·Skip·첫 판만·긴 단어)·`console`(SDF 경고).
+- QA(`tools/qa/`): `qa_flow`·`qa_sizes`·`qa_again`·`qa_file`·`qa_cards`(카드 비행)·`qa_tutor`(인트로 모션·설명·EN|한·Skip·첫 판만·마이크 위치·긴 단어)·`console`(SDF 경고).
+  QA는 `window.__ready && window.__intro`(등장 모션 끝)를 기다린 뒤 START를 누른다.
 
 ## 구성
 - `js/croc.js` — 3D 악어(three.js). 악어 이빨 장난감 모양(몸통 없음 · `design/croc_ref.png`)을 SDF로 만든 무광 클레이 모델:
@@ -46,12 +58,13 @@ man, map, meat, milk, mirror, mitt, monkey, moon, mop, mouse, mug, mushroom
 
 ## 음성
 회사 TTS 소년 목소리(Qwen3 'aiden') = Magic Block과 같은 목소리. 단어 12개, 공식 FPR K /m/ 음원, 공용 대사는 Magic Block에서 재사용.
-게임 전용 새 대사(인사·규칙 "Watch out for this word!"·덥석, 악어 튜터 설명 `tut1`–`tut8`)는 **회사망에서** 아래로 생성:
+한국어(`k:`)는 매직블록의 한국어 공용 대사를 재사용한다(블럭이라고 말하는 great1만 뺌).
+게임 전용 새 대사(인사·규칙·덥석, 악어 튜터 설명 `tut1`–`tut8`)는 영어(`NEW`)·한국어(`NEW_KO`) 모두 **회사망에서** 아래로 생성:
 ```
 zsh -ic '/Users/jini/.hermes/bin/uv run --with numpy python tools/build_voice.py'
 ```
 (새 대사가 없으면 게임은 그 대사만 건너뛰고 진행한다. 튜터 설명은 말풍선만 읽을 시간만큼 띄운다.
- "Now say the word."·"Uh-oh!"처럼 기존 음성이 대사 일부를 말해 주는 줄은 그 음성을 쓴다.)
+ "Now say the word."/"이제 단어를 읽어 봐."·"Uh-oh!"/"앗!"처럼 기존 음성이 대사 일부를 말해 주는 줄은 그 음성을 쓴다.)
 
 ## 레퍼런스
 - 화면: 사용자 제공 인트로/게임 화면 이미지, 인터랙션: `~/Downloads/gemini_generated_video_46830cdd.mp4`

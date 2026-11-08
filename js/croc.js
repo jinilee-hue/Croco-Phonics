@@ -407,6 +407,9 @@
       squint(v) { st.squintTarget = v; },
       /* the tutor speaking (on/off) */
       talk(v) { st.talkT = v ? 1 : 0; },
+      /* the intro's entrance: grows out of its spot on the table with a quarter turn, mouth shut, then opens.
+         An ease-out, no overshoot (the toy never bounces) */
+      enter(ms = 1150) { st.enter = { t: 0, ms: ms / 1000 }; st.snap = null; st.open = 0; st.openVel = 0; st.openTarget = 0; P.root.scale.setScalar(0.35); P.root.rotation.y = -0.9; },
       blink() { st.blinkT = 0.0001; },
       wide(v = 1) { st.eyeWide = v; },
       // the toy stays put: no trembling, shaking or bouncing (user: "악어 이빨 누르면 떨림이 있어")
@@ -436,6 +439,13 @@
       update(dt, camera) {
         st.time += dt;
         const t = st.time;
+        if (st.enter) {
+          const k = Math.min(1, (st.enter.t += dt) / st.enter.ms), e = 1 - Math.pow(1 - k, 3);
+          P.root.scale.setScalar(0.35 + 0.65 * e);
+          P.root.rotation.y = -0.9 * (1 - e);
+          if (k > 0.72 && st.openTarget === 0 && !st.snap) st.openTarget = st.rest;
+          if (k >= 1) st.enter = null;
+        }
         // jaw: spring toward the target; a snap shuts in ~0.1 s with a small rebound
         if (st.snap) {
           st.snap.t += dt;

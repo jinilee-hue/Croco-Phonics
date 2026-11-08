@@ -14,6 +14,9 @@
   try { A.muted = localStorage.getItem('croco-muted') === '1'; } catch (e) { /* private mode */ }
 
   A.has = key => !!V.clips[key];
+  /* language (game.js EN | 한): 't:x' plays the Korean take 'k:x' when there is one, else the English line */
+  A.lang = 'en';
+  A.voiceKey = key => (A.lang === 'ko' && key.startsWith('t:') && V.clips['k:' + key.slice(2)]) ? 'k:' + key.slice(2) : key;
   A.unlock = function () {
     if (!A.ctx) {
       const C = window.AudioContext || window.webkitAudioContext;
@@ -46,6 +49,7 @@
 
   /* one clip → resolves true when it ends (false if stopped / missing) */
   A.say = async function (key, opts = {}) {
+    key = A.voiceKey(key);
     if (!A.ctx || !V.clips[key]) return false;
     const buf = await decode(key);
     if (!buf) return false;

@@ -133,6 +133,7 @@
   };
 
   /* the croc as game.js sees it: the model's api plus screen-space helpers (client px) */
+  const JAW = { y: -0.42, z: 0.3 };                    // the mic's spot below/in front of the front teeth' centre
   S.view = function (c) {
     const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
     const plane = new THREE.Plane(V3(0, 0, 1), -2.4), hitP = V3(0, 0, 0);
@@ -159,6 +160,14 @@
       mouthScreen: () => S.project(V3(0, 1.35, 0.7)),
       /* an eye's centre (0, 1) — the tutor's speech bubble sits beside the head */
       eyeScreen: i => S.project(c.parts.eyes[i].g.getWorldPosition(V3(0, 0, 0))),
+      /* the front of the lower jaw, under the front teeth (the "say it" mic sits there) */
+      jawScreen() {
+        const p = V3(0, 0, 0), q = V3(0, 0, 0), f = c.frontTeeth.length ? c.frontTeeth : [0];
+        for (const i of f) p.add(c.toothWorld(i, q));
+        p.multiplyScalar(1 / f.length);
+        p.y += JAW.y; p.z += JAW.z;
+        return S.project(p);
+      },
       screenBox() {
         const pts = [V3(-2.25, 0.2, 0.8), V3(2.25, 0.2, 0.8), V3(-1.7, 2.0, 0), V3(1.7, 2.0, 0), V3(0, 3.3, -0.2), V3(0, 0, 1.2)].map(S.project);
         return { left: Math.min(...pts.map(p => p.x)), right: Math.max(...pts.map(p => p.x)), top: Math.min(...pts.map(p => p.y)), bottom: Math.max(...pts.map(p => p.y)) };

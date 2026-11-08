@@ -16,7 +16,7 @@ with sync_playwright() as p:
         pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and 'favicon' not in m.text else None)
         pg.on('pageerror', lambda e: errs.append(f'PAGEERROR {e}'))
         pg.goto(BASE)
-        pg.wait_for_function('window.__ready === true', timeout=60000)
+        pg.wait_for_function('window.__ready === true && window.__intro === true', timeout=60000)
         pg.evaluate(f'window.__test = {json.dumps(TEST)}')
         time.sleep(1.2)
         tag = f'{W}x{H}'
@@ -32,7 +32,7 @@ with sync_playwright() as p:
         print(tag, 'turn ok; busy', pg.evaluate('__croco.G.busy'), 'teeth', pg.evaluate('__croco.G.teeth'), flush=True)
         pg.evaluate('() => { __croco.onTooth(4); }')
         print(tag, 'after tooth: flyers', pg.evaluate("document.querySelectorAll('.flyer').length"), 'cls', pg.evaluate("(document.querySelector('.flyer .card')||{}).className"), flush=True)
-        pg.wait_for_function("!!document.querySelector('.flyer .card.nomic')", timeout=20000)
+        pg.wait_for_function("document.querySelector('#mic').classList.contains('nomic')", timeout=20000)
         time.sleep(0.9)
         pg.screenshot(path=str(out / f'{tag}_3nomic.png'))
         pg.wait_for_function("document.querySelector('#turn .t').textContent.includes('2')", timeout=20000)

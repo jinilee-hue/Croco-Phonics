@@ -31,7 +31,7 @@
   const SVG_OK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg>';
   const SVG_BITE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.6 9.2C4.5 5.6 19.5 5.6 21.4 9.2v1.1l-1.9 2.4-1.9-2.4-1.9 2.4-1.9-2.4-1.9 2.4-1.9-2.4-1.9 2.4-1.9-2.4-1.9 2.4-1.9-2.4z" fill="#fff"/><path d="M2.6 14.8c1.9 3.6 16.9 3.6 18.8 0v-1.1l-1.9-2.4-1.9 2.4-1.9-2.4-1.9 2.4-1.9-2.4-1.9 2.4-1.9-2.4-1.9 2.4-1.9-2.4-1.9 2.4z" fill="#ffe1e1"/></svg>';
 
-  const G = { screen: 'title', token: 0, busy: true, target: null, lastTarget: null, teeth: [], pressed: new Set(), turn: 0, starter: 0, got: [[], []], idle: null, said: new Set() };
+  const G = { screen: 'title', token: 0, busy: true, target: null, nextTarget: null, winner: null, lastTarget: null, teeth: [], pressed: new Set(), turn: 0, starter: 0, got: [[], []], idle: null, said: new Set() };
 
   // ── the 3D croc (js/croc.js) on the three.js stage (js/stage.js) ─────────────────────────────────────
   Stage.init($('#croc'), { preserve: /[?&]shot\b/.test(location.search) });
@@ -45,7 +45,7 @@
   }).catch(() => {});
   // ready once the croc's parts are loaded (QA waits for window.__ready)
   (function waitCroc() {
-    if (croc.ready && window.__croco) { $('#loading').classList.add('done'); window.__ready = true; } else setTimeout(waitCroc, 50);
+    if (croc.ready && window.__croco) { $('#loading').classList.add('done'); introMotion(true); window.__ready = true; } else setTimeout(waitCroc, 50);
   })();
   const cvCroc = $('#croc');
 
@@ -79,7 +79,7 @@
     el.innerHTML = `<div class="pic"><img src="${w.card}" alt="" draggable="false"></div>`
       + `<div class="word"><b>${cap(word)[0]}</b>${word.slice(1)}</div>`
       + (opts.sound ? `<div class="snd" role="button" aria-label="Listen: ${word}"><span class="ltr">M</span><span class="ph">/m/</span>${SVG_SPK}</div>` : '')
-      + (opts.mic ? `<div class="mic" aria-hidden="true">${SVG_MIC}</div><div class="ok" aria-hidden="true">${SVG_OK}</div>` : '');
+      + (opts.mic ? `<div class="ok" aria-hidden="true">${SVG_OK}</div>` : '');
     return el;
   }
   function placeDecor() {
@@ -175,7 +175,7 @@
     if (portrait()) return { x: W / 2 + (p ? 1 : -1) * Math.min(W * 0.22, cw * 0.62), y: H * 0.42, r: p ? 6 : -6 };
     const box = croc.screenBox(), left = box.left, right = box.right;
     const x = p === 0 ? Math.max(cw * 0.5 + 2 * u(), Math.min(left - cw * 0.45, left * 0.52)) : Math.min(W - cw * 0.5 - 2 * u(), Math.max(right + cw * 0.45, right + (W - right) * 0.48));
-    return { x, y: H * 0.47, r: p === 0 ? -6 : 6 };
+    return { x, y: H * 0.42, r: p === 0 ? -6 : 6 };          // .42: clear of the turn pill above the bottom-corner player
   }
   function stackPoint(p) {
     const ava = document.querySelector(`.player.p${p + 1} .ava`).getBoundingClientRect();
@@ -239,6 +239,9 @@
     clearIdle();
     A.stopVoice();
     $('#cards').innerHTML = '';
+    $('#mic').classList.remove('listen', 'nomic');
+    $('#target').classList.remove('side', 'alarm');
+    G.winner = null;
     document.querySelectorAll('.player').forEach(p => p.classList.remove('win', 'lose', 'on'));
     $('#turn').classList.remove('show');
     G.got = [[], []];
@@ -246,6 +249,7 @@
     const pool = WORDS.map(w => w.w);
     let target;
     do { target = pool[rand(pool.length)]; } while (pool.length > 1 && target === G.lastTarget);
+    if (G.nextTarget) { target = G.nextTarget; G.nextTarget = null; }      // the word the intro's explanation used
     if (window.__test && window.__test.target) target = window.__test.target;
     G.lastTarget = target; G.target = target;
     const others = shuffle(pool.filter(w => w !== target)).slice(0, croc.N_TEETH - 1);
@@ -263,11 +267,6 @@
     const card = setTargetCard(target);
     await sleep(450);
     if (tok !== G.token) return;
-    if (needTutorial()) {
-      // the first game: the croc explains it with this round's trap word (Skip starts the first turn itself)
-      if (await runTutorial(tok, card) && tok === G.token) setTurn(G.starter);
-      return;
-    }
     // the target word comes in big, is said, then parks at the top
     t.classList.remove('hidden');
     t.classList.add('intro');
@@ -296,7 +295,7 @@
     app.dataset.turn = p;
     document.querySelectorAll('.player').forEach((el, k) => el.classList.toggle('on', k === p));
     const t = $('#turn');
-    t.querySelector('.t').textContent = `Player ${p + 1}'s Turn!`;
+    t.querySelector('.t').textContent = tr('turn', { n: p + 1 });
     t.classList.remove('show');
     void t.offsetWidth;
     t.classList.add('show');
@@ -389,38 +388,45 @@
     setTurn(1 - p);
   }
 
-  /* "say it": prompt, listen for a voice (mic) or give a short countdown without a mic */
+  /* "say it": prompt, listen for a voice (mic) or give a short countdown without a mic. The mic sits in the middle of
+     the screen on the croc's lower jaw (user: "마이크는 화면 가운데 악어 아래 턱에 겹쳐서") */
+  function placeMic() { const mc = $('#mic'), p = croc.jawScreen(); mc.style.left = p.x + 'px'; mc.style.top = p.y + 'px'; return mc; }
   async function sayIt(card, tok) {
-    const mic = card.querySelector('.mic');
-    card.classList.add('listen');
-    await say('t:sayit', 600);
-    if (tok !== G.token) return;
-    const lv = v => mic.style.setProperty('--lv', v.toFixed(3));
-    let heard = await Mic.listen({ maxMs: 5200, onLevel: lv, cancel: () => tok !== G.token });
-    if (tok !== G.token) return;
-    if (heard === null) {                      // no microphone: give them time to say it
-      card.classList.add('nomic');
-      const t0 = performance.now(), ms = 2600;
-      while (performance.now() - t0 < ms && tok === G.token) {
-        card.style.setProperty('--cd', Math.min(100, (performance.now() - t0) / ms * 100) + '%');
-        await sleep(50);
-      }
-      card.classList.remove('nomic');
-    } else if (!heard) {
-      await say('t:louder');
+    const mic = placeMic();
+    mic.classList.add('listen');
+    try {
+      await say('t:sayit', 600);
       if (tok !== G.token) return;
-      heard = await Mic.listen({ maxMs: 4200, onLevel: lv, cancel: () => tok !== G.token });
-    }
-    card.classList.remove('listen');
-    if (tok !== G.token) return;
-    if (heard) {
-      card.classList.add('good');
-      A.sfxPlay('great');
-      const r = card.getBoundingClientRect();
-      FX.burst(r.left + r.width / 2, r.top + r.height / 2, { kind: 'stars', n: 22 });
-      await say(['t:great2', 't:great3'][rand(2)], 500);
-    } else {
-      await sleep(300);
+      const lv = v => mic.style.setProperty('--lv', v.toFixed(3));
+      let heard = await Mic.listen({ maxMs: 5200, onLevel: lv, cancel: () => tok !== G.token });
+      if (tok !== G.token) return;
+      if (heard === null) {                      // no microphone: give them time to say it
+        mic.classList.add('nomic');
+        const t0 = performance.now(), ms = 2600;
+        while (performance.now() - t0 < ms && tok === G.token) {
+          mic.style.setProperty('--cd', Math.min(100, (performance.now() - t0) / ms * 100) + '%');
+          await sleep(50);
+        }
+        mic.classList.remove('nomic');
+      } else if (!heard) {
+        await say('t:louder');
+        if (tok !== G.token) return;
+        heard = await Mic.listen({ maxMs: 4200, onLevel: lv, cancel: () => tok !== G.token });
+      }
+      mic.classList.remove('listen');
+      if (tok !== G.token) return;
+      if (heard) {
+        card.classList.add('good');
+        A.sfxPlay('great');
+        const r = card.getBoundingClientRect();
+        FX.burst(r.left + r.width / 2, r.top + r.height / 2, { kind: 'stars', n: 22 });
+        await say(['t:great2', 't:great3'][rand(2)], 500);
+      } else {
+        await sleep(300);
+      }
+    } finally {
+      mic.classList.remove('listen', 'nomic');
+      mic.style.setProperty('--lv', 0);
     }
   }
 
@@ -474,7 +480,8 @@
     G.starter = 1 - winner;                      // the one who got bitten starts the next round
     document.querySelectorAll('.player').forEach((el, k) => { el.classList.toggle('on', false); el.classList.toggle('win', k === winner); el.classList.toggle('lose', k !== winner); });
     $('#turn').classList.remove('show');
-    $('#rbText').textContent = `Player ${winner + 1} Wins!`;
+    G.winner = winner;
+    $('#rbText').textContent = tr('wins', { n: winner + 1 });
     A.sfxPlay('fanfare');
     FX.pop(window.innerWidth * 0.25, window.innerHeight * 0.6, 60);
     FX.pop(window.innerWidth * 0.75, window.innerHeight * 0.6, 60);
@@ -486,6 +493,7 @@
 
   // ── screens ──────────────────────────────────────────────────────────────────────────────────────────
   function goGame() {
+    IM.splice(0).forEach(a => a.cancel());
     G.screen = 'game';
     app.dataset.screen = 'game';
     croc.setFrame(FRAME.game, 900);
@@ -497,6 +505,7 @@
     A.stopVoice();
     clearIdle();
     endTutorial();
+    $('#mic').classList.remove('listen', 'nomic');
     G.screen = 'title';
     G.busy = true;
     app.dataset.screen = 'title';
@@ -511,41 +520,91 @@
     for (let i = 0; i < croc.N_TEETH; i++) croc.glow(i, 0);
     croc.surprise(0);
     croc.happy(0);
+    introMotion(false);
   }
 
-  // ── the croc explains the game: first game only, with Skip (user: "게임에 대한 설명을 악어가 튜터가 되어서",
-  //    "인트로도 게임설명과 함께 … 게임설명은 처음에만 … 게임설명시작할때 skip 버튼"). It runs inside the first round's
-  //    intro, with that round's own trap word; it never shows which tooth hides the trap word. ────────────────────
+  // ── language: EN | 한 in the top bar (user: "튜터설명에 한글과 영어버전 설명 듣는게 있어야해" → a toggle like Magic
+  //    Block's, remembered per device). The croc's voice + bubbles and the screen words switch; the words and the /m/
+  //    sound stay English. Korean voice = 'k:' clips (tools/build_voice.py); audio.js plays 'k:x' for 't:x' in Korean.
+  const LANG_KEY = 'croco.lang.v1';
+  let LANG = (() => { try { return localStorage.getItem(LANG_KEY) === 'ko' ? 'ko' : 'en'; } catch (e) { return 'en'; } })();
+  const UI = {
+    en: { p1: 'Player 1', p2: 'Player 2', turn: "Player {n}'s Turn!", wins: 'Player {n} Wins!', again: 'Play Again', skip: 'Skip',
+      a_skip: 'Skip the explanation', a_lang: 'Language: English or Korean', a_sound: 'Sound on/off', a_home: 'Home' },
+    ko: { p1: '플레이어 1', p2: '플레이어 2', turn: '플레이어 {n} 차례!', wins: '플레이어 {n} 승리!', again: '다시 하기', skip: '건너뛰기',
+      a_skip: '설명 건너뛰기', a_lang: '언어: 영어 또는 한국어', a_sound: '소리 켜기/끄기', a_home: '처음으로' },
+  };
+  const tr = (k, v = {}) => (UI[LANG][k] || UI.en[k] || k).replace(/\{(\w+)\}/g, (_, x) => (v[x] != null ? v[x] : ''));
+  function applyLang() {
+    document.documentElement.lang = LANG;
+    app.dataset.lang = LANG;
+    A.lang = LANG;
+    document.querySelectorAll('[data-i18n]').forEach(e => { e.textContent = tr(e.dataset.i18n); });
+    document.querySelectorAll('[data-i18n-aria]').forEach(e => e.setAttribute('aria-label', tr(e.dataset.i18nAria)));
+    const b = $('#btnLang');
+    b.dataset.l = LANG;
+    b.setAttribute('aria-pressed', String(LANG === 'ko'));
+    b.querySelectorAll('.flag').forEach(f => f.classList.toggle('on', f.dataset.l === LANG));
+    $('#turn .t').textContent = tr('turn', { n: G.turn + 1 });
+    if (G.winner != null) $('#rbText').textContent = tr('wins', { n: G.winner + 1 });
+  }
+  $('#btnLang').addEventListener('click', e => {
+    e.stopPropagation();
+    A.unlock();
+    A.sfxPlay('tap');
+    LANG = LANG === 'ko' ? 'en' : 'ko';
+    try { localStorage.setItem(LANG_KEY, LANG); } catch (err) { /* private mode */ }
+    applyLang();
+    if (T.on && T.line) { A.stopVoice(); if (T.wake) T.wake(); }        // the croc says the line again in the new language
+  });
+
+  // ── the croc explains the game on the INTRO (title) screen (user: "인트로도 게임설명과 함께 실행되게", picked: "START를
+  //    누르면 인트로 화면에서 악어가 움직이며 설명하고, 끝나면 게임으로 넘어가기"). The first START per device runs it
+  //    (localStorage croco.howto.v1, set on finish or Skip; ?howto shows it again); Skip sits where START was. ─────────
   const HOWTO_KEY = 'croco.howto.v1';
   const TUT = {
-    tut1: "Hi, friends! I'm Croco!",
-    tut2: 'This is the trap word.',
-    tut3: "Don't press the tooth with this word!",
-    tut4: 'Take turns. Press a tooth.',
-    tut5: 'A card pops out. Now say the word.',
-    tut6: 'Uh-oh! The trap word!',
-    tut7: 'CHOMP! You lose!',
-    tut8: "Ready? Let's play!",
+    en: {
+      tut1: "Hi, friends! I'm Croco!",
+      tut2: 'This is the trap word.',
+      tut3: "Don't press the tooth with this word!",
+      tut4: 'Take turns. Press a tooth.',
+      tut5: 'A card pops out. Now say the word.',
+      tut6: 'Uh-oh! The trap word!',
+      tut7: 'CHOMP! You lose!',
+      tut8: "Ready? Let's play!",
+    },
+    ko: {
+      tut1: '안녕, 친구들! 나는 크로코야!',
+      tut2: '이건 함정 단어야.',
+      tut3: '이 단어가 숨은 이빨은 누르면 안 돼!',
+      tut4: '번갈아 가며 이빨을 하나씩 눌러 봐.',
+      tut5: '카드가 톡 나오면, 이제 단어를 읽어 봐.',
+      tut6: '앗! 함정 단어야!',
+      tut7: '덥석! 그럼 지는 거야!',
+      tut8: '준비됐니? 시작하자!',
+    },
   };
-  const T = { tok: 0, on: false, card: null };
+  const T = { tok: 0, on: false, card: null, line: null, wake: null };
   function needTutorial() {
     if (/[?&]howto\b/.test(location.search)) return true;
     if (window.__test) return !!window.__test.howto;                 // QA runs skip it unless they ask for it
     try { return !localStorage.getItem(HOWTO_KEY); } catch (e) { return true; }
   }
   function howtoDone() { try { localStorage.setItem(HOWTO_KEY, '1'); } catch (e) { /* private mode */ } }
+  /* a pause the language toggle (and Skip) can cut short */
+  const pause = ms => new Promise(r => { const id = setTimeout(done, ms); function done() { clearTimeout(id); if (T.wake === done) T.wake = null; r(); } T.wake = done; });
   /* the bubble goes beside the croc's head (right, left or above); beside the big trap-word card while that covers the
-     head; never over a card, an avatar or a button */
+     head; under the croc; never over a card, an avatar, the logo or a button */
   function placeBubble() {
     const b = $('#bubble'), W = window.innerWidth, H = window.innerHeight, U = u(), m = 2 * U, gap = 2.6 * U;
     const ex = [croc.eyeScreen(0), croc.eyeScreen(1)].sort((p, q) => p.x - q.x), r = Math.max(2 * U, (ex[1].x - ex[0].x) * 0.3);
     const head = { left: ex[0].x - r, right: ex[1].x + r, top: Math.min(ex[0].y, ex[1].y) - r, y: (ex[0].y + ex[1].y) / 2 };
-    const avoid = [...document.querySelectorAll('.player .ava, .sys, #skip, #target .card, #cards .flyer .card')]
+    const sel = '.player .ava, .sys, #skip, #target .card, #cards .flyer .card, ' + (G.screen === 'title' ? '.title .logo' : '.glogo');
+    const avoid = [...document.querySelectorAll(sel)].filter(el => el.closest('.player') ? getComputedStyle(el.closest('.player')).opacity !== '0' : true)
       .map(el => el.getBoundingClientRect()).filter(a => a.width > 0);
     const clear = (x, y, bw, bh) => x >= m - 1 && y >= m - 1 && x + bw <= W - m + 1 && y + bh <= H - m + 1
       && !avoid.some(a => x < a.right && x + bw > a.left && y < a.bottom && y + bh > a.top);
-    // [tail side, room for the bubble's width, where it goes for its size]: beside the head (right, left), above it,
-    // beside the big trap-word card while that covers the head, under the croc
+    // [tail side, room for the bubble's width, where it goes for its size]
     const cand = [
       ['l', W - m - head.right - gap, (bw, bh) => [head.right + gap, head.y - bh * 0.62]],
       ['r', head.left - gap - m, (bw, bh) => [head.left - gap - bw, head.y - bh * 0.62]],
@@ -577,30 +636,42 @@
     b.style.top = Math.min(H - pick.bh - m, Math.max(m, pick.y)) + 'px';
     b.dataset.tail = pick.side;
   }
-  /* one line: the bubble pops up with it, the croc talks, the voice plays. Without the line's clip yet (company TTS),
-     o.voice plays an existing clip that says part of it, else the bubble stays up for a reading time. */
+  /* one line in the chosen language: the bubble pops up with it, the croc talks, the voice plays. Without the line's
+     clip yet (company TTS), o.voice plays an existing clip that says part of it, else the bubble stays up for a
+     reading time. Switching EN | 한 mid-line says the line again in the other language. */
   async function tutorSay(key, tt, o = {}) {
     const b = $('#bubble');
-    b.querySelector('p').textContent = TUT[key];
-    placeBubble();
-    b.classList.add('show');
-    b.animate([{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'none' }], { duration: 380, easing: 'cubic-bezier(.2,.9,.3,1.4)' });
-    if (o.talk !== false) croc.talk(1);
-    const k = 't:' + key;
-    if (A.has(k)) await Promise.all([A.say(k), sleep(700)]);
-    else if (o.voice && A.has(o.voice)) await Promise.all([A.say(o.voice), sleep(900 + TUT[key].length * 45)]);
-    else await sleep(1000 + TUT[key].length * 58);
-    croc.talk(0);
-    return tt === T.tok;
+    T.line = key;
+    for (;;) {
+      const lang = LANG, text = TUT[lang][key];
+      b.querySelector('p').textContent = text;
+      placeBubble();
+      b.classList.add('show');
+      b.animate([{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'none' }], { duration: 380, easing: 'cubic-bezier(.2,.9,.3,1.4)' });
+      if (o.talk !== false) croc.talk(1);
+      const own = (lang === 'ko' ? 'k:' : 't:') + key, alt = o.voice ? A.voiceKey(o.voice) : null;
+      if (A.has(own)) await Promise.all([A.say(own), pause(700)]);
+      else if (alt && A.has(alt) && (lang === 'ko') === alt.startsWith('k:')) await Promise.all([A.say(o.voice), pause(900 + text.length * (lang === 'ko' ? 90 : 45))]);
+      else await pause(1000 + text.length * (lang === 'ko' ? 110 : 58));
+      croc.talk(0);
+      if (tt !== T.tok) return false;
+      if (lang === LANG) break;
+    }
+    T.line = null;
+    return true;
   }
   function endTutorial() {
     T.tok++;
+    if (T.wake) T.wake();
     if (!T.on) return;
     T.on = false;
+    T.line = null;
     croc.talk(0);
+    app.classList.remove('howto', 'howto-p');
     $('#skip').classList.remove('show');
     $('#bubble').classList.remove('show');
     $('#hint').classList.remove('show');
+    $('#target').classList.remove('side', 'alarm', 'intro');
     document.querySelectorAll('.player').forEach(p => p.classList.remove('on'));
     document.querySelectorAll('#cards .flyer.demo').forEach(el => el.remove());
   }
@@ -614,27 +685,35 @@
     h.classList.remove('show');
     return at;
   }
-  async function runTutorial(tok, card) {
-    const tt = ++T.tok;
-    const live = () => tt === T.tok && tok === G.token;
+  async function runTutorial() {
+    const tt = ++T.tok, tok = G.token;
+    const live = () => tt === T.tok && tok === G.token && G.screen === 'title';
     const t = $('#target');
     T.on = true;
-    T.card = card;
+    G.busy = true;
+    app.classList.add('howto');
     $('#skip').classList.add('show');
-    // the demo teeth: front teeth that do NOT hide this round's trap word
-    const fr = (croc.frontTeeth.length ? croc.frontTeeth : [...Array(croc.N_TEETH).keys()]).filter(i => G.teeth[i] !== G.target);
-    const pressI = fr[Math.min(1, fr.length - 1)], biteI = fr[fr.length - 1] !== pressI ? fr[fr.length - 1] : fr[0];
-    // 1 · hello (the camera is still settling into the game view)
-    croc.cheer(1800);
-    await sleep(500);
+    // the first round's trap word is picked now: the croc explains with it and the game starts with it
+    const pool = WORDS.map(w => w.w);
+    const target = (window.__test && window.__test.target) || pool[rand(pool.length)];
+    G.nextTarget = target;
+    const card = setTargetCard(target);
+    T.card = card;
+    t.classList.remove('intro', 'side', 'alarm');
+    t.classList.add('hidden');
+    const fr = croc.frontTeeth.length ? croc.frontTeeth : [0, 1, 2, 3];
+    const pressI = fr[Math.min(1, fr.length - 1)], biteI = fr[Math.min(2, fr.length - 1)] !== pressI ? fr[Math.min(2, fr.length - 1)] : fr[0];
+    // 1 · hello: the croc beams and says hi
+    croc.cheer(1700);
+    await pause(350);
     if (!live() || !await tutorSay('tut1', tt)) return false;
-    // 2 · the trap word: the round's target card comes in big, is said, the croc snaps at it
+    // 2 · the trap word: its card comes in big, is said, and the croc snaps at it
     t.classList.remove('hidden');
     t.classList.add('intro');
     A.sfxPlay('pop');
     await sleep(780);
     if (!live() || !await tutorSay('tut2', tt)) return false;
-    await sayWord(G.target, card, tok);
+    await sayWord(target, card, G.token);
     if (!live()) return false;
     croc.setOpen(0.18);
     A.sfxPlay('chomp');
@@ -643,19 +722,23 @@
     croc.reopen();
     await sleep(350);
     if (!live() || !await tutorSay('tut3', tt)) return false;
+    // the card moves aside (the logo keeps the top) and stays there as the trap word
     t.classList.remove('intro');
+    t.classList.add('side');
     $('#bubble').classList.remove('show');
     A.sfxPlay('whoosh');
     await sleep(750);
     if (!live()) return false;
-    // 3 · take turns (the players light up in turn) and press a tooth (the glove taps one)
+    // 3 · take turns: the two players come in and light up in turn; the glove taps a tooth
+    app.classList.add('howto-p');
     const pl = document.querySelectorAll('.player');
     (async () => {
+      await sleep(450);
       for (let k = 0; k < 4; k++) { if (!live()) return; pl.forEach((el, j) => el.classList.toggle('on', j === k % 2)); await sleep(650); }
       if (live()) pl.forEach(el => el.classList.remove('on'));
     })();
     const say4 = tutorSay('tut4', tt);
-    await sleep(500);
+    await sleep(600);
     if (!live()) return false;
     const at = await demoTap(pressI, 1500);
     if (!live() || !await say4) return false;
@@ -666,9 +749,9 @@
     A.sfxPlay('drum');
     await sleep(620);
     if (!live()) return false;
-    // 4 · a card pops out (a word on no tooth this round), and is said
-    const spare = WORDS.map(w => w.w).filter(w => !G.teeth.includes(w));
-    const demo = spare.length ? spare[rand(spare.length)] : G.teeth[pressI];
+    // 4 · a card pops out of the tooth to the right, and is said
+    const others = pool.filter(w => w !== target);
+    const demo = others[rand(others.length)];
     const dc = makeCard(demo, {});
     dc.style.setProperty('--cw', CARD_W.reveal * u() + 'px');
     croc.cheer(1400);
@@ -678,22 +761,22 @@
     FX.burst(at.x, at.y, { kind: 'dots', n: 14, speed: 0.8 });
     const f = flyer(dc).set(at.x, at.y, 0.2, 0, true);
     f.el.classList.add('demo');
-    const slot = revealSlot(0);
+    const slot = revealSlot(1);
     A.sfxPlay('card');
     await f.fly(slot.x, slot.y, 1, slot.r, { ms: 780, flip: true, lift: 0.2 });
     if (!live()) return false;
     croc.look(null);
     if (!await tutorSay('tut5', tt, { voice: 't:sayit' })) return false;
-    await sayWord(demo, dc, tok);
+    await sayWord(demo, dc, G.token);
     if (!live()) return false;
     await sleep(500);
     $('#bubble').classList.remove('show');
-    f.el.animate([{ opacity: 1 }, { opacity: 0, transform: f.el.style.transform + ' scale(.85)' }], { duration: 380, fill: 'forwards' });
+    f.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 380, fill: 'forwards' });
     croc.release(pressI);
     await sleep(420);
     f.el.remove();
     if (!live()) return false;
-    // 5 · the trap word's tooth: it lights up purple and the croc chomps
+    // 5 · the trap word's tooth: it lights up purple, the trap card flashes, CHOMP
     const bt = await demoTap(biteI, 1100);
     if (!live()) return false;
     croc.look(bt);
@@ -727,23 +810,22 @@
     A.sfxPlay('boing');
     await sleep(500);
     if (!live()) return false;
-    // 6 · ready
+    // 6 · ready → into the game (its first round uses this trap word)
     croc.cheer(1600);
     if (!await tutorSay('tut8', tt)) return false;
     await sleep(250);
     if (!live()) return false;
     howtoDone();
     endTutorial();
+    goGame();
     return true;
   }
-  /* Skip: the explanation ends here (and won't come again); the trap word parks at the top and the first turn starts */
+  /* Skip: the explanation ends here (and won't come again on this device); the game starts */
   function skipTutorial() {
     if (!T.on) return;
     howtoDone();
     A.stopVoice();
     endTutorial();
-    const t = $('#target');
-    t.classList.remove('intro', 'alarm', 'hidden');
     if (T.card) T.card.classList.remove('say-m', 'say-w');
     for (let i = 0; i < croc.N_TEETH; i++) croc.glow(i, 0);
     croc.resetTeeth(0);
@@ -753,18 +835,52 @@
     croc.look(null);
     croc.reopen();
     A.sfxPlay('whoosh');
-    const tok = G.token;
-    setTimeout(() => { if (tok === G.token && G.screen === 'game') setTurn(G.starter); }, 600);
+    if (G.screen === 'title') goGame();
   }
   $('#skip').addEventListener('click', e => { e.stopPropagation(); A.unlock(); A.sfxPlay('tap'); skipTutorial(); });
 
+  /* the intro's entrance (user: "인트로 화면이 뜰 때 로고·악어·카드 등장 모션"): when the loading screen lifts, and again
+     on Home. WAAPI on the individual transform properties (translate / rotate / scale), so each element's own idle CSS
+     animation (logo bob, card float, START breathing) keeps running underneath. The croc grows in without a bounce. */
+  const IM = [];
+  function introMotion(first) {
+    IM.splice(0).forEach(a => a.cancel());
+    const d0 = first ? 550 : 120;
+    const E = (el, kf, o) => { if (el) IM.push(el.animate(kf, Object.assign({ fill: 'backwards' }, o))); };
+    if (first) croc.enter(1150); else croc.cheer(1200);
+    E($('.title .logo'), [
+      { translate: '0 -55vh', scale: 0.55, rotate: '-8deg', opacity: 0 },
+      { translate: '0 1.6vh', scale: 1.05, rotate: '2deg', opacity: 1, offset: 0.6 },
+      { translate: '0 -0.5vh', scale: 0.985, rotate: '-1deg', opacity: 1, offset: 0.8 },
+      { translate: '0 0', scale: 1, rotate: '0deg', opacity: 1 }], { duration: 1150, delay: d0, easing: 'cubic-bezier(.25,.8,.35,1)' });
+    // the floating cards are dealt in from the sides like Halli Galli's: an arc, a turn, a settle
+    const deal = (el, s, delay) => E(el, [
+      { translate: `${s * 62}vw 18vh`, rotate: `${s * 70}deg`, scale: 0.45, opacity: 0 },
+      { opacity: 1, offset: 0.25 },
+      { translate: `${s * -1.5}vw -2vh`, rotate: `${s * -6}deg`, scale: 1.04, opacity: 1, offset: 0.78 },
+      { translate: '0 0', rotate: '0deg', scale: 1, opacity: 1 }], { duration: 950, delay, easing: 'cubic-bezier(.3,.7,.3,1)' });
+    deal($('.fly-l'), -1, d0 + 500);
+    deal($('.fly-r'), 1, d0 + 640);
+    const slide = (el, s, delay) => E(el, [{ translate: `${s * 30}vw 22vh`, opacity: 0 }, { translate: '0 0', opacity: 0.96 }], { duration: 800, delay, easing: 'cubic-bezier(.2,.9,.3,1.1)' });
+    slide($('.lay-l'), -1, d0 + 800);
+    slide($('.lay-r'), 1, d0 + 900);
+    document.querySelectorAll('.deco .l3d').forEach((el, k) => E(el, [
+      { scale: 0, opacity: 0 }, { scale: 1.2, opacity: 1, offset: 0.6 }, { scale: 1, opacity: 1 }], { duration: 560, delay: d0 + 900 + k * 90, easing: 'ease-out' }));
+    E($('#start'), [{ scale: 0, opacity: 0 }, { scale: 1.12, opacity: 1, offset: 0.65 }, { scale: 1, opacity: 1 }], { duration: 620, delay: d0 + 1500, easing: 'ease-out' });
+    if (first) setTimeout(() => { if (G.screen === 'title' && !T.on) croc.cheer(1300); }, d0 + 1250);
+    window.__intro = false;
+    setTimeout(() => { window.__intro = true; }, d0 + 2250);
+  }
+  applyLang();
+
   $('#start').addEventListener('click', () => {
+    if (T.on || G.screen !== 'title') return;
     A.unlock();
     A.stopVoice();
     A.sfxPlay('pop');
     Mic.init();
     A.startBgm(0.1);
-    goGame();
+    if (needTutorial()) runTutorial(); else goGame();
   });
   $('#again').addEventListener('click', () => {
     A.sfxPlay('pop');
@@ -795,7 +911,7 @@
     if (!greeted && G.screen === 'title') {
       greeted = true;
       A.startBgm(0.1);
-      setTimeout(() => { if (G.screen === 'title') say(A.has('t:hello') ? 't:hello' : 't:pressstart'); }, 250);
+      setTimeout(() => { if (G.screen === 'title' && !T.on) say(A.has('t:hello') ? 't:hello' : 't:pressstart'); }, 250);
     }
   }, true);
 
@@ -818,8 +934,8 @@
     A.unlock();
     lookAtPointer(e);
     if (G.screen === 'title') {
-      // poke the croc on the title: a playful snap
-      if (croc.hitCroc(e.clientX, e.clientY) && !G.poking) {
+      // poke the croc on the title: a playful snap (not while it explains the game)
+      if (!T.on && croc.hitCroc(e.clientX, e.clientY) && !G.poking) {
         G.poking = true;
         croc.chomp(); A.sfxPlay('chomp');
         setTimeout(() => { croc.reopen(); A.sfxPlay('boing'); }, 650);
@@ -836,5 +952,5 @@
   });
 
   // QA hooks (headless checks)
-  window.__croco = { G, croc, goGame, goTitle, onTooth, startRound, showResult, toothScreen, revealSlot, makeCard, T, HOWTO_KEY };
+  window.__croco = { G, croc, goGame, goTitle, onTooth, startRound, showResult, toothScreen, revealSlot, makeCard, T, HOWTO_KEY, LANG_KEY, lang: () => LANG };
 })();

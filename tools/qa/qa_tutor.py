@@ -1,9 +1,13 @@
-"""QA: the croc tutor's explanation (first game only), Skip, and long words inside the cards.
+"""QA: the intro (entrance motion + the croc's explanation on the title), EN | 한, Skip, first-time-only, the bottom-corner
+players / top bar, the mic on the croc's lower jaw, and long words inside the cards.
 usage: uv run --with playwright --with pillow python tools/qa/qa_tutor.py <outdir> [WxH ...]   (default 1180x820)
-  1  the whole explanation at each size: a frame per line, the bubble must stay on screen and off cards/avatars/buttons
-  2  a second game on the same device: no explanation
-  3  Skip while the demo card is out: the first turn starts, nothing is left over, a tooth press works
-  4  every word on every kind of card: text width / inside width (must stay under .9: room for the say-it glow)
+  0  the entrance after loading: frames 0–2 s (logo drops, croc grows in, cards dealt, START pops)
+  1  START (first time) at each size: the explanation on the intro screen, a frame per line; the bubble must stay on
+     screen and off cards / avatars / logo / buttons; it ends in the game (turn pill) with the explanation's trap word
+  2  a second game on the same device: START goes straight to the game
+  3  한 + Skip: Korean bubbles; switching EN | 한 mid-line re-says the line; Skip → game, nothing left over
+  4  the say-it mic sits on the croc's lower jaw (no-mic countdown), players at the bottom, top bar
+  5  every word on every kind of card: text width / inside width (must stay under .9: room for the say-it glow)
 """
 import sys, time, pathlib
 from PIL import Image, ImageDraw
@@ -15,11 +19,13 @@ BASE = 'http://127.0.0.1:5211/index.html'
 ARGS = ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required']
 STATE = """() => {
   const b = document.querySelector('#bubble'), br = b.getBoundingClientRect(), show = b.classList.contains('show');
-  const hits = show ? [...document.querySelectorAll('.player .ava, .sys, #skip, #target .card, #cards .flyer .card')].filter(el => {
+  const vis = el => { for (let e = el; e && e !== document.body; e = e.parentElement) { const cs = getComputedStyle(e); if (cs.opacity === '0' || cs.visibility === 'hidden' || cs.display === 'none') return false; } return true; };
+  const sel = '.player .ava, .sys, #skip, #target .card, #cards .flyer .card, ' + (__croco.G.screen === 'title' ? '.title .logo' : '.glogo');
+  const hits = show ? [...document.querySelectorAll(sel)].filter(el => {
     const a = el.getBoundingClientRect();
-    return a.width > 0 && getComputedStyle(el.closest('#skip') || el).opacity !== '0' && br.left < a.right && br.right > a.left && br.top < a.bottom && br.bottom > a.top;
-  }).map(el => el.id || el.closest('[id]').id + ' ' + el.className) : [];
-  return { txt: b.querySelector('p').textContent, show, hits, tail: b.dataset.tail,
+    return a.width > 0 && vis(el) && br.left < a.right && br.right > a.left && br.top < a.bottom && br.bottom > a.top;
+  }).map(el => (el.id || el.className || el.tagName).toString().slice(0, 30)) : [];
+  return { txt: b.querySelector('p').textContent, show, hits, tail: b.dataset.tail, screen: __croco.G.screen,
     inView: br.left >= 0 && br.top >= 0 && br.right <= innerWidth && br.bottom <= innerHeight,
     skip: document.querySelector('#skip').classList.contains('show'), turn: document.querySelector('#turn').classList.contains('show'),
     demo: !!document.querySelector('.flyer.demo'), alarm: document.querySelector('#target').classList.contains('alarm') };
@@ -39,6 +45,27 @@ def sheet(frames, name, W, H, cols=4):
     s.save(out / name)
 
 
+def run_tutorial(pg, tag, W, H, limit=95):
+    frames, seen, bad, t0 = [], set(), [], time.time()
+    while time.time() - t0 < limit:
+        st = pg.evaluate(STATE)
+        key = (st['txt'], st['show'], st['demo'], st['alarm'], st['turn'], st['screen'])
+        if key not in seen and (st['show'] or st['turn'] or st['demo']):
+            seen.add(key)
+            time.sleep(0.45)
+            st = pg.evaluate(STATE)
+            f = out / f'{tag}_{len(frames):02d}.png'
+            pg.screenshot(path=str(f))
+            frames.append((f"{round(time.time() - t0, 1)}s {st['screen'][:1]} {st['tail'] if st['show'] else ''} {st['txt'] if st['show'] else ('TURN' if st['turn'] else '')}", f))
+            if st['show'] and (st['hits'] or not st['inView']):
+                bad.append((st['txt'], st['hits'], 'in view' if st['inView'] else 'OFF SCREEN'))
+        if st['turn']:
+            break
+        time.sleep(0.1)
+    sheet(frames, f'{tag}.png', W, H)
+    return frames, bad, round(time.time() - t0, 1)
+
+
 with sync_playwright() as p:
     b = p.chromium.launch(channel='chrome', headless=True, args=ARGS)
     errs = []
@@ -50,107 +77,113 @@ with sync_playwright() as p:
         pg.on('console', lambda m: errs.append(m.text) if m.type in ('error', 'warning') and 'favicon' not in m.text else None)
         return ctx, pg
 
-    # ── 1. the whole explanation, first time, at each size ──
-    for W, H in SIZES:
+    for n, (W, H) in enumerate(SIZES):
         ctx, pg = page(W, H)
         pg.goto(BASE + '?shot')
         pg.wait_for_function('window.__ready === true', timeout=60000)
+        if n == 0:
+            # ── 0. the entrance motion right after loading ──
+            fr, t0 = [], time.time()
+            for k in range(9):
+                f = out / f'enter_{k}.png'
+                pg.screenshot(path=str(f))
+                fr.append((f'{round(time.time() - t0, 2)}s', f))
+                time.sleep(0.22)
+            sheet(fr, 'enter.png', W, H, cols=3)
+        pg.wait_for_function('window.__intro === true', timeout=15000)
+        # ── 1. START → the explanation on the intro screen → the game ──
         pg.evaluate("window.__test = {howto: true, heard: true}")
         pg.click('#start', force=True)
-        frames, seen, bad, t0 = [], set(), [], time.time()
-        while time.time() - t0 < 90:
-            st = pg.evaluate(STATE)
-            key = (st['txt'], st['show'], st['demo'], st['alarm'], st['turn'])
-            if key not in seen and (st['show'] or st['turn'] or st['demo']):
-                seen.add(key)
-                time.sleep(0.45)
-                st = pg.evaluate(STATE)
-                f = out / f'tut_{W}x{H}_{len(frames):02d}.png'
-                pg.screenshot(path=str(f))
-                frames.append((f"{round(time.time() - t0, 1)}s {st['tail'] if st['show'] else ''} {st['txt'] if st['show'] else ('TURN' if st['turn'] else '')}", f))
-                if st['show'] and (st['hits'] or not st['inView']):
-                    bad.append((st['txt'], st['hits'], 'in view' if st['inView'] else 'OFF SCREEN'))
-            if st['turn']:
-                break
-            time.sleep(0.1)
+        frames, bad, secs = run_tutorial(pg, f'tut_{W}x{H}', W, H)
         flag = pg.evaluate("localStorage.getItem('croco.howto.v1')")
-        after = pg.evaluate("({skip: document.querySelector('#skip').classList.contains('show'), bubble: document.querySelector('#bubble').classList.contains('show'), busy: __croco.G.busy, glow: __croco.croc.teeth.some(t => t.glow > 0), pressed: __croco.croc.teeth.some(t => t.pressed), demo: document.querySelectorAll('.flyer').length})")
-        print(f'1 full {W}x{H}: {round(time.time() - t0, 1)} s, frames {len(frames)}, flag {flag}, after {after}')
+        after = pg.evaluate("({screen: __croco.G.screen, target: __croco.G.target, howto: document.querySelector('#app').classList.contains('howto'), skip: document.querySelector('#skip').classList.contains('show'), bubble: document.querySelector('#bubble').classList.contains('show'), glow: __croco.croc.teeth.some(t => t.glow > 0), flyers: document.querySelectorAll('.flyer').length})")
+        print(f'1 {W}x{H}: {secs} s, frames {len(frames)}, flag {flag}, after {after}')
         print('  bubble problems:', bad or 'none')
-        sheet(frames, f'tutor_{W}x{H}.png', W, H)
-
-        if (W, H) == SIZES[0]:
-            # ── 2. second game on the same device: no explanation ──
-            pg.goto(BASE)                                            # no __test: the real first-time logic
-            pg.wait_for_function('window.__ready === true', timeout=60000)
+        if n == 0:
+            # ── 2. second game on the same device ──
+            pg.goto(BASE)
+            pg.wait_for_function('window.__ready === true && window.__intro === true', timeout=60000)
             pg.click('#start', force=True)
-            t0, sawSkip = time.time(), False
-            while time.time() - t0 < 20:
-                s2 = pg.evaluate("({skip: document.querySelector('#skip').classList.contains('show'), turn: document.querySelector('#turn').classList.contains('show')})")
-                sawSkip |= s2['skip']
-                if s2['turn']:
-                    break
-                time.sleep(0.15)
-            print(f'2 second game: explanation shown {sawSkip}, turn after {round(time.time() - t0, 1)} s')
+            time.sleep(0.6)
+            s2 = pg.evaluate("({screen: __croco.G.screen, howto: document.querySelector('#app').classList.contains('howto')})")
+            print('2 second game:', s2)
         ctx.close()
 
-    # ── 3. Skip in the middle ──
+    W, H = SIZES[0]
+    # ── 3. 한: Korean bubbles, EN|한 mid-line, Skip ──
+    ctx, pg = page(W, H)
+    pg.goto(BASE + '?shot')
+    pg.evaluate("localStorage.setItem('croco.lang.v1', 'ko')")
+    pg.goto(BASE + '?shot')
+    pg.wait_for_function('window.__ready === true && window.__intro === true', timeout=60000)
+    pg.screenshot(path=str(out / 'ko_0_title.png'))
+    pg.evaluate("window.__test = {howto: true, heard: true}")
+    pg.click('#start', force=True)
+    pg.wait_for_function("document.querySelector('#bubble').classList.contains('show')", timeout=10000)
+    time.sleep(0.5)
+    t1 = pg.evaluate("document.querySelector('#bubble p').textContent")
+    pg.screenshot(path=str(out / 'ko_1_hello.png'))
+    pg.click('#btnLang')
+    time.sleep(0.5)
+    t2 = pg.evaluate("document.querySelector('#bubble p').textContent")
+    pg.screenshot(path=str(out / 'ko_2_switched_en.png'))
+    pg.click('#btnLang')
+    time.sleep(0.4)
+    t3 = pg.evaluate("document.querySelector('#bubble p').textContent")
+    stored = pg.evaluate("localStorage.getItem('croco.lang.v1')")
+    print(f'3 lang: ko "{t1}" → en "{t2}" → ko "{t3}", stored {stored}')
+    pg.wait_for_function("document.querySelector('#target').classList.contains('side')", timeout=40000)
+    time.sleep(1.2)
+    pg.screenshot(path=str(out / 'ko_3_before_skip.png'))
+    pg.click('#skip')
+    t0 = time.time()
+    pg.wait_for_function("document.querySelector('#turn').classList.contains('show')", timeout=20000)
+    time.sleep(0.8)
+    pg.screenshot(path=str(out / 'ko_4_after_skip.png'))
+    s3 = pg.evaluate("({flag: localStorage.getItem('croco.howto.v1'), screen: __croco.G.screen, flyers: document.querySelectorAll('.flyer').length, bubble: document.querySelector('#bubble').classList.contains('show'), skip: document.querySelector('#skip').classList.contains('show'), howto: document.querySelector('#app').classList.contains('howto'), turnText: document.querySelector('#turn .t').textContent, names: [...document.querySelectorAll('.player .name')].map(e => e.textContent)})")
+    print(f'  skip: turn after {round(time.time() - t0, 1)} s, {s3}')
+    ctx.close()
+
+    # ── 4. the mic on the croc's lower jaw (no mic → countdown), players at the bottom ──
+    for W, H in SIZES:
+        ctx, pg = page(W, H)
+        pg.goto(BASE + '?shot')
+        pg.wait_for_function('window.__ready === true && window.__intro === true', timeout=60000)
+        pg.evaluate("window.__test = {mic: false, target: 'moon', teeth: ['map','milk','moon','mouse','monkey','mug','mop','man','meat','mitt']}")
+        pg.click('#start', force=True)
+        pg.wait_for_function("document.querySelector('#turn').classList.contains('show')", timeout=20000)
+        time.sleep(0.8)
+        pg.screenshot(path=str(out / f'mic_{W}x{H}_0turn.png'))
+        pg.evaluate('() => { __croco.onTooth(0); }')
+        pg.wait_for_function("document.querySelector('#mic').classList.contains('nomic')", timeout=20000)
+        time.sleep(0.8)
+        pg.screenshot(path=str(out / f'mic_{W}x{H}_1mic.png'))
+        g = pg.evaluate("""() => { const m = document.querySelector('#mic').getBoundingClientRect(), j = __croco.croc.jawScreen();
+          return { mic: [Math.round(m.left + m.width / 2), Math.round(m.top + m.height / 2), Math.round(m.width)], jaw: [Math.round(j.x), Math.round(j.y)], W: innerWidth }; }""")
+        print(f'4 {W}x{H} mic', g)
+        ctx.close()
+
+    # ── 5. long words ──
     W, H = SIZES[0]
     ctx, pg = page(W, H)
     pg.goto(BASE + '?shot')
     pg.wait_for_function('window.__ready === true', timeout=60000)
-    pg.evaluate("window.__test = {howto: true, heard: true}")
-    pg.click('#start', force=True)
-    pg.wait_for_function("document.querySelector('#skip').classList.contains('show')", timeout=10000)
-    time.sleep(1.6)
-    pg.screenshot(path=str(out / 'skip_0_start.png'))
-    pg.wait_for_function("!!document.querySelector('.flyer.demo')", timeout=60000)       # skip while the demo card is out
-    time.sleep(0.9)
-    pg.screenshot(path=str(out / 'skip_1_before.png'))
-    pg.click('#skip')
-    t0 = time.time()
-    pg.wait_for_function("document.querySelector('#turn').classList.contains('show')", timeout=10000)
-    time.sleep(0.8)
-    pg.screenshot(path=str(out / 'skip_2_after.png'))
-    s3 = pg.evaluate("({flag: localStorage.getItem('croco.howto.v1'), flyers: document.querySelectorAll('.flyer').length, bubble: document.querySelector('#bubble').classList.contains('show'), skip: document.querySelector('#skip').classList.contains('show'), pressed: __croco.croc.teeth.some(t => t.pressed), glow: __croco.croc.teeth.some(t => t.glow > 0), target: document.querySelector('#target').className, on: [...document.querySelectorAll('.player.on')].map(e => e.dataset.p)})")
-    print(f'3 skip: turn after {round(time.time() - t0, 1)} s, state {s3}')
-    time.sleep(1.0)
-    pos = pg.evaluate('__croco.toothScreen(4)')
-    pg.mouse.click(pos['x'], pos['y'])
-    try:
-        pg.wait_for_function("!!document.querySelector('.flyer .card')", timeout=8000)
-        print('  tooth press after skip: card out')
-    except Exception as e:
-        print('  tooth press after skip: NO CARD', str(e)[:80])
-    ctx.close()
-
-    # ── 4. long words: every word on every kind of card ──
-    ctx, pg = page(W, H)
-    pg.goto(BASE + '?shot')
-    pg.wait_for_function('window.__ready === true', timeout=60000)
-    pg.evaluate("document.fonts.ready.then(() => 1)")
     time.sleep(0.6)
     res = pg.evaluate("""() => {
-      const box = document.createElement('div');
-      box.style.cssText = 'position:fixed;left:0;top:0;display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px;z-index:99;background:#cfe7ee;padding:6px;width:100vw';
-      document.body.appendChild(box);
-      const u = Math.min(innerHeight / 100, innerWidth * 0.0062), out = [];
+      const out = [];
+      const u = Math.min(innerHeight / 100, innerWidth * 0.0062);
       const kinds = [['reveal', 34, {}], ['bite', 40, { cls: 'boom' }], ['target', 30, { cls: 'tgt', sound: true }], ['pile', 10, {}]];
+      const box = document.createElement('div'); box.style.cssText = 'position:fixed;left:0;top:0;display:flex;flex-wrap:wrap;gap:6px;z-index:99;background:#cfe7ee';
+      document.body.appendChild(box);
       for (const [k, cw, o] of kinds) for (const w of window.CROCO_WORDS.words.map(x => x.w)) {
-        const c = __croco.makeCard(w, o);
-        c.style.setProperty('--cw', cw * u * (k === 'pile' ? 1 : 0.42) + 'px');
-        box.appendChild(c);
-        const wd = c.querySelector('.word'), r = document.createRange();
-        r.selectNodeContents(wd);
-        const tw = r.getBoundingClientRect().width, cs = getComputedStyle(c);
-        const inner = c.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-        out.push([w, k, +(tw / inner).toFixed(3)]);
+        const c = __croco.makeCard(w, o); c.style.setProperty('--cw', cw * u * (k === 'pile' ? 1 : 0.42) + 'px'); box.appendChild(c);
+        const r = document.createRange(); r.selectNodeContents(c.querySelector('.word'));
+        const cs = getComputedStyle(c), inner = c.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        out.push([w, k, +(r.getBoundingClientRect().width / inner).toFixed(3)]);
       }
       return out;
     }""")
-    worst = sorted(res, key=lambda r: -r[2])[:6]
-    print('4 words: widest text/inside', worst, '| over .9:', [r for r in res if r[2] > 0.9])
-    pg.screenshot(path=str(out / 'words.png'))
+    print('5 words: widest', sorted(res, key=lambda r: -r[2])[:3], '| over .9:', [r for r in res if r[2] > 0.9])
     ctx.close()
     print('errors', errs[:8] or 'none')
     b.close()

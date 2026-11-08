@@ -158,6 +158,78 @@ window.CROCO_VOICE = {
 0.02,
 0.917,
 1.228
+],
+"k:turn1": [
+"k_turn1.mp3",
+0.02,
+0.699,
+1.948
+],
+"k:turn2": [
+"k_turn2.mp3",
+0.03,
+0.918,
+1.698
+],
+"k:sayit": [
+"k_sayit.mp3",
+0.02,
+0.544,
+1.324
+],
+"k:great2": [
+"k_great2.mp3",
+0.02,
+0.898,
+1.228
+],
+"k:great3": [
+"k_great3.mp3",
+0.02,
+0.809,
+1.396
+],
+"k:uhoh": [
+"k_uhoh.mp3",
+0.04,
+0.765,
+0.344
+],
+"k:win1": [
+"k_win1.mp3",
+0.03,
+0.942,
+1.146
+],
+"k:win2": [
+"k_win2.mp3",
+0.02,
+0.864,
+1.228
+],
+"k:playagain": [
+"k_playagain.mp3",
+0.02,
+0.934,
+0.844
+],
+"k:nomic": [
+"k_nomic.mp3",
+0.02,
+0.912,
+1.084
+],
+"k:louder": [
+"k_louder.mp3",
+0.02,
+0.633,
+2.26
+],
+"k:pressstart": [
+"k_pressstart.mp3",
+0.03,
+0.903,
+1.458
 ]
 },
 "lines": {
@@ -174,5 +246,19 @@ window.CROCO_VOICE = {
 "nomic": "Say it out loud!",
 "louder": "I can't hear you. Say it loud!",
 "pressstart": "Press start to play!"
+},
+"lines_ko": {
+"turn1": "플레이어 1, 네 차례야!",
+"turn2": "플레이어 2, 네 차례야!",
+"sayit": "이제 단어를 읽어 봐.",
+"great2": "정말 잘 읽었어!",
+"great3": "해냈어! 최고야!",
+"uhoh": "앗!",
+"win1": "플레이어 1 승리!",
+"win2": "플레이어 2 승리!",
+"playagain": "한 번 더 하자!",
+"nomic": "소리 내어 읽어 봐!",
+"louder": "잘 안 들려. 크게 말해 봐!",
+"pressstart": "스타트 버튼을 눌러 봐!"
 }
 };

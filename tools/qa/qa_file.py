@@ -9,7 +9,7 @@ with sync_playwright() as p:
     pg.on('console', lambda m: errs.append(m.text) if m.type in ('error', 'warning') else None)
     pg.on('pageerror', lambda e: errs.append(f'PAGEERROR {e}'))
     pg.goto(URL)
-    pg.wait_for_function('window.__ready === true', timeout=60000)
+    pg.wait_for_function('window.__ready === true && window.__intro === true', timeout=60000)
     pg.evaluate("window.__test = {heard: true, target: 'map', teeth: ['milk','map','moon','mouse','monkey','mug','mop','man']}")
     pg.click('#start', force=True)
     pg.wait_for_function("document.querySelector('#turn').classList.contains('show')", timeout=20000)

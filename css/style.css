@@ -10,7 +10,7 @@
   --cream: #fffaf1;
   --p1: #59b3ff;
   --p2: #ffad3a;
-  --font: 'Baloo 2', 'Fredoka', 'Arial Rounded MT Bold', 'Nunito', system-ui, sans-serif;
+  --font: 'Baloo 2', 'Jua', 'Fredoka', 'Arial Rounded MT Bold', 'Nunito', system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe7ee; }
@@ -52,6 +52,7 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .lay-r { right: 1vw; transform: perspective(calc(var(--u) * 70)) rotateX(58deg) rotateZ(14deg); }
 #app:not([data-screen="title"]) .fly, #app:not([data-screen="title"]) .lay { opacity: 0; }
 #app:not([data-screen="title"]) .l3d { opacity: .55; }
+#app:not([data-screen="title"]) .l3d.low { opacity: 0; }
 
 /* ── picture card ─────────────────────────────────────────────────────────────────────────────────── */
 .card { position: relative; width: var(--cw, 24vh); aspect-ratio: .86; background: var(--cream);
@@ -93,8 +94,7 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 /* ── title ────────────────────────────────────────────────────────────────────────────────────────── */
 .title { position: absolute; inset: 0; pointer-events: none; transition: opacity .5s; }
 .title .logo { position: absolute; left: 50%; top: calc(var(--u) * 1.2); width: min(44vw, calc(var(--u) * 50)); transform: translateX(-50%);
-  filter: drop-shadow(0 calc(var(--u) * 1.2) calc(var(--u) * 1.6) rgba(130,90,150,.25)); animation: logoIn .9s cubic-bezier(.2,.9,.25,1.25) both, logoBob 4.8s ease-in-out 1s infinite; }
-@keyframes logoIn { from { opacity: 0; transform: translateX(-50%) translateY(-6vh) scale(.7); } }
+  filter: drop-shadow(0 calc(var(--u) * 1.2) calc(var(--u) * 1.6) rgba(130,90,150,.25)); animation: logoBob 4.8s ease-in-out 2s infinite; }
 @keyframes logoBob { 50% { transform: translateX(-50%) translateY(calc(var(--u) * -1)) rotate(-1deg); } }
 .start { position: absolute; left: 50%; bottom: calc(var(--u) * 4.5); transform: translateX(-50%); pointer-events: auto;
   display: flex; align-items: center; gap: calc(var(--u) * 1.4); padding: calc(var(--u) * 1.3) calc(var(--u) * 5.2) calc(var(--u) * 1.7);
@@ -102,7 +102,7 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
   background: linear-gradient(#ffb578, #ff8c3f 55%, #f27428);
   text-shadow: 0 calc(var(--u) * .35) 0 rgba(185,75,15,.4);
   box-shadow: inset 0 calc(var(--u) * -1) 0 rgba(195,80,20,.45), inset 0 calc(var(--u) * .6) 0 rgba(255,255,255,.45), 0 calc(var(--u) * 1.4) calc(var(--u) * 2.4) rgba(220,100,30,.38);
-  animation: breathe 2.2s ease-in-out infinite; }
+  animation: breathe 2.2s ease-in-out infinite; transition: opacity .3s, scale .3s; }
 .start svg { width: .72em; height: .72em; fill: #fff; filter: drop-shadow(0 calc(var(--u) * .35) 0 rgba(185,75,15,.4)); }
 .start:active { transform: translateX(-50%) scale(.95); }
 @keyframes breathe { 50% { transform: translateX(-50%) scale(1.05); } }
@@ -112,9 +112,23 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 /* ── game HUD ─────────────────────────────────────────────────────────────────────────────────────── */
 .hud { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .5s; }
 #app[data-screen="game"] .hud, #app[data-screen="result"] .hud { opacity: 1; }
-.player { position: absolute; top: calc(var(--u) * 2.4); display: grid; justify-items: center; transition: transform .45s cubic-bezier(.2,.9,.3,1.3), opacity .4s, filter .4s; }
-.player.p1 { left: calc(var(--u) * 3.2); }
-.player.p2 { right: calc(var(--u) * 10.5); }
+/* the intro's explanation (game.js runTutorial) uses the HUD on the title: START steps aside for Skip, the decor
+   goes, the players come in at "take turns" */
+#app.howto .hud { opacity: 1; }
+#app.howto:not(.howto-p) .player { opacity: 0; translate: 0 8vh; }
+#app.howto .title .start { opacity: 0; scale: .6; pointer-events: none; }
+/* the title logo steps back a little while the croc explains (at 1920 × 1080 it filled the room beside the croc's head
+   where the speech bubble goes) */
+.title .logo { transform-origin: 50% 0; transition: scale .5s cubic-bezier(.2,.9,.3,1.1); }
+#app.howto .title .logo { scale: .7; }
+#app.howto .deco > * { opacity: 0 !important; }
+/* the game's top bar: logo (left) + EN | 한, sound, home (right); the players sit at the bottom corners */
+.glogo { position: absolute; left: calc(var(--u) * 2.2); top: calc(var(--u) * 1.2); width: calc(var(--u) * 25); height: auto; pointer-events: none;
+  filter: drop-shadow(0 calc(var(--u) * .8) calc(var(--u) * 1.2) rgba(130,90,150,.22)); transition: opacity .4s; }
+#app[data-screen="title"] .glogo, #app[data-screen="result"] .glogo { opacity: 0; }
+.player { position: absolute; bottom: calc(var(--u) * 2.4); display: grid; justify-items: center; transition: transform .45s cubic-bezier(.2,.9,.3,1.3), opacity .4s, filter .4s, translate .5s cubic-bezier(.2,.9,.3,1.2); }
+.player.p1 { left: calc(var(--u) * 3.2); transform-origin: 0% 100%; }
+.player.p2 { right: calc(var(--u) * 3.2); transform-origin: 100% 100%; }
 .player .ava { width: calc(var(--u) * 17); height: calc(var(--u) * 17); border-radius: 50%; padding: calc(var(--u) * .85); background: #fff;
   box-shadow: 0 calc(var(--u) * .8) calc(var(--u) * 1.8) rgba(60,80,110,.2), inset 0 calc(var(--u) * -.4) 0 rgba(0,0,0,.05); transition: box-shadow .4s; }
 .player .ava img { width: 100%; height: 100%; border-radius: 50%; display: block; }
@@ -155,13 +169,16 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .target .card { width: var(--cw); }
 .target.intro { transform: translate(-50%, calc(var(--u) * 26)) scale(1.5); }
 .target.hidden, #app[data-screen="result"] .target { transform: translateX(-50%) translateY(-60vh); }
+/* during the intro's explanation the trap word waits in the top-left corner (the title logo has the top centre), as the
+   reference video's target card does; mid-left it took the bubble's place beside the croc's head */
+.target.side { transform: translate(calc(-50% - 50vw + var(--u) * 21), calc(var(--u) * 1)) scale(.8); }
 .target.alarm .card { animation: alarm .32s ease-in-out infinite alternate; }
 .target.alarm::before, .target.alarm::after { content: ''; position: absolute; inset: calc(var(--u) * -1); border-radius: calc(var(--cw) * .12); border: calc(var(--u) * .7) solid #ff5a6b; animation: wave 1s ease-out infinite; pointer-events: none; }
 .target.alarm::after { animation-delay: .5s; }
 @keyframes alarm { to { box-shadow: 0 0 0 calc(var(--u) * .9) #ff5a6b, 0 0 calc(var(--u) * 4) #ff5a6b; transform: rotate(-1.5deg) scale(1.03); } }
 @keyframes wave { from { transform: scale(1); opacity: .9; } to { transform: scale(1.35); opacity: 0; } }
 
-.turn { position: absolute; bottom: calc(var(--u) * 3.4); left: calc(var(--u) * 3.2); max-width: calc(var(--u) * 34); display: flex; align-items: center; gap: calc(var(--u) * 1.2);
+.turn { position: absolute; bottom: calc(var(--u) * 24.5); left: calc(var(--u) * 3.2); max-width: calc(var(--u) * 34); display: flex; align-items: center; gap: calc(var(--u) * 1.2);
   padding: calc(var(--u) * 1.8) calc(var(--u) * 3) calc(var(--u) * 2); background: #fffaf2; border: calc(var(--u) * .7) solid #9fd7ea; border-radius: calc(var(--u) * 3.4);
   font: 800 calc(var(--u) * 4.8)/1.05 var(--font); color: var(--ink); box-shadow: 0 calc(var(--u) * 1) calc(var(--u) * 2.2) rgba(60,80,110,.2), inset 0 calc(var(--u) * -.5) 0 rgba(150,110,70,.1);
   opacity: 0; transform: translateY(4vh) scale(.9); transition: opacity .35s, transform .45s cubic-bezier(.2,.9,.3,1.3); }
@@ -193,7 +210,8 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .bubble[data-tail="l"] { transform-origin: 0% 62%; }
 .bubble[data-tail="r"] { transform-origin: 100% 62%; }
 .bubble[data-tail="b"] { transform-origin: 50% 100%; }
-.bubble p { margin: 0; font: 800 calc(var(--u) * 3.7)/1.2 var(--font); color: var(--ink); }
+.bubble p { margin: 0; font: 800 calc(var(--u) * 3.7)/1.2 var(--font); color: var(--ink); word-break: keep-all; }
+.turn .t { word-break: keep-all; }                     /* Korean wraps at spaces, not inside a word (크/로코야) */
 .bubble.narrow { padding: calc(var(--u) * 1.6) calc(var(--u) * 2.2) calc(var(--u) * 1.8); }
 .bubble.narrow p { font-size: calc(var(--u) * 3.2); }
 .bubble[data-tail="t"] { transform-origin: 50% 0%; }
@@ -206,7 +224,7 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .bubble[data-tail="t"]::before { top: calc(var(--u) * -2.6); left: 50%; transform: translateX(-50%); border-width: 0 calc(var(--u) * 1.5) calc(var(--u) * 2.4); border-color: transparent transparent var(--bd); }
 .bubble[data-tail="t"]::after { top: calc(var(--u) * -1.55); left: 50%; transform: translateX(-50%); border-width: 0 calc(var(--u) * 1.05) calc(var(--u) * 1.7); border-color: transparent transparent #fffaf2; }
 .bubble[data-tail="b"]::after { bottom: calc(var(--u) * -1.55); left: 50%; transform: translateX(-50%); border-width: calc(var(--u) * 1.7) calc(var(--u) * 1.05) 0; border-color: #fffaf2 transparent transparent; }
-.skip { position: absolute; right: calc(var(--u) * 3); bottom: calc(var(--u) * 3.4); z-index: 41; display: flex; align-items: center; gap: calc(var(--u) * .7);
+.skip { position: absolute; left: 50%; bottom: calc(var(--u) * 5); translate: -50% 0; z-index: 41; display: flex; align-items: center; gap: calc(var(--u) * .7);
   padding: calc(var(--u) * 1.3) calc(var(--u) * 2.4) calc(var(--u) * 1.45) calc(var(--u) * 3); border: 0; border-radius: 999px; cursor: pointer;
   font: 800 calc(var(--u) * 3.6)/1 var(--font); color: var(--ink);
   background: linear-gradient(rgba(255,255,255,.9), rgba(255,255,255,.62)); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
@@ -232,15 +250,18 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .cards .flyer .cback b { font: 800 calc(var(--cw) * .52)/1 var(--font); color: #fff; text-shadow: 0 calc(var(--cw) * .03) 0 rgba(40,90,40,.35); margin-top: -.08em; }
 .cards .flyer .fshadow { position: absolute; left: 12%; right: 12%; bottom: -2%; height: 14%; border-radius: 50%; opacity: 0; pointer-events: none;
   background: radial-gradient(closest-side, rgba(60,45,80,.45), rgba(60,45,80,0)); filter: blur(calc(var(--cw) * .025)); }
-.card .mic { position: absolute; left: 50%; bottom: calc(var(--cw) * -.48); width: calc(var(--cw) * .34); height: calc(var(--cw) * .34); transform: translateX(-50%) scale(0);
-  border-radius: 50%; background: #fff; display: grid; place-items: center; box-shadow: 0 calc(var(--cw) * .03) calc(var(--cw) * .06) rgba(60,80,110,.25);
-  transition: transform .35s cubic-bezier(.2,.9,.3,1.4); --lv: 0; }
-.card .mic svg { width: 52%; height: 52%; fill: #ff7d2e; position: relative; z-index: 2; }
-.card .mic::before { content: ''; position: absolute; inset: calc(var(--cw) * -.03); border-radius: 50%; border: calc(var(--cw) * .025) solid #ff9a4d;
-  transform: scale(calc(1 + var(--lv) * .55)); opacity: calc(.35 + var(--lv) * .65); transition: transform .08s, opacity .08s; }
-.card .mic::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: calc(var(--cw) * .02) solid rgba(255,154,77,.6); animation: listenRing 1.2s ease-out infinite; }
-.card.listen .mic { transform: translateX(-50%) scale(1); }
-.card.nomic .mic::after { animation: none; border: 0; background: conic-gradient(#ff9a4d var(--cd, 0%), transparent 0); -webkit-mask: radial-gradient(circle, transparent 58%, #000 60%); mask: radial-gradient(circle, transparent 58%, #000 60%); }
+/* the "say it" mic: in the middle of the screen on the croc's lower jaw (user: "마이크는 화면 가운데 악어 아래 턱에 겹쳐서";
+   game.js placeMic → Stage view jawScreen). --lv = voice level, --cd = the no-mic countdown */
+.mic { position: absolute; left: 50%; top: 80%; --ms: calc(var(--u) * 12.5); width: var(--ms); height: var(--ms); margin: calc(var(--ms) * -.5) 0 0 calc(var(--ms) * -.5);
+  border-radius: 50%; background: #fff; display: grid; place-items: center; z-index: 8; pointer-events: none; --lv: 0;
+  box-shadow: 0 calc(var(--u) * .9) calc(var(--u) * 2) rgba(60,80,110,.3), inset 0 calc(var(--u) * -.5) 0 rgba(255,140,60,.16);
+  transform: scale(0); transition: transform .35s cubic-bezier(.2,.9,.3,1.4); }
+.mic svg { width: 54%; height: 54%; fill: #ff7d2e; position: relative; z-index: 2; }
+.mic::before { content: ''; position: absolute; inset: calc(var(--ms) * -.08); border-radius: 50%; border: calc(var(--ms) * .07) solid #ff9a4d;
+  transform: scale(calc(1 + var(--lv) * .5)); opacity: calc(.35 + var(--lv) * .65); transition: transform .08s, opacity .08s; }
+.mic::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: calc(var(--ms) * .05) solid rgba(255,154,77,.6); animation: listenRing 1.2s ease-out infinite; }
+.mic.listen { transform: scale(1); }
+.mic.nomic::after { animation: none; border: 0; inset: calc(var(--ms) * -.16); background: conic-gradient(#ff9a4d var(--cd, 0%), transparent 0); -webkit-mask: radial-gradient(circle, transparent 60%, #000 62%); mask: radial-gradient(circle, transparent 60%, #000 62%); }
 @keyframes listenRing { from { transform: scale(1); opacity: .9; } to { transform: scale(1.6); opacity: 0; } }
 .card .ok { position: absolute; right: calc(var(--cw) * -.08); top: calc(var(--cw) * -.08); width: calc(var(--cw) * .26); height: calc(var(--cw) * .26); border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #8ff0a6, #34c46a 65%); display: grid; place-items: center; transform: scale(0); transition: transform .4s cubic-bezier(.2,.9,.3,1.6);
@@ -279,7 +300,19 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 @keyframes breathe2 { 50% { transform: scale(1.05); } }
 
 /* ── system buttons (sound, home) ─────────────────────────────────────────────────────────────────── */
-.sys { position: absolute; top: calc(var(--u) * 2); right: calc(var(--u) * 2); display: flex; flex-direction: column; gap: calc(var(--u) * 1.2); z-index: 40; }
+.sys { position: absolute; top: calc(var(--u) * 2); right: calc(var(--u) * 2); display: flex; align-items: center; gap: calc(var(--u) * 1.2); z-index: 40; }
+/* EN | 한 (game.js applyLang): Magic Block's toggle — two round flags, the one in use fills the white knob */
+.lang-tog { position: relative; flex: none; display: flex; align-items: center; gap: calc(var(--u) * .32); height: calc(var(--u) * 6.2); padding: 0 calc(var(--u) * .32);
+  border: 0; border-radius: 999px; background: linear-gradient(rgba(255,255,255,.7), rgba(255,255,255,.45)); cursor: pointer; overflow: hidden;
+  box-shadow: 0 calc(var(--u) * .6) calc(var(--u) * 1.4) rgba(60,80,110,.2), inset 0 calc(var(--u) * -.35) 0 rgba(120,140,170,.15);
+  -webkit-backdrop-filter: blur(10px) saturate(1.3); backdrop-filter: blur(10px) saturate(1.3); transition: transform .08s; }
+.lang-tog .knob { position: absolute; top: calc(var(--u) * .36); left: calc(var(--u) * .32); width: calc(var(--u) * 5.48); height: calc(var(--u) * 5.48);
+  border-radius: 50%; background: #fff; box-shadow: 0 calc(var(--u) * .2) calc(var(--u) * .45) rgba(70,50,120,.18); transition: transform .32s cubic-bezier(.3,1.5,.5,1); }
+.lang-tog[data-l="ko"] .knob { transform: translateX(calc(var(--u) * 5.8)); }
+.lang-tog .flag { position: relative; z-index: 1; display: grid; place-items: center; width: calc(var(--u) * 5.48); height: calc(var(--u) * 5.48); }
+.lang-tog .flag svg { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 0 0 calc(var(--u) * .13) rgba(0,0,0,.1); transition: transform .25s ease, opacity .25s ease, filter .25s ease; }
+.lang-tog .flag:not(.on) svg { transform: scale(.62); opacity: .55; filter: grayscale(.4); }
+.lang-tog:active { transform: scale(.96); }
 .sysbtn { width: calc(var(--u) * 6.2); height: calc(var(--u) * 6.2); border-radius: 50%; display: grid; place-items: center;
   background: linear-gradient(rgba(255,255,255,.82), rgba(255,255,255,.55)); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   box-shadow: 0 calc(var(--u) * .6) calc(var(--u) * 1.4) rgba(60,80,110,.2), inset 0 calc(var(--u) * -.35) 0 rgba(120,140,170,.15); transition: transform .15s; }
@@ -299,9 +332,8 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 /* portrait / narrow */
 @media (max-aspect-ratio: 1/1) {
   :root { --u: min(1vh, .95vw); }
-  .player.p2 { right: calc(var(--u) * 11); }
-  .stack { top: calc(100% + var(--u) * 1); }
-  .p1 .stack { left: calc(var(--u) * 2); } .p2 .stack { right: calc(var(--u) * 2); }
+  .ribbon { top: calc(var(--u) * 10.5); }
+  .target.side { transform: translate(calc(-50% - 50vw + var(--u) * 17), calc(var(--u) * 9)) scale(.66); }
   .target { top: calc(var(--u) * 24); }
   .fly { top: 44%; }
 }

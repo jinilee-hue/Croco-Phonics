@@ -16,7 +16,7 @@ with sync_playwright() as p:
     pg.on('console', lambda m: logs.append(f'{m.type}: {m.text}') if m.type in ('error', 'warning') else None)
     pg.on('pageerror', lambda e: logs.append(f'PAGEERROR: {e}'))
     pg.goto(BASE)
-    pg.wait_for_function('window.__ready === true', timeout=60000)
+    pg.wait_for_function('window.__ready === true && window.__intro === true', timeout=60000)
     test = {'mic': False} if mic == 'none' else {'heard': True}
     pg.evaluate(f'window.__test = {json.dumps(test)}')
     t0 = time.time()
@@ -38,7 +38,7 @@ with sync_playwright() as p:
     pg.mouse.click(pos['x'], pos['y'])
     time.sleep(0.35); shot('05_press')
     time.sleep(1.0); shot('06_reveal')
-    pg.wait_for_function("!!document.querySelector('.flyer .card.listen')", timeout=15000)
+    pg.wait_for_function("document.querySelector('#mic').classList.contains('listen')", timeout=15000)
     time.sleep(0.3); shot('07_sayit')
     pg.wait_for_function("document.querySelector('#turn .t').textContent.includes('2')", timeout=20000)
     time.sleep(0.9); shot('08_docked_turn2')
