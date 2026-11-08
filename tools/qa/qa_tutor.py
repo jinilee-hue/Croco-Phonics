@@ -4,7 +4,7 @@ usage: uv run --with playwright --with pillow python tools/qa/qa_tutor.py <outdi
   0  the entrance after loading: frames 0–2 s (logo drops, croc grows in, cards dealt, START pops)
   1  START (first time) at each size: the explanation on the intro screen, a frame per line; the bubble must stay on
      screen and off cards / avatars / logo / buttons; it ends in the game (turn pill) with the explanation's trap word
-  2  a second game on the same device: START goes straight to the game
+  2  the visit rule (Magic Block): a fresh visit's first START explains; Home → START in the same visit doesn't
   3  한 + Skip: Korean bubbles; switching EN | 한 mid-line re-says the line; Skip → game, nothing left over
   4  the say-it mic sits on the croc's lower jaw (no-mic countdown), players at the bottom, top bar
   5  every word on every kind of card: text width / inside width (must stay under .9: room for the say-it glow)
@@ -95,18 +95,25 @@ with sync_playwright() as p:
         pg.evaluate("window.__test = {howto: true, heard: true}")
         pg.click('#start', force=True)
         frames, bad, secs = run_tutorial(pg, f'tut_{W}x{H}', W, H)
-        flag = pg.evaluate("localStorage.getItem('croco.howto.v1')")
+        flag = pg.evaluate("__croco.howtoSeen()")
         after = pg.evaluate("({screen: __croco.G.screen, target: __croco.G.target, howto: document.querySelector('#app').classList.contains('howto'), skip: document.querySelector('#skip').classList.contains('show'), bubble: document.querySelector('#bubble').classList.contains('show'), glow: __croco.croc.teeth.some(t => t.glow > 0), flyers: document.querySelectorAll('.flyer').length})")
         print(f'1 {W}x{H}: {secs} s, frames {len(frames)}, flag {flag}, after {after}')
         print('  bubble problems:', bad or 'none')
         if n == 0:
-            # ── 2. second game on the same device ──
-            pg.goto(BASE)
-            pg.wait_for_function('window.__ready === true && window.__intro === true', timeout=60000)
+            # ── 2. the visit rule: Home → START in the same visit goes straight to the game ──
+            pg.evaluate("delete window.__test")
+            pg.click('#btnHome')
+            pg.wait_for_function('window.__intro === true', timeout=15000)
             pg.click('#start', force=True)
             time.sleep(0.6)
             s2 = pg.evaluate("({screen: __croco.G.screen, howto: document.querySelector('#app').classList.contains('howto')})")
-            print('2 second game:', s2)
+            # … and a fresh visit (reload, no test hooks) explains again
+            pg.goto(BASE)
+            pg.wait_for_function('window.__ready === true && window.__intro === true', timeout=60000)
+            pg.click('#start', force=True)
+            time.sleep(1.2)
+            s2b = pg.evaluate("({screen: __croco.G.screen, howto: document.querySelector('#app').classList.contains('howto'), skip: document.querySelector('#skip').classList.contains('show')})")
+            print('2 same visit, Home → START:', s2, '| new visit START:', s2b)
         ctx.close()
 
     W, H = SIZES[0]
@@ -140,7 +147,7 @@ with sync_playwright() as p:
     pg.wait_for_function("document.querySelector('#turn').classList.contains('show')", timeout=20000)
     time.sleep(0.8)
     pg.screenshot(path=str(out / 'ko_4_after_skip.png'))
-    s3 = pg.evaluate("({flag: localStorage.getItem('croco.howto.v1'), screen: __croco.G.screen, flyers: document.querySelectorAll('.flyer').length, bubble: document.querySelector('#bubble').classList.contains('show'), skip: document.querySelector('#skip').classList.contains('show'), howto: document.querySelector('#app').classList.contains('howto'), turnText: document.querySelector('#turn .t').textContent, names: [...document.querySelectorAll('.player .name')].map(e => e.textContent)})")
+    s3 = pg.evaluate("({seen: __croco.howtoSeen(), screen: __croco.G.screen, flyers: document.querySelectorAll('.flyer').length, bubble: document.querySelector('#bubble').classList.contains('show'), skip: document.querySelector('#skip').classList.contains('show'), howto: document.querySelector('#app').classList.contains('howto'), turnText: document.querySelector('#turn .t').textContent, names: [...document.querySelectorAll('.player .name')].map(e => e.textContent)})")
     print(f'  skip: turn after {round(time.time() - t0, 1)} s, {s3}')
     ctx.close()
 

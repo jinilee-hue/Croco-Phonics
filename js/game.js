@@ -561,9 +561,9 @@
   });
 
   // ── the croc explains the game on the INTRO (title) screen (user: "인트로도 게임설명과 함께 실행되게", picked: "START를
-  //    누르면 인트로 화면에서 악어가 움직이며 설명하고, 끝나면 게임으로 넘어가기"). The first START per device runs it
-  //    (localStorage croco.howto.v1, set on finish or Skip; ?howto shows it again); Skip sits where START was. ─────────
-  const HOWTO_KEY = 'croco.howto.v1';
+  //    누르면 인트로 화면에서 악어가 움직이며 설명하고, 끝나면 게임으로 넘어가기"). Like Magic Block (user: "magic block처럼
+  //    인트로에서 게임 설명"): the first START of every visit runs it; Play Again and Home → START in the same visit don't
+  //    (a once-per-device mark hid it for good after one look). ?howto runs it on every START; Skip sits where START was.
   const TUT = {
     en: {
       tut1: "Hi, friends! I'm Croco!",
@@ -587,12 +587,14 @@
     },
   };
   const T = { tok: 0, on: false, card: null, line: null, wake: null };
+  let howtoSeen = false;
   function needTutorial() {
     if (/[?&]howto\b/.test(location.search)) return true;
     if (window.__test) return !!window.__test.howto;                 // QA runs skip it unless they ask for it
-    try { return !localStorage.getItem(HOWTO_KEY); } catch (e) { return true; }
+    return !howtoSeen;
   }
-  function howtoDone() { try { localStorage.setItem(HOWTO_KEY, '1'); } catch (e) { /* private mode */ } }
+  function howtoDone() { howtoSeen = true; }
+  try { localStorage.removeItem('croco.howto.v1'); } catch (e) { /* the old once-per-device mark */ }
   /* a pause the language toggle (and Skip) can cut short */
   const pause = ms => new Promise(r => { const id = setTimeout(done, ms); function done() { clearTimeout(id); if (T.wake === done) T.wake = null; r(); } T.wake = done; });
   /* the bubble goes beside the croc's head (right, left or above); beside the big trap-word card while that covers the
@@ -954,5 +956,5 @@
   });
 
   // QA hooks (headless checks)
-  window.__croco = { G, croc, goGame, goTitle, onTooth, startRound, showResult, toothScreen, revealSlot, makeCard, T, HOWTO_KEY, LANG_KEY, lang: () => LANG };
+  window.__croco = { G, croc, goGame, goTitle, onTooth, startRound, showResult, toothScreen, revealSlot, makeCard, T, LANG_KEY, lang: () => LANG, howtoSeen: () => howtoSeen };
 })();
