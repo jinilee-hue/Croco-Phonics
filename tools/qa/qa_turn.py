@@ -6,7 +6,7 @@ from PIL import Image
 from playwright.sync_api import sync_playwright
 
 out = pathlib.Path(sys.argv[1]); out.mkdir(parents=True, exist_ok=True)
-BASE = 'http://127.0.0.1:5211/index.html?shot'
+BASE = 'http://127.0.0.1:5211/index.html?shot&nohowto'
 ARGS = ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required']
 SIZES = [(1180, 820), (1024, 768), (1920, 1080), (820, 1180)]
 MEASURE = """() => {

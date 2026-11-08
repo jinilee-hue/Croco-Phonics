@@ -127,6 +127,8 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 #app.howto .deco > * { opacity: 0 !important; }
 #app.howto .target { top: calc(var(--u) * 2.2); }
 #app.howto .target.intro { transform: translate(-50%, calc(var(--u) * 3.4)) scale(1.25); }
+/* the page opens straight into the explanation (game.js HOWTO_FIRST): no fading out of a title look nobody saw */
+#app.snap, #app.snap * { transition: none !important; }
 /* the game's top bar: logo (left) + EN | 한, sound, home (right); the players sit at the bottom corners */
 .glogo { position: absolute; left: calc(var(--u) * 2.4); top: calc(var(--u) * 1.4); width: calc(var(--u) * 16); height: auto; pointer-events: none;
   filter: drop-shadow(0 calc(var(--u) * .8) calc(var(--u) * 1.2) rgba(130,90,150,.22)); transition: opacity .4s; }

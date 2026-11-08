@@ -48,7 +48,7 @@ with sync_playwright() as p:
     pg = b.new_page(viewport={'width': W, 'height': H})
     errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
-    pg.goto('http://127.0.0.1:5211/index.html?shot')
+    pg.goto('http://127.0.0.1:5211/index.html?shot&nohowto')
     pg.wait_for_function('window.__ready === true && window.__intro === true', timeout=60000)
     pg.evaluate(f'window.__test = {json.dumps(TEST)}')
     pg.click('#start', force=True)

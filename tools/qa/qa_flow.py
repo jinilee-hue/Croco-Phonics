@@ -5,7 +5,7 @@ Takes stills: title, target intro, turn, safe reveal, say-it, docked, alarm, cho
 import sys, time, json, pathlib
 from playwright.sync_api import sync_playwright
 
-BASE = 'http://127.0.0.1:5211/index.html?shot'
+BASE = 'http://127.0.0.1:5211/index.html?shot&nohowto'
 out = pathlib.Path(sys.argv[1]); out.mkdir(parents=True, exist_ok=True)
 W, H = (int(v) for v in (sys.argv[2] if len(sys.argv) > 2 else '1280x800').split('x'))
 mic = sys.argv[3] if len(sys.argv) > 3 else 'heard'

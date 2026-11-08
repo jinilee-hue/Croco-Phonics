@@ -11,6 +11,14 @@
   'use strict';
   const $ = s => document.querySelector(s);
   const app = $('#app');
+  const Q = new URLSearchParams(location.search);
+  // the croc explains the game on the intro BEFORE START, like Magic Block's intro film before its title (?nohowto: not —
+  // the QA scripts). Its logo, cards and START stay out (#app.howto) from the start, under the loading screen.
+  const HOWTO_FIRST = !Q.has('nohowto');
+  if (HOWTO_FIRST) {
+    app.classList.add('howto', 'snap');                  // no fade out of the title's look: it was never meant to show
+    requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove('snap')));
+  }
   const A = window.Sound, Mic = window.Mic;
   const DATA = window.CROCO_WORDS, WORDS = DATA.words, BY = Object.fromEntries(WORDS.map(w => [w.w, w]));
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -44,7 +52,7 @@
   }).catch(() => {});
   // ready once the croc's parts are loaded (QA waits for window.__ready)
   (function waitCroc() {
-    if (croc.ready && window.__croco) { $('#loading').classList.add('done'); introMotion(true); window.__ready = true; } else setTimeout(waitCroc, 50);
+    if (croc.ready && window.__croco) { $('#loading').classList.add('done'); bootIntro(); window.__ready = true; } else setTimeout(waitCroc, 50);
   })();
   const cvCroc = $('#croc');
 
@@ -250,6 +258,7 @@
     do { target = pool[rand(pool.length)]; } while (pool.length > 1 && target === G.lastTarget);
     if (G.nextTarget) { target = G.nextTarget; G.nextTarget = null; }      // the word the intro's explanation used
     if (window.__test && window.__test.target) target = window.__test.target;
+    if (BY[Q.get('target')]) target = Q.get('target');
     G.lastTarget = target; G.target = target;
     const others = shuffle(pool.filter(w => w !== target)).slice(0, croc.N_TEETH - 1);
     G.teeth = shuffle([target, ...others]);
@@ -559,10 +568,11 @@
     if (T.on && T.line) { A.stopVoice(); if (T.wake) T.wake(); }        // the croc says the line again in the new language
   });
 
-  // ── the croc explains the game on the INTRO (title) screen (user: "인트로도 게임설명과 함께 실행되게", picked: "START를
-  //    누르면 인트로 화면에서 악어가 움직이며 설명하고, 끝나면 게임으로 넘어가기"). Like Magic Block (user: "magic block처럼
-  //    인트로에서 게임 설명"): the first START of every visit runs it; Play Again and Home → START in the same visit don't
-  //    (a once-per-device mark hid it for good after one look). ?howto runs it on every START; Skip sits where START was.
+  // ── the croc explains the game on the INTRO (title) screen, before START (user: "인트로에서 스타트 버튼 누르기 전에
+  //    게임설명이 나오면서 스타트 버튼 대신에 skip버튼 나오다가 설명끝나면 다시 스타트 버튼 나오고 스타트 버튼 누르면
+  //    게임시작하는 젠가와 같은 인트로"). Like Magic Block's intro film: it plays as the page opens (every visit) with SKIP
+  //    at the bottom right and no START; when it ends, or on SKIP, the title comes in with START; START starts the game.
+  //    Home → the title with START at once (no explanation). ?nohowto opens straight on the title.
   const TUT = {
     en: {
       tut1: "Hi, friends! I'm Croco!",
@@ -587,11 +597,6 @@
   };
   const T = { tok: 0, on: false, card: null, line: null, wake: null };
   let howtoSeen = false;
-  function needTutorial() {
-    if (/[?&]howto\b/.test(location.search)) return true;
-    if (window.__test) return !!window.__test.howto;                 // QA runs skip it unless they ask for it
-    return !howtoSeen;
-  }
   function howtoDone() { howtoSeen = true; }
   try { localStorage.removeItem('croco.howto.v1'); } catch (e) { /* the old once-per-device mark */ }
   /* a pause the language toggle (and Skip) can cut short */
@@ -688,7 +693,7 @@
     h.classList.remove('show');
     return at;
   }
-  async function runTutorial() {
+  async function runTutorial(lead = 0) {
     const tt = ++T.tok, tok = G.token;
     const live = () => tt === T.tok && tok === G.token && G.screen === 'title';
     const t = $('#target');
@@ -698,7 +703,7 @@
     $('#skip').classList.add('show');
     // the first round's trap word is picked now: the croc explains with it and the game starts with it
     const pool = WORDS.map(w => w.w);
-    const target = (window.__test && window.__test.target) || pool[rand(pool.length)];
+    const target = (BY[Q.get('target')] && Q.get('target')) || (window.__test && window.__test.target) || pool[rand(pool.length)];
     G.nextTarget = target;
     const card = setTargetCard(target);
     T.card = card;
@@ -706,6 +711,7 @@
     t.classList.add('hidden');
     const fr = croc.frontTeeth.length ? croc.frontTeeth : [0, 1, 2, 3];
     const pressI = fr[Math.min(1, fr.length - 1)], biteI = fr[Math.min(2, fr.length - 1)] !== pressI ? fr[Math.min(2, fr.length - 1)] : fr[0];
+    if (lead) { await pause(lead); if (!live()) return false; }       // the croc grows in first (page load)
     // 1 · hello: the croc beams and says hi
     croc.cheer(1700);
     await pause(350);
@@ -805,22 +811,26 @@
     A.sfxPlay('boing');
     await sleep(500);
     if (!live()) return false;
-    // 6 · ready → into the game (its first round uses this trap word)
+    // 6 · ready → the title comes in with START (the game's first round then uses this trap word)
     croc.cheer(1600);
     if (!await tutorSay('tut8', tt)) return false;
     await sleep(250);
     if (!live()) return false;
-    howtoDone();
-    endTutorial();
-    goGame();
+    tutorialToTitle();
     return true;
   }
-  /* Skip: the explanation ends here (and won't come again on this device); the game starts */
+  /* the explanation is over (its last line, or SKIP): the plain screen gives way to the title — the logo, the cards and
+     START come in — and the croc asks for START */
+  function tutorialToTitle() {
+    howtoDone();
+    endTutorial();
+    titleIn(150);
+    setTimeout(() => { if (G.screen === 'title' && !T.on) say('t:pressstart'); }, 150 + 1500);
+  }
+  /* SKIP: the explanation stops here; the title with START comes in */
   function skipTutorial() {
     if (!T.on) return;
-    howtoDone();
     A.stopVoice();
-    endTutorial();
     if (T.card) T.card.classList.remove('say-m', 'say-w');
     for (let i = 0; i < croc.N_TEETH; i++) croc.glow(i, 0);
     croc.resetTeeth(0);
@@ -830,7 +840,7 @@
     croc.look(null);
     croc.reopen();
     A.sfxPlay('whoosh');
-    if (G.screen === 'title') goGame();
+    if (G.screen === 'title') tutorialToTitle(); else { howtoDone(); endTutorial(); }
   }
   $('#skip').addEventListener('click', e => { e.stopPropagation(); A.unlock(); A.sfxPlay('tap'); skipTutorial(); });
 
@@ -838,11 +848,25 @@
      on Home. WAAPI on the individual transform properties (translate / rotate / scale), so each element's own idle CSS
      animation (logo bob, card float, START breathing) keeps running underneath. The croc grows in without a bounce. */
   const IM = [];
+  let introTimer = null;
   function introMotion(first) {
-    IM.splice(0).forEach(a => a.cancel());
     const d0 = first ? 550 : 120;
-    const E = (el, kf, o) => { if (el) IM.push(el.animate(kf, Object.assign({ fill: 'backwards' }, o))); };
     if (first) croc.enter(1150); else croc.cheer(1200);
+    titleIn(d0);
+    if (first) setTimeout(() => { if (G.screen === 'title' && !T.on) croc.cheer(1300); }, d0 + 1250);
+  }
+  /* the page opens: the croc grows in and explains the game at once; START waits until the explanation is over */
+  function bootIntro() {
+    if (!HOWTO_FIRST) { introMotion(true); return; }
+    window.__intro = false;
+    croc.enter(1150);
+    runTutorial(1500);
+  }
+  /* the title's own entrance: the logo drops in, the cards are dealt, the letters pop, START pops last
+     (__intro = true once START is up) */
+  function titleIn(d0) {
+    IM.splice(0).forEach(a => a.cancel());
+    const E = (el, kf, o) => { if (el) IM.push(el.animate(kf, Object.assign({ fill: 'backwards' }, o))); };
     E($('.title .logo'), [
       { translate: '0 -55vh', scale: 0.55, rotate: '-8deg', opacity: 0 },
       { translate: '0 1.6vh', scale: 1.05, rotate: '2deg', opacity: 1, offset: 0.6 },
@@ -862,9 +886,9 @@
     document.querySelectorAll('.deco .l3d').forEach((el, k) => E(el, [
       { scale: 0, opacity: 0 }, { scale: 1.2, opacity: 1, offset: 0.6 }, { scale: 1, opacity: 1 }], { duration: 560, delay: d0 + 900 + k * 90, easing: 'ease-out' }));
     E($('#start'), [{ scale: 0, opacity: 0 }, { scale: 1.12, opacity: 1, offset: 0.65 }, { scale: 1, opacity: 1 }], { duration: 620, delay: d0 + 1500, easing: 'ease-out' });
-    if (first) setTimeout(() => { if (G.screen === 'title' && !T.on) croc.cheer(1300); }, d0 + 1250);
     window.__intro = false;
-    setTimeout(() => { window.__intro = true; }, d0 + 2250);
+    clearTimeout(introTimer);
+    introTimer = setTimeout(() => { window.__intro = true; }, d0 + 2250);
   }
   applyLang();
 
@@ -875,7 +899,7 @@
     A.sfxPlay('pop');
     Mic.init();
     A.startBgm(0.1);
-    if (needTutorial()) runTutorial(); else goGame();
+    goGame();
   });
   $('#again').addEventListener('click', () => {
     A.sfxPlay('pop');

@@ -3,7 +3,7 @@ from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     b = p.chromium.launch(channel='chrome', headless=True, args=['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'])
     pg = b.new_page(viewport={'width': 1280, 'height': 800})
-    pg.goto('http://127.0.0.1:5211/index.html')
+    pg.goto('http://127.0.0.1:5211/index.html?nohowto')
     pg.wait_for_function('window.__ready === true', timeout=60000)
     time.sleep(3)
     info = pg.evaluate('''() => {

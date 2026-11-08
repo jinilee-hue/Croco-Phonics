@@ -1,11 +1,11 @@
-"""QA: the intro (entrance motion + the croc's explanation on the title), EN | 한, Skip, first-time-only, the bottom-corner
-players / top bar, the mic on the croc's lower jaw, and long words inside the cards.
+"""QA: the intro like Magic Block's (the croc explains as the page opens, SKIP instead of START, then the title with
+START, START = game), EN | 한, the bottom-corner players / top bar, the mic on the croc's lower jaw, long words.
 usage: uv run --with playwright --with pillow python tools/qa/qa_tutor.py <outdir> [WxH ...]   (default 1180x820)
-  0  the entrance after loading: frames 0–2 s (logo drops, croc grows in, cards dealt, START pops)
-  1  START (first time) at each size: the explanation on the intro screen, a frame per line; the bubble must stay on
-     screen and off cards / avatars / logo / buttons; it ends in the game (turn pill) with the explanation's trap word
-  2  the visit rule (Magic Block): a fresh visit's first START explains; Home → START in the same visit doesn't
-  3  한 + Skip: Korean bubbles; switching EN | 한 mid-line re-says the line; Skip → game, nothing left over
+  0  the page opens: frames 0–3.5 s (the croc grows in and starts explaining; START hidden, SKIP shown)
+  1  each size: the explanation from the page load, a frame per line; the bubble must stay on screen and off cards /
+     avatars / logo / buttons; it ends on the TITLE with START (nothing left over); START → the game with its trap word
+  2  Home → the title with START at once (no explanation) → START = game; a reload explains again
+  3  한 + SKIP: Korean bubbles; switching EN | 한 mid-line re-says the line; SKIP → the title with START, then the game
   4  the say-it mic sits on the croc's lower jaw (no-mic countdown), players at the bottom, top bar
   5  every word on every kind of card: text width / inside width (must stay under .9: room for the say-it glow)
 """
@@ -27,9 +27,16 @@ STATE = """() => {
   }).map(el => (el.id || el.className || el.tagName).toString().slice(0, 30)) : [];
   return { txt: b.querySelector('p').textContent, show, hits, tail: b.dataset.tail, screen: __croco.G.screen,
     inView: br.left >= 0 && br.top >= 0 && br.right <= innerWidth && br.bottom <= innerHeight,
+    on: __croco.T.on, intro: window.__intro === true,
+    start: +getComputedStyle(document.querySelector('#start')).opacity, logo: +getComputedStyle(document.querySelector('.title .logo')).opacity,
     skip: document.querySelector('#skip').classList.contains('show'), turn: document.querySelector('#turn').classList.contains('show'),
     demo: !!document.querySelector('.flyer.demo'), alarm: document.querySelector('#target').classList.contains('alarm') };
 }"""
+AFTER = """() => ({ screen: __croco.G.screen, on: __croco.T.on, seen: __croco.howtoSeen(), nextTarget: __croco.G.nextTarget,
+  howto: document.querySelector('#app').classList.contains('howto'), skip: document.querySelector('#skip').classList.contains('show'),
+  bubble: document.querySelector('#bubble').classList.contains('show'), glow: __croco.croc.teeth.some(t => t.glow > 0),
+  flyers: document.querySelectorAll('.flyer').length, hud: +getComputedStyle(document.querySelector('.hud')).opacity,
+  start: +getComputedStyle(document.querySelector('#start')).opacity, logo: +getComputedStyle(document.querySelector('.title .logo')).opacity })"""
 
 
 def sheet(frames, name, W, H, cols=4):
@@ -46,24 +53,36 @@ def sheet(frames, name, W, H, cols=4):
 
 
 def run_tutorial(pg, tag, W, H, limit=95):
+    """a frame per line until the explanation is over and START is up on the title"""
     frames, seen, bad, t0 = [], set(), [], time.time()
     while time.time() - t0 < limit:
         st = pg.evaluate(STATE)
-        key = (st['txt'], st['show'], st['demo'], st['alarm'], st['turn'], st['screen'])
-        if key not in seen and (st['show'] or st['turn'] or st['demo']):
+        key = (st['txt'], st['show'], st['demo'], st['alarm'], st['screen'])
+        if key not in seen and (st['show'] or st['demo']):
             seen.add(key)
             time.sleep(0.45)
             st = pg.evaluate(STATE)
             f = out / f'{tag}_{len(frames):02d}.png'
             pg.screenshot(path=str(f))
-            frames.append((f"{round(time.time() - t0, 1)}s {st['screen'][:1]} {st['tail'] if st['show'] else ''} {st['txt'] if st['show'] else ('TURN' if st['turn'] else '')}", f))
+            frames.append((f"{round(time.time() - t0, 1)}s {st['tail'] if st['show'] else ''} {st['txt'] if st['show'] else ''} start {st['start']:.1f}", f))
             if st['show'] and (st['hits'] or not st['inView']):
                 bad.append((st['txt'], st['hits'], 'in view' if st['inView'] else 'OFF SCREEN'))
-        if st['turn']:
+            if st['start'] > 0.05 or not st['skip']:
+                bad.append((st['txt'], f"START opacity {st['start']} / SKIP shown {st['skip']} during the explanation"))
+        if not st['on'] and st['intro']:
             break
         time.sleep(0.1)
+    f = out / f'{tag}_{len(frames):02d}_title.png'
+    pg.screenshot(path=str(f))
+    frames.append((f"{round(time.time() - t0, 1)}s → title, START {pg.evaluate(STATE)['start']:.1f}", f))
     sheet(frames, f'{tag}.png', W, H)
     return frames, bad, round(time.time() - t0, 1)
+
+
+def start_game(pg):
+    pg.click('#start', force=True)
+    pg.wait_for_function("document.querySelector('#turn').classList.contains('show')", timeout=20000)
+    return pg.evaluate("({screen: __croco.G.screen, target: __croco.G.target})")
 
 
 with sync_playwright() as p:
@@ -79,53 +98,50 @@ with sync_playwright() as p:
 
     for n, (W, H) in enumerate(SIZES):
         ctx, pg = page(W, H)
-        pg.goto(BASE + '?shot')
+        pg.goto(BASE + '?shot&target=map')
         pg.wait_for_function('window.__ready === true', timeout=60000)
         if n == 0:
-            # ── 0. the entrance motion right after loading ──
-            fr, t0 = [], time.time()
-            for k in range(9):
-                f = out / f'enter_{k}.png'
+            # ── 0. the page opens: the croc grows in and starts explaining; SKIP, no START ──
+            fr, t0, st0 = [], time.time(), []
+            for k in range(8):
+                f = out / f'open_{k}.png'
                 pg.screenshot(path=str(f))
-                fr.append((f'{round(time.time() - t0, 2)}s', f))
-                time.sleep(0.22)
-            sheet(fr, 'enter.png', W, H, cols=3)
-        pg.wait_for_function('window.__intro === true', timeout=15000)
-        # ── 1. START → the explanation on the intro screen → the game ──
-        pg.evaluate("window.__test = {howto: true, heard: true}")
-        pg.click('#start', force=True)
+                st = pg.evaluate(STATE)
+                st0.append((round(time.time() - t0, 1), round(st['start'], 2), round(st['logo'], 2), st['skip'], st['show']))
+                fr.append((f"{round(time.time() - t0, 2)}s start {st['start']:.1f} skip {st['skip']}", f))
+                time.sleep(0.45)
+            sheet(fr, 'open.png', W, H, cols=4)
+            print('0 open (t, START opacity, logo opacity, SKIP, bubble):', st0)
+        # ── 1. the explanation from the page load → the title with START → START = game ──
         frames, bad, secs = run_tutorial(pg, f'tut_{W}x{H}', W, H)
-        flag = pg.evaluate("__croco.howtoSeen()")
-        after = pg.evaluate("({screen: __croco.G.screen, target: __croco.G.target, howto: document.querySelector('#app').classList.contains('howto'), skip: document.querySelector('#skip').classList.contains('show'), bubble: document.querySelector('#bubble').classList.contains('show'), glow: __croco.croc.teeth.some(t => t.glow > 0), flyers: document.querySelectorAll('.flyer').length})")
-        print(f'1 {W}x{H}: {secs} s, frames {len(frames)}, flag {flag}, after {after}')
-        print('  bubble problems:', bad or 'none')
+        time.sleep(0.3)
+        after = pg.evaluate(AFTER)
+        print(f'1 {W}x{H}: {secs} s, frames {len(frames)}, after {after}')
+        print('  problems:', bad or 'none')
+        g = start_game(pg)
+        print('  START →', g)
         if n == 0:
-            # ── 2. the visit rule: Home → START in the same visit goes straight to the game ──
-            pg.evaluate("delete window.__test")
+            # ── 2. Home → the title with START at once; a reload explains again ──
             pg.click('#btnHome')
+            time.sleep(0.4)
+            h = pg.evaluate(AFTER)
             pg.wait_for_function('window.__intro === true', timeout=15000)
-            pg.click('#start', force=True)
-            time.sleep(0.6)
-            s2 = pg.evaluate("({screen: __croco.G.screen, howto: document.querySelector('#app').classList.contains('howto')})")
-            # … and a fresh visit (reload, no test hooks) explains again
-            pg.goto(BASE)
-            pg.wait_for_function('window.__ready === true && window.__intro === true', timeout=60000)
-            pg.click('#start', force=True)
-            time.sleep(1.2)
-            s2b = pg.evaluate("({screen: __croco.G.screen, howto: document.querySelector('#app').classList.contains('howto'), skip: document.querySelector('#skip').classList.contains('show')})")
-            print('2 same visit, Home → START:', s2, '| new visit START:', s2b)
+            h2 = pg.evaluate(AFTER)
+            g2 = start_game(pg)
+            pg.goto(BASE + '?shot')
+            pg.wait_for_function('window.__ready === true', timeout=60000)
+            pg.wait_for_function("document.querySelector('#bubble').classList.contains('show')", timeout=10000)
+            r = pg.evaluate(AFTER)
+            print('2 Home: on', h['on'], 'skip', h['skip'], '→ START up', h2['start'], '| START →', g2['screen'], '| reload: explaining', r['on'], 'skip', r['skip'], 'START', r['start'])
         ctx.close()
 
     W, H = SIZES[0]
-    # ── 3. 한: Korean bubbles, EN|한 mid-line, Skip ──
+    # ── 3. 한: Korean bubbles, EN|한 mid-line, SKIP → the title with START ──
     ctx, pg = page(W, H)
-    pg.goto(BASE + '?shot')
+    pg.goto(BASE + '?shot&nohowto')
     pg.evaluate("localStorage.setItem('croco.lang.v1', 'ko')")
-    pg.goto(BASE + '?shot')
-    pg.wait_for_function('window.__ready === true && window.__intro === true', timeout=60000)
-    pg.screenshot(path=str(out / 'ko_0_title.png'))
-    pg.evaluate("window.__test = {howto: true, heard: true}")
-    pg.click('#start', force=True)
+    pg.goto(BASE + '?shot&target=mitt')
+    pg.wait_for_function('window.__ready === true', timeout=60000)
     pg.wait_for_function("document.querySelector('#bubble').classList.contains('show')", timeout=10000)
     time.sleep(0.5)
     t1 = pg.evaluate("document.querySelector('#bubble p').textContent")
@@ -144,17 +160,20 @@ with sync_playwright() as p:
     pg.screenshot(path=str(out / 'ko_3_before_skip.png'))
     pg.click('#skip')
     t0 = time.time()
-    pg.wait_for_function("document.querySelector('#turn').classList.contains('show')", timeout=20000)
-    time.sleep(0.8)
+    pg.wait_for_function('window.__intro === true', timeout=20000)
     pg.screenshot(path=str(out / 'ko_4_after_skip.png'))
-    s3 = pg.evaluate("({seen: __croco.howtoSeen(), screen: __croco.G.screen, flyers: document.querySelectorAll('.flyer').length, bubble: document.querySelector('#bubble').classList.contains('show'), skip: document.querySelector('#skip').classList.contains('show'), howto: document.querySelector('#app').classList.contains('howto'), turnText: document.querySelector('#turn .t').textContent, names: [...document.querySelectorAll('.player .name')].map(e => e.textContent)})")
-    print(f'  skip: turn after {round(time.time() - t0, 1)} s, {s3}')
+    s3 = pg.evaluate(AFTER)
+    print(f'  skip: START up after {round(time.time() - t0, 1)} s, {s3}')
+    g3 = start_game(pg)
+    time.sleep(0.6)
+    pg.screenshot(path=str(out / 'ko_5_game.png'))
+    print('  START →', g3, pg.evaluate("({turnText: document.querySelector('#turn .t').textContent, names: [...document.querySelectorAll('.player .name')].map(e => e.textContent)})"))
     ctx.close()
 
     # ── 4. the mic on the croc's lower jaw (no mic → countdown), players at the bottom ──
     for W, H in SIZES:
         ctx, pg = page(W, H)
-        pg.goto(BASE + '?shot')
+        pg.goto(BASE + '?shot&nohowto')
         pg.wait_for_function('window.__ready === true && window.__intro === true', timeout=60000)
         pg.evaluate("window.__test = {mic: false, target: 'moon', teeth: ['map','milk','moon','mouse','monkey','mug','mop','man','meat','mitt']}")
         pg.click('#start', force=True)
@@ -173,7 +192,7 @@ with sync_playwright() as p:
     # ── 5. long words ──
     W, H = SIZES[0]
     ctx, pg = page(W, H)
-    pg.goto(BASE + '?shot')
+    pg.goto(BASE + '?shot&nohowto')
     pg.wait_for_function('window.__ready === true', timeout=60000)
     time.sleep(0.6)
     res = pg.evaluate("""() => {

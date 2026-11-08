@@ -1,7 +1,7 @@
 """file:// check: the page opened straight from disk must run the whole loop (fonts, voice from base64, 3D)."""
 import time, json
 from playwright.sync_api import sync_playwright
-URL = 'file:///Users/jini/Documents/Jini/2026/Phonics/Croco-Phonics/index.html?shot'
+URL = 'file:///Users/jini/Documents/Jini/2026/Phonics/Croco-Phonics/index.html?shot&nohowto'
 with sync_playwright() as p:
     b = p.chromium.launch(channel='chrome', headless=True, args=['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'])
     pg = b.new_page(viewport={'width': 1180, 'height': 820})

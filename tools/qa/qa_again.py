@@ -7,7 +7,7 @@ with sync_playwright() as p:
     errs = []
     pg.on('pageerror', lambda e: errs.append(f'PAGEERROR {e}'))
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and 'favicon' not in m.text else None)
-    pg.goto('http://127.0.0.1:5211/index.html?shot')
+    pg.goto('http://127.0.0.1:5211/index.html?shot&nohowto')
     pg.wait_for_function('window.__ready === true && window.__intro === true', timeout=60000)
     pg.evaluate("window.__test = {heard: true}")
     # title poke: click the croc's head
