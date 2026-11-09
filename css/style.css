@@ -130,7 +130,9 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 
 /* ── title ────────────────────────────────────────────────────────────────────────────────────────── */
 .title { position: absolute; inset: 0; pointer-events: none; transition: opacity .5s; }
-.title .logo { position: absolute; left: 50%; top: calc(var(--u) * 1.2); width: min(44vw, calc(var(--u) * 50)); transform: translateX(-50%);
+/* top 4.2u (user: "로고도 지금보다 조금 내려줘"; was 1.2u): closer to the croc, still clear of its head at every size — 5u touched
+   it at 1280×800 (scratch pm/croco_logo.py) */
+.title .logo { position: absolute; left: 50%; top: calc(var(--u) * 4.2); width: min(44vw, calc(var(--u) * 50)); transform: translateX(-50%);
   filter: drop-shadow(0 calc(var(--u) * 1.2) calc(var(--u) * 1.6) rgba(130,90,150,.25)); animation: logoBob 4.8s ease-in-out 2s infinite; }
 @keyframes logoBob { 50% { transform: translateX(-50%) translateY(calc(var(--u) * -1)) rotate(-1deg); } }
 .start { position: absolute; left: 50%; bottom: calc(var(--u) * 4.5); transform: translateX(-50%); pointer-events: auto;
@@ -267,7 +269,9 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 }
 
 /* the croc tutor's speech bubble + Skip (first game only: game.js runTutorial) */
-.bubble { position: absolute; left: 0; top: 0; max-width: calc(var(--u) * 36); z-index: 9; pointer-events: none; --bd: #8fcf8b;
+/* no green outline (user: "게임설명하는 말풍선에 초록색 라인은 빼줘"): --bd = the fill's cream, so the border and the tail's
+   outer triangle melt into it and the bubble keeps its size and tail (placeBubble measures it); the soft shadow sets it off */
+.bubble { position: absolute; left: 0; top: 0; max-width: calc(var(--u) * 36); z-index: 9; pointer-events: none; --bd: #fffaf2;
   padding: calc(var(--u) * 1.9) calc(var(--u) * 2.8) calc(var(--u) * 2.1); background: #fffaf2; border: calc(var(--u) * .6) solid var(--bd);
   border-radius: calc(var(--u) * 3.2); box-shadow: 0 calc(var(--u) * 1) calc(var(--u) * 2.4) rgba(50,80,60,.22), inset 0 calc(var(--u) * -.45) 0 rgba(150,110,70,.1);
   opacity: 0; visibility: hidden; transition: opacity .25s, visibility 0s .25s; }
