@@ -53,17 +53,19 @@
 |---|---|---|
 | 1 | L1 Mm (p.9–20) | man, map, meat, milk, mirror, mitt, monkey, moon, mop, mouse, mug, mushroom |
 | 2 | L2 Short a (p.21–34) | ant, apple, bag, cap, cat, fan, hat, van |
-| 3 | L3 Ss (p.35–48) | seal, see, seven, sink, sock, soup, spoon, sun |
-| 4 | L4 Tt (p.49–62) | tail, ten, tent, tie, toe, turkey, turtle |
-| 5 | L5 Pp (p.63–76) | pencil, pie, pillow, pop, popcorn, pot |
+| 3 | L3 Ss (p.35–48) | seal, see, seven, sink, sip, sock, soup, spoon, sun |
+| 4 | L4 Tt (p.49–62) | tail, ten, tent, tie, toe, toy, turkey, turtle |
+| 5 | L5 Pp (p.63–76) | paint, pencil, pie, pillow, pop, popcorn, pot |
 | 6 | L6 Nn (p.79–90) | nail, nap, nest, net, nose, nut |
-| 7 | L7 Short i (p.91–102) | big, fish, ink, pin, sit |
-| 8 | L8 Cc (p.103–114) | cake, cap, cat, comb, cow, cup |
-| 9 | L9 Ff (p.115–126) | fan, fat, fire, fish, fit, foot, fork, four |
-| 10 | L10 Dd (p.127–138) | dig, dip, dog, doll, door, duck |
+| 7 | L7 Short i (p.91–102) | big, fish, ink, pin, pit, sit |
+| 8 | L8 Cc (p.103–114) | cake, cap, cat, comb, cook, cow, cup |
+| 9 | L9 Ff (p.115–126) | face, fan, fat, feel, fire, fish, fit, foot, fork, four |
+| 10 | L10 Dd (p.127–138) | dig, dip, dirt, dog, doll, door, dry, duck |
 - 출처: SAD·FPR 단어 연구 자료집 `~/dev/sadfpr-studio/data/b2_book_FPRK.json` — 각 레슨 쪽에 나오는 단어 중 그 레슨 소리를 가진 것
   (자음 레슨은 그 글자로 시작, 짧은 모음 레슨은 그 모음으로 시작하거나 c-a-t처럼 가운데 짧은 모음, sh·ch·th 등 이중자음과 c/g 연음은 제외).
 - 그림카드(공식 FPR K 그림: 매직블록·파닉스 아일랜드와 같은 그림)와 아이 목소리 음성이 둘 다 있는 단어만 쓴다. 기능어(my, in, it, no …)는 뺀다.
+  공식 그림카드는 있는데 음성이 없던 단어(sip, toy, paint, pit, cook, face, feel, dirt, dry)는 회사 TTS가 같은 목소리로 읽었다
+  (`words.js` `needVoice` → `build_voice.py` → `build_words.py` 다시 → `build_voice.py` 다시).
 - 레슨 11 이후는 공식 그림카드·음성이 아직 없어 레벨이 아니다(스크립트 출력에 레슨마다 빠진 이유가 나온다). 그림과 음성이 생기면 다시 실행.
 - 레벨 1은 처음 정한 12단어 그대로(스크립트가 확인).
 
@@ -72,7 +74,7 @@
   서버는 `tools/serve.py`(캐시 안 함: 고친 뒤 그냥 새로고침해도 최신 파일이 보임).
 - `index.html` 더블클릭(file://)도 동작 (음성·폰트는 js/css에 내장).
 - 테스트 훅: `window.__test = { mic:false | heard:true, target:'moon', teeth:[...] }`, `window.__croco`(LEVELS, setLevel, levelUp …), 주소 `?nohowto` · `?target=` · `?level=`.
-- QA(`tools/qa/`): `qa_flow`·`qa_sizes`·`qa_again`·`qa_file`·`qa_cards`(카드 비행)·`qa_tutor`(페이지 열리면 설명 → START 타이틀 → 게임, 홈, EN|한, Skip, 마이크 위치, 긴 단어)·`qa_levels`(레벨마다 음성·카드·이빨 글자, 다음 레벨·다시 하기·마지막 레벨)·`qa_wins`(덥석 뒤 음가+단어 다시 읽기 순서, 레벨별 승리 칩 개수·겹침 3사이즈)·`console`(SDF 경고).
+- QA(`tools/qa/`): `qa_flow`·`qa_sizes`·`qa_again`·`qa_file`·`qa_cards`(카드 비행)·`qa_tutor`(페이지 열리면 설명 → START 타이틀 → 게임, 홈, EN|한, Skip, 마이크 위치, 긴 단어)·`qa_levels`(레벨마다 음성·카드·이빨 글자, 다음 레벨·다시 하기·마지막 레벨)·`qa_wins`(덥석 뒤 음가+단어 다시 읽기 순서, 레벨별 승리 칩 개수·겹침 3사이즈)·`qa_tutor_voice`(설명 음성: 소리 잠김 때 말풍선 시간, 첫 터치에 지금 줄부터 읽기, tut1–8 순서·말풍선 글자 일치·겹침 없음, 한국어)·`console`(SDF 경고).
   QA는 `window.__ready && window.__intro`(등장 모션 끝)를 기다린 뒤 START를 누른다.
 
 ## 구성
@@ -99,8 +101,13 @@
 ```
 zsh -ic '/Users/jini/.hermes/bin/uv run --with numpy python tools/build_voice.py'
 ```
-(새 대사가 없으면 게임은 그 대사만 건너뛰고 진행한다. 튜터 설명은 말풍선만 읽을 시간만큼 띄운다.
- "Now say the word."/"이제 단어를 읽어 봐."·"Uh-oh!"/"앗!"처럼 기존 음성이 대사 일부를 말해 주는 줄은 그 음성을 쓴다.)
+(새 대사가 없으면 게임은 그 대사만 건너뛰고 진행한다. "Now say the word."/"이제 단어를 읽어 봐."·"Uh-oh!"/"앗!"처럼 기존 음성이
+ 대사 일부를 말해 주는 줄은 그 음성을 쓴다.) 2026-11-09 회사 TTS로 전부 생성(대사 12개 × 영·한 + 위 단어 9개).
+- 확인: 만든 음성은 Whisper(medium)로 다시 받아 적어 글자와 맞는지, 군소리(웃음·반복)가 없는지 본다. TTS는 같은 입력을 늘 똑같이 읽으므로
+  틀린 것은 지시문 바꾸기(`TAKE_OF`: k:chomp 웃음, t:tut7 "Jump", k:tut6 끝말, w:sip "zip")나 입력 바꾸기(`TEXT_OF`: pit→`Pit.`
+  — "cut"으로 읽힘, paint→`Paint` — "pink", sip→`Sip`)로 고친다.
+- 설명 음성: 브라우저는 첫 터치 전엔 소리를 못 내므로, 페이지를 열자마자 나오는 설명은 말풍선만 읽을 시간만큼 띄운다. 설명 중 화면을
+  한 번 누르면(버튼 말고) 소리가 켜지면서 지금 말풍선부터 바로 소리 내어 읽는다. 홈에서 돌아온 타이틀은 첫 터치 때 인사(hello).
 
 ## 레퍼런스
 - 화면: 사용자 제공 인트로/게임 화면 이미지, 인터랙션: `~/Downloads/gemini_generated_video_46830cdd.mp4`

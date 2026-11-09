@@ -46,7 +46,8 @@ with sync_playwright() as p:
     pg.mouse.click(pos['x'], pos['y'])
     time.sleep(1.1); shot('09_alarm')
     time.sleep(0.75); shot('10_chomp')
-    time.sleep(2.2); shot('11_result')
+    # the result comes after the chomp line and the trap word read once more (its sound, then the word)
+    pg.wait_for_function("__croco.G.screen === 'result'", timeout=20000); time.sleep(1.0); shot('11_result')
     print('pressed', pg.evaluate('[...__croco.G.pressed]'), 'got', pg.evaluate('__croco.G.got'), 'screen', pg.evaluate('__croco.G.screen'))
     for l in logs[:25]:
         print(l)

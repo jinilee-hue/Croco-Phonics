@@ -668,7 +668,7 @@
       tut8: '준비됐니? 시작하자!',
     },
   };
-  const T = { tok: 0, on: false, card: null, line: null, wake: null };
+  const T = { tok: 0, on: false, card: null, line: null, wake: null, again: false };
   let howtoSeen = false;
   function howtoDone() { howtoSeen = true; }
   try { localStorage.removeItem('croco.howto.v1'); } catch (e) { /* the old once-per-device mark */ }
@@ -717,26 +717,30 @@
     b.style.top = Math.min(H - pick.bh - m, Math.max(m, pick.y)) + 'px';
     b.dataset.tail = pick.side;
   }
-  /* one line in the chosen language: the bubble pops up with it, the croc talks, the voice plays. Without the line's
-     clip yet (company TTS), o.voice plays an existing clip that says part of it, else the bubble stays up for a
+  /* one line in the chosen language: the bubble pops up with it, the croc talks, the voice plays (company-TTS 'tutN'
+     clips; without one, o.voice plays an existing clip that says part of it). When no voice plays — the browser plays
+     none before the first tap, so the explanation on opening the page is bubbles only — the bubble stays up for a
      reading time. Switching EN | 한 mid-line says the line again in the other language. */
   async function tutorSay(key, tt, o = {}) {
     const b = $('#bubble');
     T.line = key;
     for (;;) {
+      T.again = false;
       const lang = LANG, text = TUT[lang][key];
       b.querySelector('p').textContent = text;
       placeBubble();
       b.classList.add('show');
       b.animate([{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'none' }], { duration: 380, easing: 'cubic-bezier(.2,.9,.3,1.4)' });
       if (o.talk !== false) croc.talk(1);
-      const own = (lang === 'ko' ? 'k:' : 't:') + key, alt = o.voice ? A.voiceKey(o.voice) : null;
-      if (A.has(own)) await Promise.all([A.say(own), pause(700)]);
-      else if (alt && A.has(alt) && (lang === 'ko') === alt.startsWith('k:')) await Promise.all([A.say(o.voice), pause(900 + text.length * (lang === 'ko' ? 90 : 45))]);
-      else await pause(1000 + text.length * (lang === 'ko' ? 110 : 58));
+      const own = (lang === 'ko' ? 'k:' : 't:') + key, alt = o.voice ? A.voiceKey(o.voice) : null, t0 = performance.now();
+      let voiced = false;
+      if (A.has(own)) voiced = (await Promise.all([A.say(own), pause(700)]))[0];
+      else if (alt && A.has(alt) && (lang === 'ko') === alt.startsWith('k:')) voiced = (await Promise.all([A.say(o.voice), pause(900 + text.length * (lang === 'ko' ? 90 : 45))]))[0];
+      // no voice (no sound before the first tap, or no clip): the bubble stays up for a reading time
+      if (!voiced && !T.again && tt === T.tok && lang === LANG) await pause(Math.max(0, 1000 + text.length * (lang === 'ko' ? 110 : 58) - (performance.now() - t0)));
       croc.talk(0);
       if (tt !== T.tok) return false;
-      if (lang === LANG) break;
+      if (lang === LANG && !T.again) break;                      // T.again: the sound just came on — say it aloud
     }
     T.line = null;
     return true;
@@ -1052,8 +1056,12 @@
 
   // first touch anywhere on the title: sound on + a hello
   let greeted = false;
-  window.addEventListener('pointerdown', () => {
+  window.addEventListener('pointerdown', e => {
+    const first = !A.ctx;
     A.unlock();
+    // the explanation runs silent until the first tap (the browser's rule): that tap → the croc says the line on screen
+    // aloud now. Buttons keep their own job.
+    if (first && T.on && T.line && T.wake && !e.target.closest('button')) { T.again = true; T.wake(); }
     if (!greeted && G.screen === 'title') {
       greeted = true;
       A.startBgm(0.1);

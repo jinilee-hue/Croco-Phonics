@@ -4,6 +4,9 @@ One voice for the whole game = the company TTS boy voice Magic Block (Phonics-Je
 cheerful 7-year-old boy) — the user picked it for Phonics Island; no device speechSynthesis (differs per device).
 - WORDS: every level's words (js/words.js, tools/build_words.py): Magic Block's clip when it has one (w_*), else
   Phonics Island's word clip (speaker 'learn', the same voice; trimmed and levelled here).
+  A word with an official card but no clip anywhere (words.js needVoice) is read by the company TTS (same voice,
+  Phonics Island's word-reading instruction W_INS) and cached; tools/build_words.py then takes it in (run it again,
+  then this again).
 - LETTER SOUNDS: every level's official FPR K recording (s_*): Magic Block's trimmed take when it has one, else
   Phonics Island's copy of the FPR K file (public/fpr), trimmed and levelled here like Magic Block's.
 - REUSED from Phonics-Jenga public/voice (same engine, already read-back checked there): shared lines (turns, say it,
@@ -38,12 +41,25 @@ CACHE = pathlib.Path.home() / '.cache' / 'croco-phonics' / 'voice_qwen'
 SR = 24000
 QWEN_URL, QWEN_KEY = os.environ.get('TTS_BASE_URL', '').rstrip('/'), os.environ.get('LLM_API_KEY', '')
 QWEN_VOICE = 'aiden'
+# words: Phonics Island's 'learn' instruction first (its word clips, most of the levels' words, were read with it)
+W_INS = ['Speak like a cheerful 7-year-old boy, slowly and very clearly, for a child learning English sounds.',
+         'Say this one English word once, like a cheerful 7-year-old boy, slowly and very clearly.',
+         'Like a cheerful 7-year-old boy, read the word once, clearly, for a phonics lesson.']
+# takes picked by the read-back check (Whisper medium + voiced segments; scratch pick_takes.py): key → instruction variant.
+# The company TTS reads the same input the same way every time, so a different take needs a different instruction.
+#   k:chomp 0 put a laugh ("하하") in the middle; t:tut7 0 sounded like "Jump"; k:tut6 0 ended "…단어요"; w:sip 0 "zip"/"dip"
+TAKE_OF = {'k:chomp': 2, 't:tut7': 1, 'k:tut6': 2, 'w:sip': 1}
+# a different input for the TTS where the word as written comes out wrong (key → text it reads; scratch pick_word.py):
+#   pit → "cut" / "P-P-P…", paint → "pink", sip → a second sound after the word
+TEXT_OF = {'w:pit': 'Pit.', 'w:paint': 'Paint', 'w:sip': 'Sip'}
 T_INS = ['Speak like a cheerful, energetic 7-year-old boy: bright and excited.',
          'Speak like a cheerful, energetic 7-year-old boy, bright and excited, clearly.',
          'Like a cheerful, energetic 7-year-old boy: bright, excited and clear.']
 
 ISLAND = pathlib.Path.home() / 'Documents/Jini/2026/Phonics/Phonics_island/phonics-island-3d/public'
-LEVELS = json.loads((ROOT / 'js' / 'words.js').read_text(encoding='utf-8').split('=', 1)[1].rstrip().rstrip(';'))['levels']
+WJ = json.loads((ROOT / 'js' / 'words.js').read_text(encoding='utf-8').split('=', 1)[1].rstrip().rstrip(';'))
+LEVELS = WJ['levels']
+NEED_VOICE = WJ.get('needVoice', [])
 WORDS = list(dict.fromkeys(w['w'] for lv in LEVELS for w in lv['words']))
 SOUNDS = list(dict.fromkeys(lv['sound'] for lv in LEVELS))
 REUSE_T = ['turn1', 'turn2', 'sayit', 'great1', 'great2', 'great3', 'uhoh', 'win1', 'win2', 'playagain',
@@ -52,9 +68,7 @@ REUSE_K = [k for k in REUSE_T if k != 'great1']        # Magic Block's Korean ta
 NEW = {
     'hello': 'Hi, friends! Welcome to Croco Phonics!',
     'rule': 'Watch out for this word!',
-    'safe': 'Phew! Safe!',
     'chomp': 'Chomp! The croc got you!',
-    'howto': 'Press a tooth and say the word!',
     'levelup': "Level up! Let's learn a new sound!",
     # the croc tutor's explanation (first game only; game.js TUT has the same texts for its bubbles)
     'tut1': "Hi, friends! I'm Croco!",
@@ -70,9 +84,7 @@ NEW = {
 NEW_KO = {
     'hello': '안녕, 친구들! 크로코 파닉스에 온 걸 환영해!',
     'rule': '이 단어를 조심해!',
-    'safe': '휴! 괜찮아!',
     'chomp': '덥석! 악어한테 잡혔다!',
-    'howto': '이빨을 누르고 단어를 말해 봐!',
     'levelup': '레벨 업! 새로운 소리를 배워 보자!',
     'tut1': '안녕, 친구들! 나는 크로코야!',
     'tut2': '이건 함정 단어야.',
@@ -114,7 +126,7 @@ def island_key(text, speaker='learn'):
             return out
 
 
-island_words, island_sounds = [], []
+island_words, island_sounds, tts_words = [], [], []
 for k in REUSE_T:
     reuse(f't:{k}')
     lines[k] = jv['lines'][k]
@@ -126,9 +138,10 @@ for k in REUSE_K:
 for w in WORDS:
     if f'w:{w}' in jv['clips']:
         reuse(f'w:{w}')
-    else:
-        assert island_key(w) in island_keys, f'no voice for {w} (tools/build_words.py only keeps words with one)'
+    elif island_key(w) in island_keys:
         island_words.append(w)
+    else:
+        tts_words.append(w)                                 # a company-TTS take (cached), below
 for L in SOUNDS:
     if f's:{L}' in jv['clips']:
         reuse(f's:{L}')
@@ -165,7 +178,7 @@ def trim(raw, dst, target_db=-17, floor_db=-50):
     return round(start, 3), round(float(g), 3), round(len(y) / SR - start, 3)
 
 
-SERVER = {'down': False}
+SERVER = {'down': False, 'fetched': 0}
 
 
 def qwen(text, ins, dst, lang='en'):
@@ -183,6 +196,7 @@ def qwen(text, ins, dst, lang='en'):
                 f.write(wav); f.flush()
                 subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', f.name, '-ac', '1', '-ar', str(SR), '-c:a', 'libmp3lame',
                                 '-b:a', '64k', str(dst)], check=True)
+            SERVER['fetched'] += 1
             return True
         except Exception as e:   # 503 = GPU busy: wait and retry; no answer at all = not on the company network
             busy = getattr(e, 'code', None) in (429, 502, 503, 504)
@@ -205,12 +219,29 @@ print(f'{len(WORDS)} words ({len(island_words)} from Phonics Island) · letter s
 CACHE.mkdir(parents=True, exist_ok=True)
 missing = []
 take = int(os.environ.get('TAKE', '0'))
+# words: the level words that only have a company-TTS take, and the ones still waiting for one (needVoice)
+def take_file(pre, k, text, lang, variants, base=0):
+    """the cache file, instruction and input text of a clip's chosen take (TAKE_OF, TEXT_OF)"""
+    ins = variants[(base + TAKE_OF.get(f'{pre}:{k}', 0)) % len(variants)]
+    text = TEXT_OF.get(f'{pre}:{k}', text)
+    return CACHE / f'{pre}_{k}_{hashlib.md5((QWEN_VOICE + ins + text + lang).encode()).hexdigest()[:8]}.mp3', ins, text
+
+
+for w in dict.fromkeys(tts_words + NEED_VOICE):
+    raw, ins, said = take_file('w', w, w, 'en', W_INS)
+    if not raw.exists() and (not (QWEN_URL and QWEN_KEY) or not qwen(said, ins, raw, 'en')):
+        missing.append(f'w:{w}')
+        continue
+    if w in tts_words:                                       # in a level: into the game
+        dst = OUT / f'w_{w}.mp3'
+        clips[f'w:{w}'] = [dst.name, *trim(raw, dst)]
+if NEED_VOICE:
+    print('new word takes (run tools/build_words.py, then this, again to put them in):', [w for w in NEED_VOICE if f'w:{w}' not in missing])
 for pre, table, lang, out in (('t', NEW, 'en', lines), ('k', NEW_KO, 'ko', lines_ko)):
     for k, text in table.items():
-        ins = T_INS[take % len(T_INS)]
-        raw = CACHE / f'{pre}_{k}_{hashlib.md5((QWEN_VOICE + ins + text + lang).encode()).hexdigest()[:8]}.mp3'
+        raw, ins, said = take_file(pre, k, text, lang, T_INS, take)
         if not raw.exists():
-            if not (QWEN_URL and QWEN_KEY) or not qwen(text, ins, raw, lang):
+            if not (QWEN_URL and QWEN_KEY) or not qwen(said, ins, raw, lang):
                 missing.append(f'{pre}:{k}')
                 continue
         dst = OUT / f'{pre}_{k}.mp3'
@@ -226,6 +257,6 @@ data = {k: base64.b64encode((OUT / v[0]).read_bytes()).decode() for k, v in clip
 (ROOT / 'js' / 'voice-data.js').write_text('/* generated by tools/build_voice.py — do not edit */\nwindow.CROCO_VOICE_DATA = '
                                            + json.dumps(data) + ';\n', encoding='utf-8')
 size = sum((OUT / v[0]).stat().st_size for v in clips.values())
-print(f'{len(clips)} clips · {size / 1024:.0f} KB → {JS}')
+print(f'{len(clips)} clips · {size / 1024:.0f} KB → {JS} · company TTS reads this run: {SERVER["fetched"]}')
 if missing:
     print('NOT generated (no company TTS):', missing)

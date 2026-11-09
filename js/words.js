@@ -303,6 +303,16 @@ window.CROCO_WORDS = {
      "card": "assets/cards/sink.webp"
     },
     {
+     "w": "sip",
+     "ko": "홀짝이다",
+     "pages": [
+      37
+     ],
+     "hl": 0,
+     "hn": 1,
+     "card": "assets/cards/sip.webp"
+    },
+    {
      "w": "sock",
      "ko": "양말",
      "pages": [
@@ -410,6 +420,16 @@ window.CROCO_WORDS = {
      "card": "assets/cards/toe.webp"
     },
     {
+     "w": "toy",
+     "ko": "장난감",
+     "pages": [
+      55
+     ],
+     "hl": 0,
+     "hn": 1,
+     "card": "assets/cards/toy.webp"
+    },
+    {
      "w": "turkey",
      "ko": "칠면조",
      "pages": [
@@ -444,6 +464,17 @@ window.CROCO_WORDS = {
     76
    ],
    "words": [
+    {
+     "w": "paint",
+     "ko": "칠하다",
+     "pages": [
+      70,
+      73
+     ],
+     "hl": 0,
+     "hn": 1,
+     "card": "assets/cards/paint.webp"
+    },
     {
      "w": "pencil",
      "ko": "연필",
@@ -658,6 +689,16 @@ window.CROCO_WORDS = {
      "card": "assets/cards/pin.webp"
     },
     {
+     "w": "pit",
+     "ko": "구덩이",
+     "pages": [
+      91
+     ],
+     "hl": 1,
+     "hn": 1,
+     "card": "assets/cards/pit.webp"
+    },
+    {
      "w": "sit",
      "ko": "앉다",
      "pages": [
@@ -737,6 +778,16 @@ window.CROCO_WORDS = {
      "card": "assets/cards/comb.webp"
     },
     {
+     "w": "cook",
+     "ko": "요리하다",
+     "pages": [
+      103
+     ],
+     "hl": 0,
+     "hn": 1,
+     "card": "assets/cards/cook.webp"
+    },
+    {
      "w": "cow",
      "ko": "소",
      "pages": [
@@ -774,6 +825,16 @@ window.CROCO_WORDS = {
    ],
    "words": [
     {
+     "w": "face",
+     "ko": "얼굴",
+     "pages": [
+      115
+     ],
+     "hl": 0,
+     "hn": 1,
+     "card": "assets/cards/face.webp"
+    },
+    {
      "w": "fan",
      "ko": "부채·선풍기",
      "pages": [
@@ -798,6 +859,16 @@ window.CROCO_WORDS = {
      "hl": 0,
      "hn": 1,
      "card": "assets/cards/fat.webp"
+    },
+    {
+     "w": "feel",
+     "ko": "느끼다",
+     "pages": [
+      115
+     ],
+     "hl": 0,
+     "hn": 1,
+     "card": "assets/cards/feel.webp"
     },
     {
      "w": "fire",
@@ -905,6 +976,16 @@ window.CROCO_WORDS = {
      "card": "assets/cards/dip.webp"
     },
     {
+     "w": "dirt",
+     "ko": "흙",
+     "pages": [
+      127
+     ],
+     "hl": 0,
+     "hn": 1,
+     "card": "assets/cards/dirt.webp"
+    },
+    {
      "w": "dog",
      "ko": "개",
      "pages": [
@@ -936,6 +1017,16 @@ window.CROCO_WORDS = {
      "hl": 0,
      "hn": 1,
      "card": "assets/cards/door.webp"
+    },
+    {
+     "w": "dry",
+     "ko": "마른",
+     "pages": [
+      130
+     ],
+     "hl": 0,
+     "hn": 1,
+     "card": "assets/cards/dry.webp"
     },
     {
      "w": "duck",
@@ -1053,6 +1144,7 @@ window.CROCO_WORDS = {
    "why": "not one sound (review / long vowels / final e)"
   }
  ],
+ "needVoice": [],
  "words": [
   {
    "w": "man",

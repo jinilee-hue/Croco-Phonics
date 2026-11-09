@@ -620,6 +620,204 @@ window.CROCO_VOICE = {
 0.44,
 0.382,
 0.631
+],
+"w:sip": [
+"w_sip.mp3",
+0.02,
+1.004,
+0.676
+],
+"w:toy": [
+"w_toy.mp3",
+0.03,
+0.71,
+0.594
+],
+"w:paint": [
+"w_paint.mp3",
+0.03,
+0.983,
+0.594
+],
+"w:pit": [
+"w_pit.mp3",
+0.03,
+0.558,
+0.498
+],
+"w:cook": [
+"w_cook.mp3",
+0.03,
+0.733,
+0.498
+],
+"w:face": [
+"w_face.mp3",
+0.02,
+0.933,
+0.916
+],
+"w:feel": [
+"w_feel.mp3",
+0.02,
+0.833,
+0.676
+],
+"w:dirt": [
+"w_dirt.mp3",
+0.02,
+1.579,
+0.604
+],
+"w:dry": [
+"w_dry.mp3",
+0.02,
+1.685,
+0.748
+],
+"t:hello": [
+"t_hello.mp3",
+0.02,
+0.971,
+2.908
+],
+"t:rule": [
+"t_rule.mp3",
+0.02,
+0.798,
+1.636
+],
+"t:chomp": [
+"t_chomp.mp3",
+0.02,
+0.774,
+1.54
+],
+"t:levelup": [
+"t_levelup.mp3",
+0.02,
+0.901,
+2.836
+],
+"t:tut1": [
+"t_tut1.mp3",
+0.02,
+0.77,
+1.876
+],
+"t:tut2": [
+"t_tut2.mp3",
+0.03,
+1.034,
+1.458
+],
+"t:tut3": [
+"t_tut3.mp3",
+0.04,
+1.083,
+1.688
+],
+"t:tut4": [
+"t_tut4.mp3",
+0.03,
+0.742,
+1.938
+],
+"t:tut5": [
+"t_tut5.mp3",
+0.04,
+0.751,
+2.408
+],
+"t:tut6": [
+"t_tut6.mp3",
+0.03,
+0.902,
+1.866
+],
+"t:tut7": [
+"t_tut7.mp3",
+0.02,
+0.626,
+1.636
+],
+"t:tut8": [
+"t_tut8.mp3",
+0.02,
+0.71,
+1.636
+],
+"k:hello": [
+"k_hello.mp3",
+0.03,
+0.834,
+3.138
+],
+"k:rule": [
+"k_rule.mp3",
+0.03,
+0.733,
+1.074
+],
+"k:chomp": [
+"k_chomp.mp3",
+0.03,
+0.681,
+1.938
+],
+"k:levelup": [
+"k_levelup.mp3",
+0.03,
+0.732,
+2.178
+],
+"k:tut1": [
+"k_tut1.mp3",
+0.03,
+0.648,
+2.346
+],
+"k:tut2": [
+"k_tut2.mp3",
+0.03,
+0.74,
+1.698
+],
+"k:tut3": [
+"k_tut3.mp3",
+0.03,
+0.921,
+2.586
+],
+"k:tut4": [
+"k_tut4.mp3",
+0.03,
+0.809,
+2.898
+],
+"k:tut5": [
+"k_tut5.mp3",
+0.04,
+0.808,
+2.888
+],
+"k:tut6": [
+"k_tut6.mp3",
+0.02,
+0.889,
+1.78
+],
+"k:tut7": [
+"k_tut7.mp3",
+0.03,
+0.755,
+1.626
+],
+"k:tut8": [
+"k_tut8.mp3",
+0.02,
+0.701,
+1.948
 ]
 },
 "lines": {
@@ -635,7 +833,19 @@ window.CROCO_VOICE = {
 "playagain": "Let's play again!",
 "nomic": "Say it out loud!",
 "louder": "I can't hear you. Say it loud!",
-"pressstart": "Press start to play!"
+"pressstart": "Press start to play!",
+"hello": "Hi, friends! Welcome to Croco Phonics!",
+"rule": "Watch out for this word!",
+"chomp": "Chomp! The croc got you!",
+"levelup": "Level up! Let's learn a new sound!",
+"tut1": "Hi, friends! I'm Croco!",
+"tut2": "This is the trap word.",
+"tut3": "Don't press the tooth with this word!",
+"tut4": "Take turns. Press a tooth.",
+"tut5": "A card pops out. Now say the word.",
+"tut6": "Uh-oh! The trap word!",
+"tut7": "CHOMP! You lose!",
+"tut8": "Ready? Let's play!"
 },
 "lines_ko": {
 "turn1": "플레이어 1, 네 차례야!",
@@ -649,6 +859,18 @@ window.CROCO_VOICE = {
 "playagain": "한 번 더 하자!",
 "nomic": "소리 내어 읽어 봐!",
 "louder": "잘 안 들려. 크게 말해 봐!",
-"pressstart": "스타트 버튼을 눌러 봐!"
+"pressstart": "스타트 버튼을 눌러 봐!",
+"hello": "안녕, 친구들! 크로코 파닉스에 온 걸 환영해!",
+"rule": "이 단어를 조심해!",
+"chomp": "덥석! 악어한테 잡혔다!",
+"levelup": "레벨 업! 새로운 소리를 배워 보자!",
+"tut1": "안녕, 친구들! 나는 크로코야!",
+"tut2": "이건 함정 단어야.",
+"tut3": "이 단어가 숨은 이빨은 누르면 안 돼!",
+"tut4": "번갈아 가며 이빨을 하나씩 눌러 봐.",
+"tut5": "카드가 톡 나오면, 이제 단어를 읽어 봐.",
+"tut6": "앗! 함정 단어야!",
+"tut7": "덥석! 그럼 지는 거야!",
+"tut8": "준비됐니? 시작하자!"
 }
 };

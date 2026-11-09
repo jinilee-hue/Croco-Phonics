@@ -71,8 +71,11 @@ def island_key(text, speaker='learn'):
 assert island_key('map') in island_keys, 'Phonics Island voice key scheme changed'
 
 
+TTS_CACHE = pathlib.Path.home() / '.cache' / 'croco-phonics' / 'voice_qwen'     # tools/build_voice.py's company-TTS takes
+
+
 def has_voice(w):
-    return f'w:{w}' in jenga_clips or island_key(w) in island_keys
+    return f'w:{w}' in jenga_clips or island_key(w) in island_keys or any(TTS_CACHE.glob(f'w_{w}_*.mp3'))
 
 
 # ── cards: Magic Block's fitting (one common visual size in the 512 × 532 picture-box canvas) ───────────────────────
@@ -192,6 +195,9 @@ out = {
     'source': 'SAD·FPR 단어 연구 자료집 · b2_book_FPRK.json',
     'levels': [{k: v for k, v in lv.items() if k != 'lacking'} for lv in levels],
     'notYet': [{k: v for k, v in n.items() if k in ('lesson', 'title', 'why')} for n in notyet],
+    # a card but no voice yet, in lessons that are levels: tools/build_voice.py has the company TTS read them, then a
+    # second run here takes them in
+    'needVoice': sorted({x['w'] for lv in levels for x in lv['lacking'] if x['card'] and not x['voice']}),
     'words': levels[0]['words'],          # Level 1 (kept for older tools)
 }
 js = ROOT / 'js' / 'words.js'
