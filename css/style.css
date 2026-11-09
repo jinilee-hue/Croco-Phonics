@@ -77,7 +77,9 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
   display: grid; grid-template-rows: minmax(0, 1fr) auto; padding: calc(var(--cw) * .07) calc(var(--cw) * .07) calc(var(--cw) * .045); }
 .card .pic { min-height: 0; position: relative; }
 .card .pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; filter: drop-shadow(0 calc(var(--cw) * .012) calc(var(--cw) * .015) rgba(0,0,0,.12)); }
-.card .word { font: 700 calc(var(--cw) * var(--wf, .19))/1.05 var(--font); text-align: center; color: var(--ink); letter-spacing: .01em; white-space: nowrap; }
+/* the word in black, its sound letter (b) in the orange point colour (user: "그림카드에 음가 포인트 컬러 말고 나머지 글씨도
+   검은색으로 해줘"; it was the brown --ink) */
+.card .word { font: 700 calc(var(--cw) * var(--wf, .19))/1.05 var(--font); text-align: center; color: #000; letter-spacing: .01em; white-space: nowrap; }
 .card .word b { color: #f27a1f; font-weight: 800; }
 .card .snd { position: absolute; left: 50%; bottom: calc(var(--cw) * -.14); transform: translateX(-50%); display: flex; align-items: center;
   gap: calc(var(--cw) * .045); padding: calc(var(--cw) * .025) calc(var(--cw) * .07) calc(var(--cw) * .025) calc(var(--cw) * .03);
