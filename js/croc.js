@@ -39,9 +39,11 @@
 
   const COLORS = {
     skin: '#6e9e6b', interior: '#d98880', palate: '#c96a60', gum: '#ef6c58', tongue: '#e0645c', blush: '#f59aa2',
-    // the mouth's depth (see bakeAO): roof near the lip → deep in the hood, the floor inside the teeth, the throat.
+    // the mouth's depth (see bakeAO): the roof light (the first build's #d98880) and only a little deeper low down by
+    // the throat — a deep maroon roof read as a flat dark wall with a tongue-shaped shadow above the tongue (user:
+    // "악어 위에가 너무 어색해, 밑에 그림자 생기는게 모양이 너무 뚜렷하게 나오니까 이상해"); the floor inside the teeth, the throat.
     // The tongue stays one flat colour (user: "악어 혀 부분은 전에꺼가 나아" — the shaded one read washed out with a dark slit)
-    roofNear: '#d4736b', roofDeep: '#953540', floor: '#d9574c', throat: '#7a2b30',
+    roofNear: '#d98880', roofDeep: '#b5545b', floor: '#d9574c', throat: '#7a2b30',
     tooth: '#fbf6ee', eye: '#f8f5ef', pupil: '#16171a', claw: '#d8c463',
   };
   // the render's letter inks: blue, mint, teal, orange (front teeth in that order)
@@ -359,13 +361,13 @@
         const s = Math.min(Math.max(cut, cav) - solid, fFlaps(x, y, z) - top - 0.1);
         sel[k] = s;
         if (s < -0.05) { inner[3 * k] = cPal.r; inner[3 * k + 1] = cPal.g; inner[3 * k + 2] = cPal.b; continue; }   // skin, far from the edge
-        // the mouth: the lip's cut face and a band along the lip dark red; the roof further in, a warm red up top,
-        // darker down toward the throat; AO in the creases
+        // the mouth: the lip's cut face and a band along the lip dark red; the roof further in light, a little deeper
+        // low down by the throat; mild AO in the creases
         const onCut = smooth(-0.02, 0.02, cut - Math.max(solid, cav));
         const band = smooth(0.32, 0.16, above(y, z)) * smooth(-0.1, 0.35, z);
-        cIn.copy(cRoofNear).lerp(cRoofDeep, clamp(0.7 * smooth(2.05, 1.2, y) + 0.3 * smooth(0.1, 0.7, above(y, z)), 0, 1));
+        cIn.copy(cRoofNear).lerp(cRoofDeep, smooth(1.85, 1.25, y));
         cIn.lerp(cPal, 1 - (1 - onCut) * (1 - band));
-        const ao = bakeAO(fMouth, x, y, z, N[3 * k], N[3 * k + 1], N[3 * k + 2], 1.1);
+        const ao = bakeAO(fMouth, x, y, z, N[3 * k], N[3 * k + 1], N[3 * k + 2], 0.5);      // mild: no shadow shapes on the wall
         inner[3 * k] = cIn.r * ao; inner[3 * k + 1] = cIn.g * ao; inner[3 * k + 2] = cIn.b * ao;
       }
       hoodGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
