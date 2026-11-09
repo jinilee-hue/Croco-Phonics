@@ -212,11 +212,14 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
   max-width: min(calc(var(--u) * 33), calc(50vw - var(--u) * 26)); pointer-events: none; }   /* never past the middle: the other player's chips */
 .p1 .wins { left: calc(100% + var(--u) * 2.2); }
 .p2 .wins { right: calc(100% + var(--u) * 2.2); flex-direction: row-reverse; }
-.wchip { display: flex; align-items: center; gap: calc(var(--u) * .45); padding: calc(var(--u) * .35) calc(var(--u) * 1.1) calc(var(--u) * .35) calc(var(--u) * .9);
-  border-radius: 999px; background: #fffaf2; font: 800 calc(var(--u) * 2.3)/1 var(--font); color: #5a4636;
+/* a chip = the name plate's height on the name plate's line (user: "플레이어명 나오는 크기 그리드에 맞게 왕관갯수 영역도 높이
+   키워줘"): 4.2u tall like .name (3u × 1.1 + .9u padding), the same 3u type, bottoms on the same line (.wins bottom 0) */
+.wchip { display: flex; align-items: center; gap: calc(var(--u) * .6); box-sizing: border-box; height: calc(var(--u) * 4.2);
+  padding: 0 calc(var(--u) * 1.5) 0 calc(var(--u) * 1.2);
+  border-radius: 999px; background: #fffaf2; font: 800 calc(var(--u) * 3)/1 var(--font); color: #5a4636;
   box-shadow: 0 calc(var(--u) * .3) calc(var(--u) * .9) rgba(60,80,110,.2); }
 .wchip b { color: #f27a1f; font-weight: 800; }
-.wchip img { width: calc(var(--u) * 2.8); height: auto; margin: calc(var(--u) * -.3) 0; }
+.wchip img { width: calc(var(--u) * 3.3); height: auto; }
 .wchip em { font-style: normal; min-width: .62em; text-align: center; }
 .wchip.cur { box-shadow: 0 0 0 calc(var(--u) * .35) #ffd34d, 0 calc(var(--u) * .3) calc(var(--u) * .9) rgba(60,80,110,.2); }
 .wchip.zero img, .wchip.zero em { opacity: .4; }
@@ -442,8 +445,8 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
   /* Play Again + Next Level side by side covered the players' avatars at the bottom corners: stacked here */
   .r-btns { flex-direction: column; gap: calc(var(--u) * 1.8); }
   .r-btns .again { font-size: calc(var(--u) * 4.2); }          /* narrower: clear of the card piles beside the avatars */
-  .wchip { font-size: calc(var(--u) * 2); gap: calc(var(--u) * .3); padding: calc(var(--u) * .3) calc(var(--u) * .8) calc(var(--u) * .3) calc(var(--u) * .7); }
-  .wchip img { width: calc(var(--u) * 2.4); }
+  .wchip { gap: calc(var(--u) * .45); padding: 0 calc(var(--u) * 1.1) 0 calc(var(--u) * .9); }   /* the name plate's height here too */
+  .wchip img { width: calc(var(--u) * 3); }
   .target { top: calc(var(--u) * 24); }
   .fly { top: 44%; }
 }
