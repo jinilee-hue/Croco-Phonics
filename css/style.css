@@ -106,7 +106,7 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
    of it (it was the still badge's only motion). The white sticker outline and the soft shadow are drawn INTO the frames:
    a CSS drop-shadow filter on the animated image went stale in Chrome as the jaw moved (user: "턱 움직일때 그림자
    이상한거") — glow left from an earlier frame with a hard edge. So no filter here. */
-.bite { position: absolute; left: calc(var(--cw) * -.1353); top: calc(var(--cw) * -.0938); width: calc(var(--cw) * .3606); transform-origin: 50.1% 32.1%; }
+.bite { position: absolute; left: calc(var(--cw) * -.1353); top: calc(var(--cw) * -.0947); width: calc(var(--cw) * .3606); transform-origin: 50.1% 29.7%; }   /* make_bite_badge.py's box (the face with its green chin) */
 .bite img { width: 100%; height: auto; display: block; pointer-events: none; }
 
 /* ── title ────────────────────────────────────────────────────────────────────────────────────────── */

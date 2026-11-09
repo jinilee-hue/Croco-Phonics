@@ -70,6 +70,14 @@
     }
     return smax(f, -y, 0.06);
   }
+  /* the trap badge's lower jaw (tools/make_bite_badge.py; user: "턱이 초록색이 아니네?"): the tub without the legs,
+     rounded off at CHIN_Y — a green chin under the red lip, no straight cut. Only the badge tool builds it. */
+  const CHIN_Y = 0.12;
+  function fChin(x, y, z) {
+    const tuck = y < 0.44 ? 0.32 * (1 - y / 0.44) * (1 - y / 0.44) : 0;
+    const f = extrude(rrect(x, z, BOWL.hx - tuck, BOWL.hz - tuck, BOWL.rc), y, -0.3, BOWL.top, 0.17);
+    return smax(f, CHIN_Y - y, 0.22);
+  }
   function fClaws(x, y, z) {
     const ax = Math.abs(x);
     let f = 1e9;
@@ -469,6 +477,15 @@
     const glowLight = new THREE.PointLight('#a35bff', 0, 3, 1.4);
     scene.add(glowLight);
     const api = makeApi({ root, base, lid, lidIn, head, eyes, teeth, upper, M, glowLight });
+    /* the trap badge's green chin (make_bite_badge.py), built on first use */
+    let chin = null;
+    api.badgeChin = () => {
+      if (!chin) {
+        chin = shadowy(new THREE.Mesh(mesh(fChin, [-1.7, CHIN_Y - 0.06, -1.35, 1.7, BOWL.top + 0.06, 1.35], H), M.skin));
+        base.add(chin);
+      }
+      return { mesh: chin, bottom: CHIN_Y };
+    };
     api.buildMs = Math.round(performance.now() - t0);
     api.tris = 0;
     root.traverse(o => { if (o.isMesh && o.geometry.index) api.tris += o.geometry.index.count / 3; });

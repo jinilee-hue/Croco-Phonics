@@ -7,9 +7,9 @@ anti-aliased edges stay clean. Writes one animated WebP: assets/img/bite_croc.we
 script). Needs the local server (tools/serve.py on 5211).
 
 Nothing is cut (user: "영역에 대한 그림자가 잘려서 들어갔는데" — the crop used to run through the shaded green body under
-the lip and through the side walls): only the face is drawn — the body, legs and claws are hidden and a clip plane
-removes everything below the red lip (LIP_BOTTOM, the tub's top) — and the crop holds the whole silhouette of every
-frame. The frames are aligned on the irises: the eyes stay still, the jaw drops. The tool prints the .bite box (in card
+the lip and through the side walls): only the face is drawn — the body, legs and claws are hidden — with a green
+lower jaw under the red lip (user: "턱이 초록색이 아니네?": croc.js badgeChin() = the tub without the legs, rounded off at
+CHIN_Y, so no straight cut); a clip plane below the chin; the crop holds the whole silhouette of every frame. The frames are aligned on the irises: the eyes stay still, the jaw drops. The tool prints the .bite box (in card
 widths) that keeps the face exactly where and as big as the approved still badge had it (95c8139); css/style.css uses it.
 
 The white sticker outline and the soft shadow are drawn INTO every frame: Chrome renders each frame once with the very
@@ -32,7 +32,6 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / 'assets' / 'img' / 'bite_croc.webp'
 URL = 'http://127.0.0.1:5211/dev/croc.html?still&az=0&el=12&open=0&fy=0.56&fh=0.56'
 WIDTH = 320                                  # output px wide (the badge shows ≤ 180 px wide on a 2× screen)
-LIP_BOTTOM = 0.6                             # croc units: the bottom of the red lip = the tub's top (croc.js BOWL.top)
 # one chomp: a closed rest, the mouth opens (ease-out), holds, SNAPS shut, a little bounce — (mouth opening, ms)
 LOOP = [(0, 520), (0.12, 40), (0.3, 40), (0.46, 40), (0.58, 50), (0.66, 60), (0.7, 200),
         (0.4, 40), (0.08, 40), (0, 70), (0.05, 60)]
@@ -99,13 +98,16 @@ with sync_playwright() as p:
         if (o.material && o.material.map && o.material.map.userData && o.material.map.userData.ch) o.visible = false;   // plain teeth (the letter changes by level)
       });
       P.base.children.forEach(m => { if (m.material === P.M.skin || m.material === P.M.claw) m.visible = false; });   // no body, legs, claws
-      const y = P.root.localToWorld(new THREE.Vector3(0, LIP_BOTTOM, 0)).y;                    // nothing below the red lip
+      // a green lower jaw under the red lip (user: "턱이 초록색이 아니네?"): the tub without the legs, rounded off
+      const chin = Stage.croc.badgeChin();
+      chin.mesh.visible = true;
+      const y = P.root.localToWorld(new THREE.Vector3(0, chin.bottom - 0.1, 0)).y;            // nothing below the chin
       Stage.renderer.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 1, 0), -y)];
       const st = Stage.croc.state;
       st.nextBlink = 1e9; st.blinkT = 0; st.blink = 0; st.squintTarget = 0; st.squint = 0;   // eyes open: no blink mid-render
       st.wander.set(0, 0, 0); st.nextWander = 1e9;                                          // and looking straight out
       Stage.step(1 / 60, 150);
-    }""".replace('LIP_BOTTOM', str(LIP_BOTTOM)))
+    }""")
     frames, prev = {}, None
     for v in sorted({v for v, _ in LOOP}):                              # closed first: each frame tracks the irises from the last
         E = pg.evaluate(f"""() => {{
