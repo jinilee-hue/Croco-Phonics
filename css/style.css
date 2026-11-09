@@ -23,6 +23,13 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 
 /* ── playroom backdrop: the user's picture (floor line at 70 % of its height) ───────────────────────── */
 .room { position: absolute; inset: 0; overflow: hidden; background: #cfe7ee url(../assets/img/bg.webp) center 56% / cover no-repeat; }
+/* the playroom tilts with the croc (user: "게임화면에서 악어가 기울어졌을때 뒤에 배경도 같이 기울어지면 안돼?"): --tilt 0 at the
+   title's camera (12°) → 1 at the game's (35°), set every frame from the camera (game.js), so the room turns with
+   the croc. It pivots on the picture's floor line (70 % down): the wall leans back, the floor comes forward, and it
+   rises a little; ×1.2 keeps the receding top and its corners off screen at every size (magenta check, scratch
+   pm/croco_check3.py — pivoting on the bottom edge slid it up off that edge) */
+.room { transform-origin: 50% 70%; will-change: transform;
+  transform: perspective(calc(var(--u) * 130)) translateY(calc(var(--tilt, 0) * -4%)) rotateX(calc(var(--tilt, 0) * 9deg)) scale(calc(1 + var(--tilt, 0) * .2)); }
 .room i { position: absolute; display: block; }
 .room .mote { left: var(--x); top: var(--y); width: calc(var(--u) * 1.1); height: calc(var(--u) * 1.1); border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #fff 0 18%, var(--c) 45%); box-shadow: 0 .3vh .8vh rgba(0,0,0,.06);
@@ -40,6 +47,10 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
   transform: translate(-50%, -50%) rotate(var(--r)); animation: bob 5.4s ease-in-out infinite var(--d); transition: opacity .6s; }
 .l3d.big { font-size: calc(var(--u) * 9.6); }
 .l3d::after { content: ''; }
+/* the game's floating letters = the title orbit's baked candy sprites (game.js setLevel; user: "게임화면에 들어가있는 알파벳도 인트로에 들어간 알파벳 스타일로 바꿔줘"),
+   laid over the transparent text exactly like .ol b img */
+.l3d.spr { color: transparent; text-shadow: none; }
+.l3d.spr img { position: absolute; left: 50%; top: -0.2em; height: 1.58em; width: auto; transform: translateX(-50%); pointer-events: none; -webkit-user-drag: none; }
 @keyframes bob { 50% { transform: translate(-50%, calc(-50% - var(--u) * 1.6)) rotate(calc(var(--r) * -.4)); } }
 /* on the title the levels' letters go round the croc instead (game.js orbitFrame; user: "동동 떠다지지말고 스펠링은
    커졌다 작아졌다하면서 돌려줘. 할리갈리 카드처럼", "악어를 기준으로"): .orbit-back sits under the croc's canvas (the croc
@@ -68,6 +79,7 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .lay-r { right: 1vw; transform: perspective(calc(var(--u) * 70)) rotateX(58deg) rotateZ(14deg); }
 #app:not([data-screen="title"]) .fly, #app:not([data-screen="title"]) .lay { opacity: 0; }
 #app:not([data-screen="title"]) .l3d { opacity: .55; }
+#app:not([data-screen="title"]) .l3d.spr { opacity: 1; }   /* the candy letters as on the title (the flat ones were faded) */
 #app:not([data-screen="title"]) .l3d.low { opacity: 0; }
 
 /* ── picture card ─────────────────────────────────────────────────────────────────────────────────── */
@@ -149,6 +161,10 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 #app.howto .deco > * { opacity: 0 !important; }
 #app.howto .target { top: calc(var(--u) * 2.2); }
 #app.howto .target.intro { transform: translate(-50%, calc(var(--u) * 3.4)) scale(1.25); }
+/* settled during the explanation the card keeps the big card's bottom edge (user: "인트로에서 악어 위 상단 카드가 작어졌을때 악어와의 사이가 많이 벌어지니까 그냥 카드가 크게 유지되던지 아니면 좀 내려줘"):
+   it used to go back up to the top bar and the gap to the croc grew by 64 px at 1728×1117 — down by the big state's
+   3.4u + an eighth of the card's height (.734 cw), so it shrinks toward the top only */
+#app.howto .target:not(.intro):not(.hidden) { transform: translate(-50%, calc(var(--u) * 3.4 + var(--cw) * .092)); }
 /* the game's top bar: logo (left) + EN | 한, sound, home (right); the players sit at the bottom corners */
 .glogo { position: absolute; left: calc(var(--u) * 2.4); top: calc(var(--u) * 1.4); width: calc(var(--u) * 16); height: auto; pointer-events: none;
   filter: drop-shadow(0 calc(var(--u) * .8) calc(var(--u) * 1.2) rgba(130,90,150,.22)); transition: opacity .4s; }
@@ -278,8 +294,12 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .skip { position: absolute; right: calc(var(--u) * 3); bottom: calc(var(--u) * 3.4); z-index: 41; display: flex; align-items: center;
   padding: calc(var(--u) * 1.3) calc(var(--u) * 3) calc(var(--u) * 1.45); border: 0; border-radius: 999px; cursor: pointer;
   font: 800 calc(var(--u) * 3.6)/1 var(--font); color: #000;
-  background: linear-gradient(rgba(255,255,255,.9), rgba(255,255,255,.62)); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-  box-shadow: 0 calc(var(--u) * .6) calc(var(--u) * 1.4) rgba(60,80,110,.2), inset 0 calc(var(--u) * -.35) 0 rgba(120,140,170,.15);
+  /* see-through frosted glass (user: "건너뛰기 버튼 배경 투명도 주고 배경 흐리게 적용해줘"): the white was 90 → 62 % and read
+     as a solid pill; the room now shows through, blurred, and a thin white rim keeps the edge on the pale floor */
+  background: linear-gradient(rgba(255,255,255,.46), rgba(255,255,255,.22));
+  -webkit-backdrop-filter: blur(calc(var(--u) * 1.5)) saturate(1.5); backdrop-filter: blur(calc(var(--u) * 1.5)) saturate(1.5);
+  box-shadow: 0 calc(var(--u) * .6) calc(var(--u) * 1.4) rgba(60,80,110,.16), inset 0 0 0 calc(var(--u) * .16) rgba(255,255,255,.6),
+    inset 0 calc(var(--u) * -.35) 0 rgba(120,140,170,.12);
   opacity: 0; transform: translateY(3vh); pointer-events: none; transition: opacity .3s, transform .4s cubic-bezier(.2,.9,.3,1.3); }
 .skip.show { opacity: 1; transform: none; pointer-events: auto; }
 .skip.show:active { transform: scale(.94); }

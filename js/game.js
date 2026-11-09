@@ -50,6 +50,12 @@
   const croc = Stage.view(Croc.build(Stage.scene));
   Stage.setCroc(croc);
   croc.setFrame(FRAME.title);
+  // the playroom tilts with the camera: css .room reads --tilt (0 = the title's 12°, 1 = the game's 35°) (user: "게임화면에서 악어가 기울어졌을때 뒤에 배경도 같이 기울어지면 안돼?")
+  let tiltWas = -1;
+  Stage.onTick.push(() => {
+    const k = Math.max(0, Math.min(1, (Stage.frame.el - FRAME.title.el) / (FRAME.game.el - FRAME.title.el)));
+    if (Math.abs(k - tiltWas) > 0.001) { tiltWas = k; app.style.setProperty('--tilt', k.toFixed(3)); }
+  });
   Stage.start();
   if (document.fonts && document.fonts.load) document.fonts.load('700 100px "Baloo 2"').then(() => {
     croc.refreshLetters();
@@ -168,7 +174,13 @@
     app.dataset.level = String(G.level + 1);
     app.classList.toggle('lastlv', G.level >= LEVELS.length - 1);
     teethLetters(true);
-    document.querySelectorAll('.deco .l3d').forEach(el => { el.textContent = el.classList.contains('big') ? cap(L.letter) : L.letter; });
+    // the game's floating letters in the title orbit's style — its baked candy sprites (user: "게임화면에 들어가있는 알파벳도 인트로에 들어간 알파벳 스타일로 바꿔줘");
+    // a capital has no sprite and stays coloured text
+    document.querySelectorAll('.deco .l3d').forEach(el => {
+      const ch = el.classList.contains('big') ? cap(L.letter) : L.letter, spr = MIX.includes(ch);
+      el.classList.toggle('spr', spr);
+      el.innerHTML = spr ? `${ch}<img src="assets/img/ol_${ch}.webp" alt="" draggable="false" onerror="this.parentNode.classList.remove('spr')">` : ch;
+    });
     const pick = G.level === 0 ? DECOR1.filter(w => BY[w]) : WORDS.map(w => w.w);
     document.querySelectorAll('.deco > [data-word]').forEach((slot, k) => { slot.dataset.word = pick[k % pick.length]; });
     placeDecor();
