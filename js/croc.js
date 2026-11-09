@@ -499,6 +499,7 @@
       squint: 0, squintTarget: 0, blink: 0, blinkT: 0, nextBlink: 1.5,
       gaze: null, gazeSm: new THREE.Vector3(0, 2, 9), wander: new THREE.Vector3(), nextWander: 2,
       eyeWide: 0, happy: 0, happyT: 0, surp: 0, surpT: 0, cheerTimer: 0, time: 0,
+      swayOn: false, swayAmp: 0, enterYaw: 0,
     };
     const tmpV = new THREE.Vector3(), eyeW = new THREE.Vector3(), dir = new THREE.Vector3(), inv = new THREE.Quaternion();
 
@@ -518,7 +519,9 @@
       talk(v) { st.talkT = v ? 1 : 0; },
       /* the intro's entrance: grows out of its spot on the table with a quarter turn, mouth shut, then opens.
          An ease-out, no overshoot (the toy never bounces) */
-      enter(ms = 1150) { st.enter = { t: 0, ms: ms / 1000 }; st.snap = null; st.open = 0; st.openVel = 0; st.openTarget = 0; P.root.scale.setScalar(0.35); P.root.rotation.y = -0.9; },
+      enter(ms = 1150) { st.enter = { t: 0, ms: ms / 1000 }; st.snap = null; st.open = 0; st.openVel = 0; st.openTarget = 0; P.root.scale.setScalar(0.35); st.enterYaw = -0.9; P.root.rotation.y = -0.9; },
+      /* a gentle left-right turn (game.js: on the title with START only) */
+      sway(on) { st.swayOn = !!on; },
       blink() { st.blinkT = 0.0001; },
       wide(v = 1) { st.eyeWide = v; },
       // the toy stays put: no trembling, shaking or bouncing (user: "악어 이빨 누르면 떨림이 있어")
@@ -563,10 +566,15 @@
         if (st.enter) {
           const k = Math.min(1, (st.enter.t += dt) / st.enter.ms), e = 1 - Math.pow(1 - k, 3);
           P.root.scale.setScalar(0.35 + 0.65 * e);
-          P.root.rotation.y = -0.9 * (1 - e);
+          st.enterYaw = -0.9 * (1 - e);
           if (k > 0.72 && st.openTarget === 0 && !st.snap) st.openTarget = st.rest;
-          if (k >= 1) st.enter = null;
+          if (k >= 1) { st.enter = null; st.enterYaw = 0; }
         }
+        // the title's slow sway (user: "악어 좌우로 조금씩 자연스럽게 움직임 줄수 없어?"): two slow sines so it never looks
+        // mechanical, easing in / out over ~1.5 s; a turn about its own axis — no bounce, no tremble
+        st.swayAmp += ((st.swayOn ? 1 : 0) - st.swayAmp) * Math.min(1, dt * 1.4);
+        const sway = st.swayAmp * (0.1 * Math.sin(t * 0.849) + 0.025 * Math.sin(t * 1.904 + 1.1));
+        P.root.rotation.y = st.enterYaw + sway;
         // jaw: spring toward the target; a snap shuts in ~0.1 s with a small rebound
         if (st.snap) {
           st.snap.t += dt;

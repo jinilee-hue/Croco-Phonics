@@ -1136,6 +1136,9 @@
   const stillMotion = matchMedia('(prefers-reduced-motion: reduce)');
   function orbitFrame(now) {
     requestAnimationFrame(orbitFrame);
+    // the croc sways gently on the title with START; it holds still while it explains and in the game (the glove,
+    // the mic and the cards point at its teeth)
+    croc.sway(G.screen === 'title' && !T.on);
     if (G.screen !== 'title' || T.on || !ORBIT.L.length) return;
     // the ring round the croc's waist, like Halli Galli's round the bell's base: its front low — a front letter's top
     // at the front teeth's feet (jaw point − 0.09 × the box height), so the big front letters never cover the teeth;
