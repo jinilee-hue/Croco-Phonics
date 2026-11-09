@@ -133,11 +133,19 @@
   (() => {
     const back = $('.orbit-back'), front = $('.orbit-front');
     if (!back || !front) return;
-    const COLS = ['#ff7fb0', '#58b8f2', '#ff8a4c', '#5fd0a4', '#ffc847', '#b49cff'];
+    // the logo letters' colours (user: "인트로 스펠링 로고처럼 좀더 밝은 채도로"): base = a logo letter's body colour
+    // (sampled from logo.webp), top lighter, deep = same hue richer (the letter's lower part), rim = the clay thickness;
+    // warm / cool alternating round the ring (m a p s t n i c f d). scratch orbit_palette.py made the tones (OKLCH).
+    const COLS = [
+      { c: '#fea6d9', top: '#ffb9e0', deep: '#fc72c7', rim: '#df4bab' }, { c: '#acdefd', top: '#c4e7fe', deep: '#6dc6f9', rim: '#40a8df' },
+      { c: '#ffe97e', top: '#fff5c4', deep: '#eacc1f', rim: '#c7ae1b' }, { c: '#ffa0f8', top: '#fdb6f8', deep: '#f370ec', rim: '#d648d1' },
+      { c: '#a1f3cf', top: '#bcfbde', deep: '#5fdead', rim: '#1ec18e' }, { c: '#fdc5a6', top: '#ffd4bd', deep: '#f89f6a', rim: '#dd7e42' },
+      { c: '#a8f2f3', top: '#c2fbfb', deep: '#67dcdd', rim: '#2cbfc1' }, { c: '#d895fc', top: '#dca8f9', deep: '#c869f7', rim: '#ac41dd' },
+      { c: '#d6f270', top: '#e4fb9a', deep: '#b8d80a', rim: '#9cb70c' }, { c: '#fea0c6', top: '#feb3d0', deep: '#fe6aae', rim: '#e24291' }];
     const mk = (layer, ch, c) => {
       const o = document.createElement('i');
       o.className = 'ol';
-      o.innerHTML = `<b style="--c:${c}">${ch}</b>`;
+      o.innerHTML = `<b style="--c:${c.c};--top:${c.top};--deep:${c.deep};--rim:${c.rim}">${ch}</b>`;
       layer.appendChild(o);
       return o;
     };

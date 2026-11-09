@@ -50,7 +50,14 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 /* 19u = a front letter's size (user: "악어 주변에 도는 알파벳 너무 작아 크게 키워줘"; was 9u × 1.4): drawn at its natural size in
    front and scaled DOWN toward the back (game.js ORBIT.MIN/MAX), so the big ones stay crisp; the clay shadow in em */
 .ol b { display: block; font: 800 calc(var(--u) * 19)/1 var(--font); color: var(--c);
-  text-shadow: 0 .055em 0 color-mix(in srgb, var(--c) 72%, #5a3a2a), 0 .14em .18em rgba(70,60,90,.18); }
+  filter: drop-shadow(0 .05em 0 var(--rim)) drop-shadow(0 .13em .14em rgba(70,60,90,.2)); }
+/* the logo's candy letters (user: "인트로 스펠링 로고처럼 좀더 밝은 채도로"): light top → the logo colour → a richer lower part,
+   a white gloss up left; the thickness and shadow are drop-shadows (a text-shadow would paint over this fill) */
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .ol b { color: transparent; -webkit-background-clip: text; background-clip: text;
+    background-image: radial-gradient(ellipse 26% 9% at 35% 45%, rgba(255,255,255,.9), rgba(255,255,255,0) 75%),
+      linear-gradient(180deg, var(--top) 24%, var(--c) 44%, var(--c) 68%, var(--deep) 92%); }
+}
 #app[data-screen="title"] .deco .l3d { opacity: 0; }
 
 .fly, .lay { position: absolute; transition: opacity .6s, transform .6s; }
