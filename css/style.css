@@ -41,6 +41,15 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .l3d.big { font-size: calc(var(--u) * 9.6); }
 .l3d::after { content: ''; }
 @keyframes bob { 50% { transform: translate(-50%, calc(-50% - var(--u) * 1.6)) rotate(calc(var(--r) * -.4)); } }
+/* on the title the levels' letters go round the croc instead (game.js orbitFrame; user: "동동 떠다지지말고 스펠링은
+   커졌다 작아졌다하면서 돌려줘. 할리갈리 카드처럼", "악어를 기준으로"): .orbit-back sits under the croc's canvas (the croc
+   hides the back half), .orbit-front over it, both under the cards, the logo and START */
+.orbit { position: absolute; inset: 0; z-index: 0; pointer-events: none; transition: opacity .5s; }   /* z-index 0: the letters' own z-index stays inside their layer (else the back ones came out over the croc) */
+#app:not([data-screen="title"]) .orbit, #app.howto .orbit { opacity: 0; }
+.ol { position: absolute; left: 0; top: 0; will-change: transform; }
+.ol b { display: block; font: 800 calc(var(--u) * 9)/1 var(--font); color: var(--c);
+  text-shadow: 0 calc(var(--u) * .5) 0 color-mix(in srgb, var(--c) 72%, #5a3a2a), 0 calc(var(--u) * 1.3) calc(var(--u) * 1.6) rgba(70,60,90,.18); }
+#app[data-screen="title"] .deco .l3d { opacity: 0; }
 
 .fly, .lay { position: absolute; transition: opacity .6s, transform .6s; }
 .fly { top: 36%; --cw: calc(var(--u) * 24); animation: fly 6s ease-in-out infinite; }
@@ -379,7 +388,6 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .sysbtn .x { display: none; stroke: #f0484e; }
 #app.muted .sysbtn .wave { display: none; }
 #app.muted .sysbtn .x { display: block; }
-#app[data-screen="title"] #btnHome { display: none; }
 
 .loading { position: absolute; inset: 0; z-index: 50; background: #cfe7ee; display: grid; place-items: center; transition: opacity .5s; }
 .loading i { width: calc(var(--u) * 7); height: calc(var(--u) * 7); border-radius: 50%; border: calc(var(--u) * 1) solid #fff; border-top-color: #5cbd5e; animation: spin2 .8s linear infinite; }

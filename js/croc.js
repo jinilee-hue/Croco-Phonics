@@ -426,6 +426,14 @@
       setLetter(ch) {
         for (const t of P.teeth) { const tex = t.decal.material.map; tex.userData.ch = ch; drawLetter(tex.image, ch, tex.userData.color); tex.needsUpdate = true; }
       },
+      /* a letter per tooth (game.js: the title's mix of the levels' letters) */
+      setLetters(chs) {
+        P.teeth.forEach((t, i) => {
+          const tex = t.decal.material.map, ch = chs[i % chs.length];
+          if (tex.userData.ch === ch) return;
+          tex.userData.ch = ch; drawLetter(tex.image, ch, tex.userData.color); tex.needsUpdate = true;
+        });
+      },
       /* redraw the tooth letters once the web font has loaded */
       refreshLetters() {
         for (const t of P.teeth) { const tex = t.decal.material.map; drawLetter(tex.image, tex.userData.ch, tex.userData.color); tex.needsUpdate = true; }

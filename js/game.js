@@ -109,6 +109,44 @@
   }
   placeDecor();
 
+  /* the intro shows the levels' letters, not just the level's one (user: "인트로에 알파벳이 p만 나와있는데..mapst 등
+     다양한 스펠링으로 넣어줘"): m a p s t first, then the rest in book order — one per tooth (the front row m a p s,
+     then t, the sides, the back) and on the clay letters going round the croc (orbitFrame). The explanation and the
+     game keep the level's letter on every tooth. */
+  const MIX = (() => {
+    const all = [...new Set(LEVELS.map(L => L.letter))];
+    return [...'mapstnicfd'].filter(ch => all.includes(ch)).concat(all.filter(ch => !'mapstnicfd'.includes(ch)));
+  })();
+  const MIX_TEETH = [3, 4, 5, 6, 7, 2, 1, 8, 0, 9];          // tooth order: the front row left → right, t, sides, back
+  let teethMix = null;
+  function teethLetters(force) {
+    const mix = G.screen === 'title' && !T.on;
+    if (!force && mix === teethMix) return;
+    teethMix = mix;
+    if (!mix) { croc.setLetter(LV().letter); return; }
+    const arr = new Array(croc.N_TEETH).fill(LV().letter);
+    MIX_TEETH.forEach((t, k) => { if (t < arr.length) arr[t] = MIX[k % MIX.length]; });
+    croc.setLetters(arr);
+  }
+  // the clay letters that go round the croc on the title (built here, moved by orbitFrame below)
+  const ORBIT = { PERIOD: 26, SPIN: 1.1, MIN: 0.5, MAX: 1.4, t0: 1e12, L: [] };
+  (() => {
+    const back = $('.orbit-back'), front = $('.orbit-front');
+    if (!back || !front) return;
+    const COLS = ['#ff7fb0', '#58b8f2', '#ff8a4c', '#5fd0a4', '#ffc847', '#b49cff'];
+    const mk = (layer, ch, c) => {
+      const o = document.createElement('i');
+      o.className = 'ol';
+      o.innerHTML = `<b style="--c:${c}">${ch}</b>`;
+      layer.appendChild(o);
+      return o;
+    };
+    ORBIT.L = MIX.map((ch, i, all) => ({
+      a0: Math.PI / 2 + (i / all.length) * Math.PI * 2,         // m in front first, the rest round the ring
+      tilt: [-10, 8, -6, 11, -8, 6][i % 6], ph: i * 1.7, every: 6.5 + (i * 0.83) % 3.2, off: 1.6 + i * 1.1,
+      f: mk(front, ch, COLS[i % COLS.length]), b: mk(back, ch, COLS[i % COLS.length]),
+    }));
+  })();
   /* a level: the croc's teeth, the title's clay letters and cards, the level tag and banner follow it */
   const DECOR1 = ['monkey', 'map', 'mouse', 'moon'];          // level 1's title cards, as they were
   function setLevel(i) {
@@ -118,7 +156,7 @@
     BY = Object.fromEntries(WORDS.map(w => [w.w, w]));
     app.dataset.level = String(G.level + 1);
     app.classList.toggle('lastlv', G.level >= LEVELS.length - 1);
-    croc.setLetter(L.letter);
+    teethLetters(true);
     document.querySelectorAll('.deco .l3d').forEach(el => { el.textContent = el.classList.contains('big') ? cap(L.letter) : L.letter; });
     const pick = G.level === 0 ? DECOR1.filter(w => BY[w]) : WORDS.map(w => w.w);
     document.querySelectorAll('.deco > [data-word]').forEach((slot, k) => { slot.dataset.word = pick[k % pick.length]; });
@@ -575,6 +613,7 @@
     IM.splice(0).forEach(a => a.cancel());
     G.screen = 'game';
     app.dataset.screen = 'game';
+    teethLetters();
     croc.setFrame(FRAME.game, 900);
     croc.rest(OPEN_REST.game);
     startRound();
@@ -610,9 +649,9 @@
   let LANG = (() => { try { return localStorage.getItem(LANG_KEY) === 'ko' ? 'ko' : 'en'; } catch (e) { return 'en'; } })();
   const UI = {
     en: { p1: 'Player 1', p2: 'Player 2', turn: 'Your turn!', wins: 'Player {n} Wins!', again: 'Play Again', next: 'Next Level', level: 'Level {n}', levelup: 'Level {n}!', skip: 'Skip',
-      a_skip: 'Skip the explanation', a_lang: 'Language: English or Korean', a_sound: 'Sound on/off', a_home: 'Home' },
+      a_skip: 'Skip the explanation', a_lang: 'Language: English or Korean', a_sound: 'Sound on/off', a_exit: 'Exit' },
     ko: { p1: '플레이어 1', p2: '플레이어 2', turn: '네 차례!', wins: '플레이어 {n} 승리!', again: '다시 하기', next: '다음 레벨', level: '레벨 {n}', levelup: '레벨 {n}!', skip: '건너뛰기',
-      a_skip: '설명 건너뛰기', a_lang: '언어: 영어 또는 한국어', a_sound: '소리 켜기/끄기', a_home: '처음으로' },
+      a_skip: '설명 건너뛰기', a_lang: '언어: 영어 또는 한국어', a_sound: '소리 켜기/끄기', a_exit: '나가기' },
   };
   const tr = (k, v = {}) => (UI[LANG][k] || UI.en[k] || k).replace(/\{(\w+)\}/g, (_, x) => (v[x] != null ? v[x] : ''));
   function applyLang() {
@@ -779,6 +818,7 @@
     window.__intro = false;
     A.stopVoice();
     app.classList.add('howto');
+    teethLetters();
     $('#skip').classList.add('show');
     // the first round's trap word is picked now: the croc explains with it and the game starts with it
     const pool = WORDS.map(w => w.w);
@@ -962,8 +1002,8 @@
     const slide = (el, s, delay) => E(el, [{ translate: `${s * 30}vw 22vh`, opacity: 0 }, { translate: '0 0', opacity: 0.96 }], { duration: 800, delay, easing: 'cubic-bezier(.2,.9,.3,1.1)' });
     slide($('.lay-l'), -1, d0 + 800);
     slide($('.lay-r'), 1, d0 + 900);
-    document.querySelectorAll('.deco .l3d').forEach((el, k) => E(el, [
-      { scale: 0, opacity: 0 }, { scale: 1.2, opacity: 1, offset: 0.6 }, { scale: 1, opacity: 1 }], { duration: 560, delay: d0 + 900 + k * 90, easing: 'ease-out' }));
+    teethLetters();
+    ORBIT.t0 = performance.now() + d0 + 900;                 // the letters round the croc pop in, one after another
     E($('#start'), [{ scale: 0, opacity: 0 }, { scale: 1.12, opacity: 1, offset: 0.65 }, { scale: 1, opacity: 1 }], { duration: 620, delay: d0 + 1500, easing: 'ease-out' });
     window.__intro = false;
     clearTimeout(introTimer);
@@ -1039,7 +1079,16 @@
     if (tok !== G.token) return;
     startRound();
   }
-  $('#btnHome').addEventListener('click', () => { A.sfxPlay('tap'); goTitle(); });
+  /* Exit, next to the sound button on every screen (user: "게임인트로에도 소리조절버튼 옆에 나가기 버튼 있어야해"):
+     in the game → the title; on the title → leave the game like Magic Block's corner bar: back to the page that
+     opened it, a tab of its own closes, or else it starts over */
+  $('#btnHome').addEventListener('click', () => {
+    A.sfxPlay('tap');
+    if (G.screen !== 'title') { goTitle(); return; }
+    A.stopVoice();
+    if (history.length > 1) { history.back(); setTimeout(() => location.reload(), 700); }
+    else { window.close(); setTimeout(() => location.reload(), 300); }
+  });
   $('#btnSound').addEventListener('click', () => {
     A.unlock();
     A.setMuted(!A.muted);
@@ -1062,12 +1111,49 @@
     // the explanation runs silent until the first tap (the browser's rule): that tap → the croc says the line on screen
     // aloud now. Buttons keep their own job.
     if (first && T.on && T.line && T.wake && !e.target.closest('button')) { T.again = true; T.wake(); }
-    if (!greeted && G.screen === 'title') {
+    if (!greeted && G.screen === 'title' && !e.target.closest('#btnHome')) {       // leaving: no hello
       greeted = true;
       A.startBgm(0.1);
       setTimeout(() => { if (G.screen === 'title' && !T.on && !G.bootHowto) say(A.has('t:hello') ? 't:hello' : 't:pressstart'); }, 250);
     }
   }, true);
+
+  // ── on the title the levels' letters go ROUND THE CROC (user: "동동 떠다지지말고 스펠링은 커졌다 작아졌다하면서
+  //    돌려줘. 할리갈리 카드처럼", "악어를 기준으로"), like Phonics Halli Galli's title cards round the bell (its
+  //    src/orbit.js): an ellipse round the croc's screen box, small at the back — in .orbit-back under the croc's canvas,
+  //    so the croc hides them — and big at the front (.orbit-front); now and then one hops and turns round once. No
+  //    bobbing. Hidden off the title and during the explanation (CSS); window.ORBIT_T freezes the clock for stills.
+  const easeIO = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const popIn = e => (e <= 0 ? 0 : e >= 1 ? 1 : 1 + 2.70158 * Math.pow(e - 1, 3) + 1.70158 * Math.pow(e - 1, 2));
+  const stillMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  function orbitFrame(now) {
+    requestAnimationFrame(orbitFrame);
+    if (G.screen !== 'title' || T.on || !ORBIT.L.length) return;
+    // the ring: its front just under the front teeth (croc.jawScreen, the red lower lip), its back behind the croc's
+    // head, its ends beside the croc (between the side cards and the cards lying at the bottom)
+    const box = croc.screenBox(), jaw = croc.jawScreen(), W = window.innerWidth, H = window.innerHeight, U = u(), LS = 9 * U;
+    const big = LS * ORBIT.MAX;                                                  // a front letter's height
+    const frontY = Math.min(jaw.y + big * 0.62, H - big * 0.66), backY = box.top + (box.bottom - box.top) * 0.35;
+    const cx = (box.left + box.right) / 2, cy = (frontY + backY) / 2, ry = Math.max(0, (frontY - backY) / 2);
+    const rx = Math.min((box.right - box.left) * 0.65, W / 2 - LS * 0.62);
+    const still = stillMotion.matches;
+    const TS = window.ORBIT_T != null ? window.ORBIT_T : still ? 0 : now / 1000;
+    ORBIT.L.forEach((c, k) => {
+      const a = c.a0 + (TS / ORBIT.PERIOD) * Math.PI * 2, s = Math.sin(a), depth = (s + 1) / 2;   // 0 = back, 1 = front
+      const q = ((TS - c.off) % c.every + c.every) % c.every, p = still || q >= ORBIT.SPIN ? 0 : q / ORBIT.SPIN;
+      const spin = 360 * easeIO(p), hop = Math.sin(Math.PI * p) * 3.4 * U * (0.6 + 0.4 * depth);
+      const sc = (ORBIT.MIN + (ORBIT.MAX - ORBIT.MIN) * depth) * popIn((now - ORBIT.t0 - k * 90) / 560);   // small at the back, big in front
+      const x = cx + rx * Math.cos(a), y = cy + ry * s - hop, rz = c.tilt + 5 * Math.sin(TS * 0.7 + c.ph);
+      const tf = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%) scale(${sc.toFixed(3)}) `
+        + `perspective(${(40 * U).toFixed(0)}px) rotateZ(${rz.toFixed(1)}deg) rotateY(${spin.toFixed(1)}deg)`;
+      const front = s > 0, z = String(Math.round(depth * 100));
+      c.f.style.transform = c.b.style.transform = tf;
+      c.f.style.zIndex = c.b.style.zIndex = z;
+      c.f.style.visibility = front ? 'visible' : 'hidden';
+      c.b.style.visibility = front ? 'hidden' : 'visible';
+    });
+  }
+  requestAnimationFrame(orbitFrame);
 
   // ── pointer: the croc's eyes follow it; teeth light up under it ─────────────────────────────────────
   let lookTimer = null;
