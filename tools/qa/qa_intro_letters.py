@@ -1,7 +1,9 @@
 """QA: the intro's letters and Exit.
 usage: uv run --with playwright python tools/qa/qa_intro_letters.py <outdir>
   1  title at 1728x960, 1180x820, 820x1180: teeth = m a p s t … (one per tooth), 10 letters round the croc (orbit frozen
-     at 3 moments → stills): front ones bigger than back ones, on screen; Exit shows next to the sound button
+     at 6 moments → stills): front ones bigger than back ones; on screen (in front they may run off the bottom edge by
+     up to 40 % of their height — the ring's front is low, behind START); no front letter on a tooth's face; Exit shows
+     next to the sound button
   2  ?level=5 title: still the mix (not all p); the explanation: every tooth the level's letter, orbit hidden
   3  START → game: teeth the level's letter, orbit hidden; Exit → the title (mix again, letters pop back)
   4  Exit on the title → back to the page before (history), no hello line
@@ -14,10 +16,11 @@ BASE = 'http://127.0.0.1:5211/index.html'
 ARGS = ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required']
 TEETH = "__croco.croc.teeth ? __croco.croc.teeth.map(t => t.decal.material.map.userData.ch).join('') : null"
 ORB = """() => { const R = e => { const q = e.getBoundingClientRect(); return [q.left, q.top, q.right, q.bottom]; };
-  const vis = [...document.querySelectorAll('.ol')].filter(e => e.style.visibility === 'visible');
+  const vis = [...document.querySelectorAll('.ol')].filter(e => e.style.visibility === 'visible' && +(e.style.opacity || 1) > 0.05);
+  const faces = [...Array(__croco.croc.N_TEETH).keys()].map(i => __croco.croc.toothScreen(i));
   const lay = getComputedStyle(document.querySelector('.orbit-front')).opacity;
-  return { n: vis.length, layerOpacity: lay, letters: vis.map(e => ({ ch: e.textContent, front: !!e.closest('.orbit-front'), r: R(e).map(Math.round),
-    h: Math.round(R(e)[3] - R(e)[1]) })) }; }"""
+  return { n: vis.length, layerOpacity: lay, letters: vis.map(e => { const r = R(e); return { ch: e.textContent, front: !!e.closest('.orbit-front'),
+    r: r.map(Math.round), h: Math.round(r[3] - r[1]), onTooth: faces.filter(f => f.x > r[0] && f.x < r[2] && f.y > r[1] && f.y < r[3]).length }; }) }; }"""
 SYS = """() => [...document.querySelectorAll('.sys > *')].filter(e => getComputedStyle(e).display !== 'none').map(e => e.id || e.className)"""
 bad, errs = [], []
 with sync_playwright() as p:
@@ -38,16 +41,19 @@ with sync_playwright() as p:
         teeth = pg.evaluate(TEETH)
         sysb = pg.evaluate(SYS)
         rows = []
-        for k, t in enumerate((0, 6.5, 13)):
+        for k, t in enumerate((0, 6.5, 13, 3.2, 9.7, 19.5)):
             pg.evaluate(f'window.ORBIT_T = {t}')
             time.sleep(0.25)
             o = pg.evaluate(ORB)
             pg.screenshot(path=str(out / f'title_{W}x{H}_t{k}.png'))
             fr = [x['h'] for x in o['letters'] if x['front']]
             bk = [x['h'] for x in o['letters'] if not x['front']]
-            off = [x['ch'] for x in o['letters'] if x['r'][0] < -2 or x['r'][2] > W + 2 or x['r'][1] < -2 or x['r'][3] > H + 2]
-            rows.append(f"t={t}: {o['n']} letters, front h {min(fr) if fr else '-'}–{max(fr) if fr else '-'} px, back h {min(bk) if bk else '-'}–{max(bk) if bk else '-'} px, off screen {off or 'none'}")
-            if o['n'] != 10: bad.append(f'{W}x{H} t={t}: {o["n"]} letters')
+            off = [x['ch'] for x in o['letters'] if x['r'][0] < -2 or x['r'][2] > W + 2 or x['r'][1] < -2
+                   or x['r'][3] > H + 2 + (0.4 * x['h'] if x['front'] else 0)]
+            teeth_hit = [x['ch'] for x in o['letters'] if x['front'] and x['onTooth']]
+            rows.append(f"t={t}: {o['n']} letters, front h {min(fr) if fr else '-'}–{max(fr) if fr else '-'} px, back h {min(bk) if bk else '-'}–{max(bk) if bk else '-'} px, off screen {off or 'none'}, on a tooth {teeth_hit or 'none'}")
+            if teeth_hit: bad.append(f'{W}x{H} t={t}: front letters on a tooth {teeth_hit}')
+            if o['n'] < 8: bad.append(f'{W}x{H} t={t}: {o["n"]} letters')          # up to two fade behind START
             if off: bad.append(f'{W}x{H} t={t}: off screen {off}')
             if fr and bk and max(bk) >= max(fr): bad.append(f'{W}x{H} t={t}: back letters not smaller')
         print(f'1 {W}x{H} teeth {teeth} | sys {sysb}')
@@ -91,7 +97,7 @@ with sync_playwright() as p:
     time.sleep(1.2)
     tt, ot = pg.evaluate(TEETH), pg.evaluate(ORB)
     print(f'  Exit → title: teeth {tt}, letters {ot["n"]}, url {pg.url.split("/")[-1]}')
-    if tt != 'finmapstcd' or ot['n'] != 10: bad.append(f'exit to title: teeth {tt} letters {ot["n"]}')
+    if tt != 'finmapstcd' or ot['n'] < 9: bad.append(f'exit to title: teeth {tt} letters {ot["n"]}')
     pg.close()
 
     # ── 4. Exit on the title: back to the page before ──

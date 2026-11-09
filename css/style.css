@@ -47,8 +47,10 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .orbit { position: absolute; inset: 0; z-index: 0; pointer-events: none; transition: opacity .5s; }   /* z-index 0: the letters' own z-index stays inside their layer (else the back ones came out over the croc) */
 #app:not([data-screen="title"]) .orbit, #app.howto .orbit { opacity: 0; }
 .ol { position: absolute; left: 0; top: 0; will-change: transform; }
-.ol b { display: block; font: 800 calc(var(--u) * 9)/1 var(--font); color: var(--c);
-  text-shadow: 0 calc(var(--u) * .5) 0 color-mix(in srgb, var(--c) 72%, #5a3a2a), 0 calc(var(--u) * 1.3) calc(var(--u) * 1.6) rgba(70,60,90,.18); }
+/* 19u = a front letter's size (user: "악어 주변에 도는 알파벳 너무 작아 크게 키워줘"; was 9u × 1.4): drawn at its natural size in
+   front and scaled DOWN toward the back (game.js ORBIT.MIN/MAX), so the big ones stay crisp; the clay shadow in em */
+.ol b { display: block; font: 800 calc(var(--u) * 19)/1 var(--font); color: var(--c);
+  text-shadow: 0 .055em 0 color-mix(in srgb, var(--c) 72%, #5a3a2a), 0 .14em .18em rgba(70,60,90,.18); }
 #app[data-screen="title"] .deco .l3d { opacity: 0; }
 
 .fly, .lay { position: absolute; transition: opacity .6s, transform .6s; }

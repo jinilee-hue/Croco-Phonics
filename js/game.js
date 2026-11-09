@@ -129,7 +129,7 @@
     croc.setLetters(arr);
   }
   // the clay letters that go round the croc on the title (built here, moved by orbitFrame below)
-  const ORBIT = { PERIOD: 26, SPIN: 1.1, MIN: 0.5, MAX: 1.4, t0: 1e12, L: [] };
+  const ORBIT = { PERIOD: 26, SPIN: 1.1, MIN: 0.4, MAX: 1, FONT: 19, t0: 1e12, L: [] };   // FONT (u) = css .ol b
   (() => {
     const back = $('.orbit-back'), front = $('.orbit-front');
     if (!back || !front) return;
@@ -1129,13 +1129,17 @@
   function orbitFrame(now) {
     requestAnimationFrame(orbitFrame);
     if (G.screen !== 'title' || T.on || !ORBIT.L.length) return;
-    // the ring: its front just under the front teeth (croc.jawScreen, the red lower lip), its back behind the croc's
-    // head, its ends beside the croc (between the side cards and the cards lying at the bottom)
-    const box = croc.screenBox(), jaw = croc.jawScreen(), W = window.innerWidth, H = window.innerHeight, U = u(), LS = 9 * U;
-    const big = LS * ORBIT.MAX;                                                  // a front letter's height
-    const frontY = Math.min(jaw.y + big * 0.62, H - big * 0.66), backY = box.top + (box.bottom - box.top) * 0.35;
+    // the ring round the croc's waist, like Halli Galli's round the bell's base: its front low — a front letter's top
+    // at the front teeth's feet (jaw point − 0.09 × the box height), so the big front letters never cover the teeth;
+    // they pass behind START and run a little off the bottom edge in landscape — its back behind the croc's head, its
+    // ends beside the croc (between the side cards and the cards lying at the bottom)
+    const box = croc.screenBox(), jaw = croc.jawScreen(), W = window.innerWidth, H = window.innerHeight, U = u(), LS = ORBIT.FONT * U;
+    const big = LS * ORBIT.MAX, bh = box.bottom - box.top;                       // big: a front letter's height
+    const st = $('#start').getBoundingClientRect(), stOn = st.width > 0, stX = (st.left + st.right) / 2, stW = st.width / 2;
+    // … and at least as low as START's middle (portrait: the front-side letters pass under the side teeth)
+    const frontY = Math.max(jaw.y - 0.09 * bh + big * 0.5 + 0.5 * U, stOn ? (st.top + st.bottom) / 2 : 0), backY = box.top + bh * 0.38;
     const cx = (box.left + box.right) / 2, cy = (frontY + backY) / 2, ry = Math.max(0, (frontY - backY) / 2);
-    const rx = Math.min((box.right - box.left) * 0.65, W / 2 - LS * 0.62);
+    const rx = Math.min((box.right - box.left) * 0.69, W / 2 - big * 0.42);
     const still = stillMotion.matches;
     const TS = window.ORBIT_T != null ? window.ORBIT_T : still ? 0 : now / 1000;
     ORBIT.L.forEach((c, k) => {
@@ -1147,6 +1151,9 @@
       const tf = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%) scale(${sc.toFixed(3)}) `
         + `perspective(${(40 * U).toFixed(0)}px) rotateZ(${rz.toFixed(1)}deg) rotateY(${spin.toFixed(1)}deg)`;
       const front = s > 0, z = String(Math.round(depth * 100));
+      // behind START a front letter fades out, so its foot never pokes out under the button
+      const hw = 0.3 * LS * sc, low = stOn && front && y + 0.5 * LS * sc > st.bottom;
+      c.f.style.opacity = low ? smooth01(stW - hw * 0.2, stW + hw, Math.abs(x - stX)).toFixed(3) : '1';
       c.f.style.transform = c.b.style.transform = tf;
       c.f.style.zIndex = c.b.style.zIndex = z;
       c.f.style.visibility = front ? 'visible' : 'hidden';
