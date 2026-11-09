@@ -103,7 +103,7 @@
     fitCardWord(el);
     el.innerHTML = `<div class="pic"><img src="${w.card}" alt="" draggable="false"></div>`
       + `<div class="word">${pa}<b>${pb}</b>${pc}</div>`
-      + (opts.sound ? `<div class="snd" role="button" aria-label="Listen: ${word}"><span class="ltr">${cap(LV().letter)}</span>${SVG_SPK}</div>` : '')
+      + (opts.sound ? `<div class="snd" role="button" aria-label="Listen: ${word}">${SVG_SPK}</div>` : '')   // speaker only (no M)
       + (opts.mic ? `<div class="ok" aria-hidden="true">${SVG_OK}</div>` : '');
     return el;
   }

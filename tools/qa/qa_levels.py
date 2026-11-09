@@ -17,7 +17,7 @@ ARGS = ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--autopl
 ROUND = """() => { const G = __croco.G, L = __croco.LEVELS[G.level], c = document.querySelector('#target .card');
   const words = L.words.map(w => w.w), cnt = G.teeth.filter(w => w === G.target).length;
   return { level: G.level + 1, letter: L.letter, teeth: G.teeth.length, allIn: G.teeth.every(w => words.includes(w)), trapOnce: cnt === 1,
-    distinct: new Set(G.teeth).size, ltr: c && c.querySelector('.snd .ltr').textContent, bold: c && c.querySelector('.word b').textContent,
+    distinct: new Set(G.teeth).size, snd: !!(c && c.querySelector('.snd svg')), bold: c && c.querySelector('.word b').textContent,
     word: c && c.querySelector('.word').textContent, toothCh: [...new Set(__croco.croc.teeth.map(t => t.decal.material.map.userData.ch))],
     tag: document.querySelector('#lvTag').textContent }; }"""
 

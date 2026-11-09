@@ -93,18 +93,16 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
    검은색으로 해줘"; it was the brown --ink) */
 .card .word { font: 700 calc(var(--cw) * var(--wf, .19))/1.05 var(--font); text-align: center; color: #000; letter-spacing: .01em; white-space: nowrap; }
 .card .word b { color: #f27a1f; font-weight: 800; }
-.card .snd { position: absolute; left: 50%; bottom: calc(var(--cw) * -.14); transform: translateX(-50%); display: flex; align-items: center;
-  gap: calc(var(--cw) * .045); padding: calc(var(--cw) * .025) calc(var(--cw) * .07) calc(var(--cw) * .025) calc(var(--cw) * .03);
-  background: linear-gradient(#ffad66, #f67b2b); border-radius: 999px; color: #fff; white-space: nowrap;
-  font: 800 calc(var(--cw) * .13)/1 var(--font); text-shadow: 0 calc(var(--cw) * .008) 0 rgba(170,70,20,.35);
-  box-shadow: inset 0 calc(var(--cw) * -.022) 0 rgba(190,80,20,.35), inset 0 calc(var(--cw) * .015) 0 rgba(255,255,255,.35), 0 calc(var(--cw) * .03) calc(var(--cw) * .05) rgba(220,100,30,.3);
-  pointer-events: auto; cursor: pointer; }
-.card .snd .ltr { width: 1.45em; height: 1.45em; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(#ff8f4a, #e2561a);
-  box-shadow: inset 0 calc(var(--cw) * .012) 0 rgba(255,255,255,.35), inset 0 calc(var(--cw) * -.012) 0 rgba(150,50,10,.3); padding-top: .06em; }
-.card .snd svg { width: 1.05em; height: 1.05em; fill: #fff; }
+/* listen again = ONE round speaker button (user: "카드에 다시듣기 버튼 m 빼고 그냥 스피커 버튼만 원버튼으로 넣어줘"; it was a
+   pill with an M circle + the speaker): the pill's orange, spot and height (2em = .24cw, on the target card .17cw), no
+   light band; the word's orange letter still shows the sound */
+.card .snd { position: absolute; left: 50%; bottom: calc(var(--cw) * -.14); transform: translateX(-50%); width: 2em; height: 2em;
+  display: grid; place-items: center; border-radius: 50%; font-size: calc(var(--cw) * .12); background: linear-gradient(#ffad66, #f67b2b);
+  box-shadow: 0 calc(var(--cw) * .03) calc(var(--cw) * .05) rgba(220,100,30,.3); pointer-events: auto; cursor: pointer; }
+.card .snd svg { width: 1.18em; height: 1.18em; fill: #fff; margin-left: .06em; }   /* the waves make the icon's ink sit left of its box */
 .card.has-snd { padding-bottom: calc(var(--cw) * .15); }
 .card.say-m .snd { animation: pillPulse .5s ease-in-out infinite alternate; }
-.card.say-m .snd .ltr, .card.say-m .word b { animation: ltrPop .5s ease-in-out infinite alternate; }
+.card.say-m .word b { animation: ltrPop .5s ease-in-out infinite alternate; }
 /* inline-block only for the word's bold letter (an inline box can't scale). On the circle it replaced display:grid, and
    the M jumped out of its circle while the sound played (user: "단어 카드에 m이 원 영역을 벗어놨다가 제자리로 돌아오던데") */
 .card.say-m .word b { display: inline-block; }
