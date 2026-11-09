@@ -258,7 +258,8 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .bubble[data-tail="l"] { transform-origin: 0% 62%; }
 .bubble[data-tail="r"] { transform-origin: 100% 62%; }
 .bubble[data-tail="b"] { transform-origin: 50% 100%; }
-.bubble p { margin: 0; font: 800 calc(var(--u) * 3.7)/1.2 var(--font); color: var(--ink); word-break: keep-all; }
+/* the tutor's lines in black (user: "안내 문구들 텍스트 검은색으로 수정해"; they were the brown --ink) */
+.bubble p { margin: 0; font: 800 calc(var(--u) * 3.7)/1.2 var(--font); color: #000; word-break: keep-all; }
 .bubble.narrow { padding: calc(var(--u) * 1.6) calc(var(--u) * 2.2) calc(var(--u) * 1.8); }
 .bubble.narrow p { font-size: calc(var(--u) * 3.2); }
 .bubble[data-tail="t"] { transform-origin: 50% 0%; }
