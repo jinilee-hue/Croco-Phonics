@@ -101,7 +101,13 @@
     el.style.setProperty('--edge', opts.edge || EDGES[edgeN++ % EDGES.length]);
     el.dataset.word = word;
     fitCardWord(el);
-    el.innerHTML = `<div class="pic"><img src="${w.card}" alt="" draggable="false"></div>`
+    // the top (trap) card fits each picture's DRAWN area, so every drawing comes out the same size (css .card.tgt
+    // .pic img.fit; tools/card_boxes.py; user: "상단 카드에 이미지 크기 제각각 인거 같은데 크기 통일되게 맞춰줘")
+    const bx = (opts.cls || '').split(' ').includes('tgt') && window.CROCO_CARD_BOX
+      && CROCO_CARD_BOX[w.card.split('/').pop().replace(/\.\w+$/, '')];
+    const ar = bx ? bx[2] / bx[3] * 0.9499 : 1;                     // the drawing's aspect in px (canvas 512×539)
+    const fit = bx ? ` class="fit" style="--bx:${bx[0]};--by:${bx[1]};--bw:${bx[2]};--bh:${bx[3]};--r:${ar.toFixed(4)};--q:${(1 / Math.sqrt(ar)).toFixed(4)}"` : '';
+    el.innerHTML = `<div class="pic"><img src="${w.card}"${fit} alt="" draggable="false"></div>`
       + `<div class="word">${pa}<b>${pb}</b>${pc}</div>`
       + (opts.sound ? `<div class="snd" role="button" aria-label="Listen: ${word}">${SVG_SPK}</div>` : '')   // speaker only (no M)
       + (opts.mic ? `<div class="ok" aria-hidden="true">${SVG_OK}</div>` : '');

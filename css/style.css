@@ -114,6 +114,14 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 /* landscape target card (top centre), like the reference prompt card */
 .card.tgt { aspect-ratio: 1.36; grid-template-rows: minmax(0, 1fr) auto; padding: calc(var(--cw) * .045) calc(var(--cw) * .06) calc(var(--cw) * .1); --edge: #f5b54a; }
 .card.tgt .word { font-size: calc(var(--cw) * var(--wf, .13)); }
+/* every drawing the same size on the top card (user: "상단 카드에 이미지 크기 제각각 인거 같은데 크기 통일되게 맞춰줘"): sized
+   by its DRAWN area (tools/card_boxes.py → --bx/--by/--bw/--bh, fractions of the 512×539 canvas), not the canvas with
+   its different empty margins: the same AREA as a square drawing 96 % of the box high (--q = 1/√aspect), so a wide map
+   isn't twice a man, and none is lost in its margins; capped at 96 % of the box's height and width; centred */
+.card.tgt .pic { container-type: size; }
+.card.tgt .pic img.fit { --hc: min(96cqh, 96cqh * var(--q), 96cqw / var(--r));   /* the drawing's height */
+  inset: auto; height: calc(var(--hc) / var(--bh)); width: calc(var(--hc) / var(--bh) * .9499); max-width: none; object-fit: fill;
+  left: calc(50cqw - var(--hc) / var(--bh) * .9499 * (var(--bx) + var(--bw) / 2)); top: calc(50cqh - var(--hc) / var(--bh) * (var(--by) + var(--bh) / 2)); }
 .card.tgt .snd { font-size: calc(var(--cw) * .085); bottom: calc(var(--cw) * -.07); }
 /* the trap word's badge = the game croc's own face with teeth showing (user: "이건 악어얼굴에서 입을 닫았을때 이빨을
    보여주면"), CHOMPING in a loop (user: "여기 카드 위에 악어는 입을 계속 열었다 닫히는 모션"): an animated WebP that
