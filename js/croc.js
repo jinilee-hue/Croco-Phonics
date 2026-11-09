@@ -38,7 +38,9 @@
   const above = (y, z) => (y - HINGE.y) * cO - (z - HINGE.z) * sO;
 
   const COLORS = {
-    skin: '#6e9e6b', interior: '#d98880', palate: '#c96a60', gum: '#ef6c58', tongue: '#e0645c', blush: '#f59aa2',
+    // palate = the upper gums (the band the upper teeth hang from): coral like the lower gums, with a little self-light
+    // in hoodPick (user: "위에 이 나오는 부분도 아래 턱처럼 좀더 밝으면 안돼?" — at #c96a60 they rendered half as bright)
+    skin: '#6e9e6b', interior: '#d98880', palate: '#ff8a72', gum: '#ef6c58', tongue: '#e0645c', blush: '#f59aa2',
     // the mouth's depth (see bakeAO): the roof light (the first build's #d98880) and only a little deeper low down by
     // the throat — a deep maroon roof read as a flat dark wall with a tongue-shaped shadow above the tongue (user:
     // "악어 위에가 너무 어색해, 밑에 그림자 생기는게 모양이 너무 뚜렷하게 나오니까 이상해"); the floor inside the teeth, the throat.
@@ -185,15 +187,20 @@
     return clamp(1 - occ * k, 0.18, 1);
   }
   const mixInto = (out, a, b, t) => { out[0] = a.r + (b.r - a.r) * t; out[1] = a.g + (b.g - a.g) * t; out[2] = a.b + (b.b - a.b) * t; };
-  /* the hood's material: skin (vertex colour) or the mouth (aInner) by the sign of aSel, per pixel, anti-aliased */
+  /* the hood's material: skin (vertex colour) or the mouth (aInner) by the sign of aSel, per pixel, anti-aliased; the
+     upper gums (aBand) get a little self-light: they face down in the jaw's own shadow, and the brightest paint alone
+     still rendered them far darker than the lower gums (title L 109 vs 143); emissive 0.25 brings them to L 134 / game
+     146 (lower gums 143 / 137) */
+  const GUM_GLOW = 0.25;
   function hoodPick(m) {
     m.onBeforeCompile = sh => {
       sh.vertexShader = sh.vertexShader
-        .replace('#include <common>', '#include <common>\nattribute vec3 aInner;\nattribute float aSel;\nvarying vec3 vInner;\nvarying float vSel;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvInner = aInner;\nvSel = aSel;');
+        .replace('#include <common>', '#include <common>\nattribute vec3 aInner;\nattribute float aSel;\nattribute float aBand;\nvarying vec3 vInner;\nvarying float vSel;\nvarying float vBand;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvInner = aInner;\nvSel = aSel;\nvBand = aBand;');
       sh.fragmentShader = sh.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying vec3 vInner;\nvarying float vSel;')
-        .replace('#include <color_fragment>', '#include <color_fragment>\n{ float fw = max(fwidth(vSel), 1e-5); diffuseColor.rgb = mix(diffuseColor.rgb, vInner, smoothstep(-fw, fw, vSel)); }');
+        .replace('#include <common>', '#include <common>\nvarying vec3 vInner;\nvarying float vSel;\nvarying float vBand;')
+        .replace('#include <color_fragment>', '#include <color_fragment>\nfloat hoodK = smoothstep(-max(fwidth(vSel), 1e-5), max(fwidth(vSel), 1e-5), vSel);\ndiffuseColor.rgb = mix(diffuseColor.rgb, vInner, hoodK);')
+        .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\ntotalEmissiveRadiance += vInner * (hoodK * vBand * ${GUM_GLOW.toFixed(3)});`);
     };
     m.customProgramCacheKey = () => 'croc-hood-pick';
     return m;
@@ -347,7 +354,7 @@
     const hoodGeo = mesh(fHood, [-2.0, 0.1, -1.45, 2.0, EYE.y + SOCKET.r + 0.08, 1.3], H);
     {
       const P = hoodGeo.attributes.position.array, N = hoodGeo.attributes.normal.array, nv = P.length / 3;
-      const col = new Float32Array(nv * 3), inner = new Float32Array(nv * 3), sel = new Float32Array(nv);
+      const col = new Float32Array(nv * 3), inner = new Float32Array(nv * 3), sel = new Float32Array(nv), bandW = new Float32Array(nv);
       for (let k = 0; k < nv; k++) {
         const x = P[3 * k], y = P[3 * k + 1], z = P[3 * k + 2];
         const solid = hoodSolid(x, y, z), cav = -hoodCavity(x, y, z), cut = -above(y, z), top = Math.max(solid, cav, cut);
@@ -366,13 +373,15 @@
         const onCut = smooth(-0.02, 0.02, cut - Math.max(solid, cav));
         const band = smooth(0.32, 0.16, above(y, z)) * smooth(-0.1, 0.35, z);
         cIn.copy(cRoofNear).lerp(cRoofDeep, smooth(1.85, 1.25, y));
-        cIn.lerp(cPal, 1 - (1 - onCut) * (1 - band));
+        bandW[k] = 1 - (1 - onCut) * (1 - band);                  // the upper gums (self-light in hoodPick)
+        cIn.lerp(cPal, bandW[k]);
         const ao = bakeAO(fMouth, x, y, z, N[3 * k], N[3 * k + 1], N[3 * k + 2], 0.5);      // mild: no shadow shapes on the wall
         inner[3 * k] = cIn.r * ao; inner[3 * k + 1] = cIn.g * ao; inner[3 * k + 2] = cIn.b * ao;
       }
       hoodGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
       hoodGeo.setAttribute('aInner', new THREE.BufferAttribute(inner, 3));
       hoodGeo.setAttribute('aSel', new THREE.BufferAttribute(sel, 1));
+      hoodGeo.setAttribute('aBand', new THREE.BufferAttribute(bandW, 1));
     }
     const head = shadowy(new THREE.Mesh(hoodGeo, M.hood));
     lidIn.add(head);
