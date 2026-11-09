@@ -196,26 +196,34 @@
     for (let i = 0; i < Mic.buf.length; i++) s += Mic.buf[i] * Mic.buf[i];
     return Math.sqrt(s / Mic.buf.length);
   };
-  /* resolves true (voice heard), false (nothing heard), null (no microphone) */
+  /* resolves true (voice heard), false (nothing heard), null (no microphone). A voice = ~150 ms of sound above the
+     room's level within one stretch (gaps under 160 ms): clicks, knocks or beats spread over the wait no longer add up
+     to one (user: "단어를 읽지 않았는데 그냥 넘어가는 경우 없어야해") */
+  Mic.ready = () => Mic.state === 'on' && !(window.__test && window.__test.mic === false);
   Mic.listen = function ({ maxMs = 5000, onLevel, cancel } = {}) {
     return new Promise(res => {
-      if (window.__test && window.__test.heard != null) {               // QA hook: scripted answer
-        const v = window.__test.heard;
+      if (window.__test && window.__test.heard != null) {               // QA hook: scripted answer(s), in order
+        const h = window.__test.heard, v = Array.isArray(h) ? (h.length > 1 ? h.shift() : h[0]) : h;
         return setTimeout(() => res(v), 500);
       }
-      if (Mic.state !== 'on' || (window.__test && window.__test.mic === false)) return res(null);
+      if (!Mic.ready()) return res(null);
       A.listening = true; duck();
       const t0 = performance.now();
-      let floor = 0, nCal = 0, voiced = 0, heardAt = 0, lastVoice = 0, finished = false;
+      let floor = 0, nCal = 0, run = 0, last = t0, heardAt = 0, lastVoice = 0, finished = false;
       const done = v => { if (finished) return; finished = true; A.listening = false; duck(); if (onLevel) onLevel(0); res(v); };
       const tick = () => {
         if (finished) return;
         if (cancel && cancel()) return done(false);
-        const now = performance.now(), lv = Mic.level();
+        const now = performance.now(), lv = Mic.level(), dt = Math.min(50, now - last);
+        last = now;
         if (now - t0 < 280) { floor += lv; nCal++; if (onLevel) onLevel(0); requestAnimationFrame(tick); return; }
         const thr = Math.max(0.016, (floor / Math.max(1, nCal)) * 3.2);
         if (onLevel) onLevel(Math.min(1, lv / (thr * 2.5)));
-        if (lv > thr) { voiced++; lastVoice = now; if (!heardAt && voiced >= 8) heardAt = now; }
+        if (lv > thr) {
+          if (now - lastVoice > 160) run = 0;
+          run += dt; lastVoice = now;
+          if (!heardAt && run >= 150) heardAt = now;
+        }
         if (heardAt && (now - lastVoice > 450 || now - heardAt > 2200)) return done(true);
         if (now - t0 > maxMs) return done(!!heardAt);
         requestAnimationFrame(tick);

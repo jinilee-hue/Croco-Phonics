@@ -35,10 +35,12 @@ with sync_playwright() as p:
         pg.wait_for_function("document.querySelector('#mic').classList.contains('nomic')", timeout=20000)
         time.sleep(0.9)
         pg.screenshot(path=str(out / f'{tag}_3nomic.png'))
+        pg.click('#mic', force=True)                 # no mic: the turn waits for this tap (said it)
         pg.wait_for_function("document.querySelector('#app').dataset.turn === '1' && document.querySelector('#turn').classList.contains('show')", timeout=20000)
         time.sleep(0.6)
         pg.evaluate('() => { __croco.onTooth(2); }')   # moon = target
-        time.sleep(4.6)
+        pg.wait_for_function("__croco.G.screen === 'result'", timeout=20000)   # after the chomp line + the word re-read
+        time.sleep(1.0)
         pg.screenshot(path=str(out / f'{tag}_4result.png'))
         print(tag, 'screen', pg.evaluate('__croco.G.screen'), 'got', pg.evaluate('__croco.G.got'), 'errors', errs[:5])
         pg.close()

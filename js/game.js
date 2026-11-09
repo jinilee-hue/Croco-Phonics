@@ -487,7 +487,7 @@
     card.classList.add('busy');
     await sayWord(word, card, tok);
     if (tok !== G.token) return;
-    await sayIt(card, tok);
+    await sayIt(word, card, tok);
     if (tok !== G.token) return;
     card.classList.remove('busy');
     // onto the player's pile: the pile makes a place, the card arcs over (sparkle trail) and lands on it
@@ -510,45 +510,71 @@
     setTurn(1 - p);
   }
 
-  /* "say it": prompt, listen for a voice (mic) or give a short countdown without a mic. The mic sits in the middle of
-     the screen on the croc's lower jaw (user: "마이크는 화면 가운데 악어 아래 턱에 겹쳐서") */
+  /* "say it": the croc asks, then WAITS for the word — the turn never moves on without it (user: "단어를 읽지 않았는데
+     그냥 넘어가는 경우 없어야해"; it used to move on after ~10 s of silence, or after a 2.6 s countdown without a mic).
+     - with a mic: it listens with no time-out; each silence brings the croc back, in turn "I can't hear you. Say it
+       loud!" and the word once more (its sound + the word) + "Now say the word.", then it listens again
+     - without one (refused, none, or still being asked) it can't hear, so the player taps the mic once they've said
+       the word (tapMic); if the mic gets allowed meanwhile, it listens instead
+     Home / Exit still end the round (the token). The mic sits in the middle of the screen on the croc's lower jaw
+     (user: "마이크는 화면 가운데 악어 아래 턱에 겹쳐서") */
   function placeMic() { const mc = $('#mic'), p = croc.jawScreen(); mc.style.left = p.x + 'px'; mc.style.top = p.y + 'px'; return mc; }
-  async function sayIt(card, tok) {
+  async function sayIt(word, card, tok) {
     const mic = placeMic();
     mic.classList.add('listen');
     try {
       await say('t:sayit', 600);
-      if (tok !== G.token) return;
       const lv = v => mic.style.setProperty('--lv', v.toFixed(3));
-      let heard = await Mic.listen({ maxMs: 5200, onLevel: lv, cancel: () => tok !== G.token });
-      if (tok !== G.token) return;
-      if (heard === null) {                      // no microphone: give them time to say it
-        mic.classList.add('nomic');
-        const t0 = performance.now(), ms = 2600;
-        while (performance.now() - t0 < ms && tok === G.token) {
-          mic.style.setProperty('--cd', Math.min(100, (performance.now() - t0) / ms * 100) + '%');
-          await sleep(50);
-        }
-        mic.classList.remove('nomic');
-      } else if (!heard) {
-        await say('t:louder');
+      for (let k = 0; ; k++) {
         if (tok !== G.token) return;
-        heard = await Mic.listen({ maxMs: 4200, onLevel: lv, cancel: () => tok !== G.token });
+        const heard = await Mic.listen({ maxMs: k ? 6500 : 5200, onLevel: lv, cancel: () => tok !== G.token });
+        if (tok !== G.token) return;
+        if (heard) break;
+        if (heard === null) { if (await tapMic(mic, tok)) break; continue; }
+        if (k % 2 === 0) await say('t:louder');
+        else { await sayWord(word, card, tok); if (tok !== G.token) return; await say('t:sayit', 300); }
       }
-      mic.classList.remove('listen');
       if (tok !== G.token) return;
-      if (heard) {
-        card.classList.add('good');
-        A.sfxPlay('great');
-        const r = card.getBoundingClientRect();
-        FX.burst(r.left + r.width / 2, r.top + r.height / 2, { kind: 'stars', n: 22 });
-        await say(['t:great2', 't:great3'][rand(2)], 500);
-      } else {
-        await sleep(300);
-      }
+      mic.classList.remove('listen');
+      card.classList.add('good');
+      A.sfxPlay('great');
+      const r = card.getBoundingClientRect();
+      FX.burst(r.left + r.width / 2, r.top + r.height / 2, { kind: 'stars', n: 22 });
+      await say(['t:great2', 't:great3'][rand(2)], 500);
     } finally {
       mic.classList.remove('listen', 'nomic');
       mic.style.setProperty('--lv', 0);
+    }
+  }
+
+  /* no mic to hear with: wait for a tap on the mic ("I said it"). The glove taps it from 1.6 s on, and the croc asks
+     again every 9 s. true = tapped; false = the round ended, or the mic got allowed meanwhile (then sayIt listens) */
+  async function tapMic(mic, tok) {
+    let tapped = false;
+    const on = e => { e.preventDefault(); e.stopPropagation(); if (!tapped) { tapped = true; A.stopVoice(); A.sfxPlay('tap'); } };
+    const h = $('#hint');
+    mic.classList.add('nomic');
+    mic.addEventListener('pointerdown', on);
+    try {
+      const t0 = performance.now();
+      let again = 9000, hand = false;
+      while (!tapped && tok === G.token && !Mic.ready()) {
+        const el = performance.now() - t0;
+        if (!hand && el > 1600) {
+          hand = true;
+          const r = mic.getBoundingClientRect();
+          h.style.left = (r.left + r.width * 0.6) + 'px';
+          h.style.top = (r.top + r.height * 0.62) + 'px';
+          h.classList.add('show', 'on-mic');
+        }
+        if (el > again) { again = el + 9000; await say('t:sayit', 300); continue; }
+        await sleep(60);
+      }
+      return tapped;
+    } finally {
+      mic.removeEventListener('pointerdown', on);
+      mic.classList.remove('nomic');
+      h.classList.remove('show', 'on-mic');
     }
   }
 
