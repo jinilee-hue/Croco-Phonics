@@ -39,6 +39,9 @@
 
   const COLORS = {
     skin: '#6e9e6b', interior: '#d98880', palate: '#c96a60', gum: '#ef6c58', tongue: '#e0645c', blush: '#f59aa2',
+    // the mouth's depth (see bakeAO): roof near the lip → deep in the hood, the floor inside the teeth, the throat,
+    // the tongue's lit top and its edges
+    roofNear: '#d4736b', roofDeep: '#953540', floor: '#d9574c', throat: '#7a2b30', tongueTop: '#f28a7e', tongueEdge: '#c2464a',
     tooth: '#fbf6ee', eye: '#f8f5ef', pupil: '#16171a', claw: '#d8c463',
   };
   // the render's letter inks: blue, mint, teal, orange (front teeth in that order)
@@ -154,6 +157,33 @@
     return out;
   }
 
+  // ── the mouth's depth (user: "악어 입안에도 좀더 입체감이 느껴지게 퀄리티 수정해줘") ────────────────────────────
+  // Ambient occlusion baked into vertex colours at build time: from each vertex, step out along its normal and see how
+  // close the mouth's parts are (Inigo Quilez's SDF AO). Creases, the teeth's feet, the tongue's edge and the back of
+  // the mouth come out darker; flat open faces stay as they were. The hood is taken in its modelled open pose.
+  const TEETH_AT = toothLayout().map(p => ({ x: p.x, z: p.z, c: Math.cos(p.ry), s: Math.sin(p.ry) }));
+  function fTeethAll(x, y, z) {
+    let f = 1e9;
+    for (const t of TEETH_AT) {
+      const dx = x - t.x, dz = z - t.z, r2 = dx * dx + dz * dz;
+      if (r2 > 0.36) { f = Math.min(f, Math.sqrt(r2) - 0.33); continue; }      // far away: a bound is enough
+      f = Math.min(f, fTooth(t.c * dx - t.s * dz, y - TOOTH_Y, t.s * dx + t.c * dz));   // into the tooth's own frame
+    }
+    return f;
+  }
+  const fMouth = (x, y, z) => Math.min(fTray(x, y, z), fTongue(x, y, z), fTeethAll(x, y, z), fHood(x, y, z));
+  const fMouthTub = (x, y, z) => Math.min(fMouth(x, y, z), fBody(x, y, z));
+  const AO_STEPS = [0.04, 0.1, 0.18, 0.3, 0.46];
+  function bakeAO(f, x, y, z, nx, ny, nz, k) {
+    let occ = 0, w = 1;
+    for (const d of AO_STEPS) {
+      occ += w * Math.max(0, d - f(x + nx * d, y + ny * d, z + nz * d));
+      w *= 0.8;
+    }
+    return clamp(1 - occ * k, 0.18, 1);
+  }
+  const mixInto = (out, a, b, t) => { out[0] = a.r + (b.r - a.r) * t; out[1] = a.g + (b.g - a.g) * t; out[2] = a.b + (b.b - a.b) * t; };
+
   // ── letters on the teeth ─────────────────────────────────────────────────────────────────────────────
   function drawLetter(c, ch, color) {
     const g = c.getContext('2d');
@@ -250,10 +280,10 @@
     const M = {
       skin: mat(COLORS.skin),
       hood: mat('#ffffff', { vertexColors: true }),
-      gum: mat(COLORS.gum, { roughness: 0.74 }),
-      tongue: mat(COLORS.tongue, { roughness: 0.7 }),
+      gum: mat('#ffffff', { roughness: 0.74, vertexColors: true }),
+      tongue: mat('#ffffff', { roughness: 0.7, vertexColors: true }),
       claw: mat(COLORS.claw, { roughness: 0.74 }),
-      tooth: mat(COLORS.tooth, { roughness: 0.6, emissive: '#000000' }),
+      tooth: mat(COLORS.tooth, { roughness: 0.6, emissive: '#000000', vertexColors: true }),
       eye: eyeMaterial(),
       lash: new THREE.MeshBasicMaterial({ color: '#2a3a26' }),
     };
@@ -266,8 +296,34 @@
     root.add(base);
     base.add(shadowy(new THREE.Mesh(mesh(fBody, [-2.55, -0.05, -1.62, 2.55, 0.82, 1.5], H), M.skin)));
     base.add(shadowy(new THREE.Mesh(mesh(fClaws, [-2.68, -0.03, -1.82, 2.68, 0.32, 1.2], H * 0.5), M.claw)));
-    base.add(shadowy(new THREE.Mesh(mesh(fTray, [-1.5, 0.3, -1.18, 1.5, 0.84, 1.18], H * 0.8), M.gum)));
-    base.add(shadowy(new THREE.Mesh(mesh(fTongue, [-0.92, 0.5, -0.92, 0.92, 1.16, 0.58], H), M.tongue)));
+    const C = k => new THREE.Color(COLORS[k]);
+    const cGum = C('gum'), cFloor = C('floor'), cThroat = C('throat');
+    const cTongue = C('tongue'), cTongueTop = C('tongueTop'), cTongueEdge = C('tongueEdge');
+    // the tray: the floor inside the ring of teeth deeper red, darker toward the back (the throat); the coral rim in
+    // front stays bright; AO round the teeth, the tongue, the side walls and where the tray meets the tub
+    const trayGeo = mesh(fTray, [-1.5, 0.3, -1.18, 1.5, 0.84, 1.18], H * 0.8, {
+      color(x, y, z, out, nx, ny, nz) {
+        const ex = x / 1.0, ez = (z + 0.12) / 0.7, inside = smooth(1.02, 0.8, Math.sqrt(ex * ex + ez * ez)) * smooth(0.5, 0.85, ny);
+        mixInto(out, cGum, cFloor, inside);
+        const back = smooth(0.15, -0.95, z) * inside;
+        out[0] += (cThroat.r - out[0]) * back * 0.85; out[1] += (cThroat.g - out[1]) * back * 0.85; out[2] += (cThroat.b - out[2]) * back * 0.85;
+        const ao = bakeAO(fMouthTub, x, y, z, nx, ny, nz, 1.7);
+        out[0] *= ao; out[1] *= ao; out[2] *= ao;
+      },
+    });
+    base.add(shadowy(new THREE.Mesh(trayGeo, M.gum)));
+    // the tongue: a lit top, darker edges and back, AO where it meets the floor and in its groove
+    const tongueGeo = mesh(fTongue, [-0.92, 0.5, -0.92, 0.92, 1.16, 0.58], H, {
+      color(x, y, z, out, nx, ny, nz) {
+        const up = smooth(0.15, 0.95, ny), back = smooth(0.2, -0.8, z);
+        mixInto(out, cTongueEdge, cTongue, up);
+        const lit = up * smooth(0.95, 1.08, y) * (1 - back) * 0.75;
+        out[0] += (cTongueTop.r - out[0]) * lit; out[1] += (cTongueTop.g - out[1]) * lit; out[2] += (cTongueTop.b - out[2]) * lit;
+        const ao = bakeAO(fMouth, x, y, z, nx, ny, nz, 1.7) * (1 - 0.4 * back);
+        out[0] *= ao; out[1] *= ao; out[2] *= ao;
+      },
+    });
+    base.add(shadowy(new THREE.Mesh(tongueGeo, M.tongue)));
 
     // hood: pivot at the hinge, children in croc coordinates
     const lid = new THREE.Group();
@@ -276,11 +332,12 @@
     const lidIn = new THREE.Group();
     lidIn.position.set(0, -HINGE.y, -HINGE.z);
     lid.add(lidIn);
-    const cSkin = new THREE.Color(COLORS.skin), cPal = new THREE.Color(COLORS.palate), cIn = new THREE.Color(COLORS.interior);
+    const cSkin = new THREE.Color(COLORS.skin), cPal = new THREE.Color(COLORS.palate);
+    const cRoofNear = new THREE.Color(COLORS.roofNear), cRoofDeep = new THREE.Color(COLORS.roofDeep), cIn = new THREE.Color();
     const cBlush = new THREE.Color(COLORS.blush);
     const hoodGeo = mesh(fHood, [-2.0, 0.1, -1.45, 2.0, EYE.y + SOCKET.r + 0.08, 1.3], H, {
-      color(x, y, z, out) {
-        // outer skin; the inside: a dark-red palate band along the lip, dark green deeper in (always in shadow)
+      color(x, y, z, out, nx, ny, nz) {
+        // outer skin; the inside: a dark-red palate band along the lip, the roof darker the deeper into the hood
         const solid = hoodSolid(x, y, z), cav = -hoodCavity(x, y, z), cut = -above(y, z);
         const flap = smooth(-0.02, 0.02, Math.max(solid, cav, cut) - fFlaps(x, y, z));   // 1 where a side wall is the surface
         const onCut = smooth(-0.02, 0.02, cut - Math.max(solid, cav)) * (1 - flap);
@@ -292,16 +349,25 @@
         const dx = Math.abs(x) - 1.0, dy = y - 2.2, dz = z - 0.5;
         const bl = 0.8 * Math.exp(-(dx * dx + dy * dy * 2.2 + dz * dz * 0.8) / 0.045);
         const r = cSkin.r + (cBlush.r - cSkin.r) * bl, g = cSkin.g + (cBlush.g - cSkin.g) * bl, b = cSkin.b + (cBlush.b - cSkin.b) * bl;
-        out[0] = r * sk + cPal.r * pal + cIn.r * inr;
-        out[1] = g * sk + cPal.g * pal + cIn.g * inr;
-        out[2] = b * sk + cPal.b * pal + cIn.b * inr;
+        let ao = 1;
+        if (pal + inr > 0.01) {                       // the mouth's side: depth colour + AO (skin vertices skip the cost)
+          // the back wall seen through the open mouth: a warm red up top, darker down toward the throat
+          cIn.copy(cRoofNear).lerp(cRoofDeep, clamp(0.7 * smooth(2.05, 1.2, y) + 0.3 * smooth(0.1, 0.7, above(y, z)), 0, 1));
+          ao = bakeAO(fMouth, x, y, z, nx, ny, nz, 1.1);
+        }
+        out[0] = r * sk + (cPal.r * pal + cIn.r * inr) * ao;
+        out[1] = g * sk + (cPal.g * pal + cIn.g * inr) * ao;
+        out[2] = b * sk + (cPal.b * pal + cIn.b * inr) * ao;
       },
     });
     const head = shadowy(new THREE.Mesh(hoodGeo, M.hood));
     lidIn.add(head);
 
     // upper teeth hang from the palate band, square to the underside plane (straight down once shut)
-    const utGeo = mesh(fUpperTooth, [-0.23, -0.36, -0.15, 0.23, 0.23, 0.15], H * 0.45);
+    // upper teeth: a soft shade toward the root (where they come out of the palate band)
+    const utGeo = mesh(fUpperTooth, [-0.23, -0.36, -0.15, 0.23, 0.23, 0.15], H * 0.45, {
+      color(x, y, z, out) { const g = 1 - 0.3 * smooth(-0.04, 0.12, y); out[0] = g; out[1] = g * 0.975; out[2] = g * 0.955; },
+    });
     const upper = [];
     for (const [x, sc, inset] of [[-0.58, 0.92, 0.13], [0.58, 0.92, 0.13], [-1.06, 0.46, 0.12], [1.06, 0.46, 0.12], [-1.24, 0.42, 0.12], [1.24, 0.42, 0.12]]) {
       const lp = lipAt(x);
@@ -346,7 +412,10 @@
     }
 
     // lower teeth
-    const toothGeo = mesh(fTooth, [-0.26, -0.46, -0.22, 0.26, 0.26, 0.23], H * 0.5);
+    // lower teeth: a soft shade at the gum line (the tray top is at local y −0.12), so they stand IN the gum
+    const toothGeo = mesh(fTooth, [-0.26, -0.46, -0.22, 0.26, 0.26, 0.23], H * 0.5, {
+      color(x, y, z, out) { const g = 1 - 0.32 * smooth(0.04, -0.13, y); out[0] = g; out[1] = g * 0.975; out[2] = g * 0.955; },
+    });
     const decalGeo = decalGeometry(toothGeo);
     const hitGeo = new THREE.BoxGeometry(TOOTH.hx * 2.5, 0.5, TOOTH.hz * 3.2);
     const hitMat = new THREE.MeshBasicMaterial({ visible: false });

@@ -72,7 +72,7 @@
 
   /**
    * f: (x,y,z) => signed distance. box: [x0,y0,z0,x1,y1,z1]. h: cell size.
-   * opts.color: (x,y,z,out[3]) => void  → vertex colours (linear 0..1)
+   * opts.color: (x,y,z,out[3],nx,ny,nz) => void  → vertex colours (linear 0..1); n = the surface normal
    * opts.project: Newton steps onto the surface (default 2)
    */
   function mesh(f, box, h, opts = {}) {
@@ -162,7 +162,7 @@
     if (opts.color) {
       const col = new Float32Array(nv * 3), out = [0, 0, 0];
       for (let k = 0; k < nv; k++) {
-        opts.color(P[3 * k], P[3 * k + 1], P[3 * k + 2], out);
+        opts.color(P[3 * k], P[3 * k + 1], P[3 * k + 2], out, N[3 * k], N[3 * k + 1], N[3 * k + 2]);
         col[3 * k] = out[0]; col[3 * k + 1] = out[1]; col[3 * k + 2] = out[2];
       }
       geo.setAttribute('color', new THREE.BufferAttribute(col, 3));

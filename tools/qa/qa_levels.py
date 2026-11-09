@@ -1,7 +1,8 @@
 """QA: levels (FPR K Lesson N = Level N) — every level's data in the game, the result screen's Play Again + Next Level,
 the level-up banner, the new letter on the teeth, the last level.
 usage: uv run --with playwright --with pillow python tools/qa/qa_levels.py <outdir>
-  1  every level: the teeth show its letter, its sound clip + every word's clip exist, every card picture loads; a round
+  1  every level: on the title the teeth show the levels' letters (one per tooth; its own letter is checked in its
+     round), its sound clip + every word's clip exist, every card picture loads; a round
      deals 10 teeth from its words with the trap word on exactly one; the trap card's pill letter and bold letter(s)
   2  1180x820 + 820x1180: level 1 → the trap tooth → result (Play Again + Next Level) → Next Level → banner → level 2's
      round (teeth 'a', level tag) → result → Play Again stays on level 2
@@ -61,7 +62,8 @@ with sync_playwright() as p:
             noVoice: L.words.filter(w => !A.has('w:' + w.w)).map(w => w.w), noPic: pics.filter(x => !x[1]).map(x => x[0]),
             toothCh: [...new Set(__croco.croc.teeth.map(t => t.decal.material.map.userData.ch))], deco: [...document.querySelectorAll('.deco .l3d')].map(e => e.textContent).join(''),
             decoCards: [...document.querySelectorAll('.deco [data-word]')].map(e => e.dataset.word) }; }""", i)
-        ok = r['sound'] and not r['noVoice'] and not r['noPic'] and r['toothCh'] == [r['letter']]
+        mix = sorted(pg.evaluate("[...new Set(__croco.LEVELS.map(L => L.letter))]"))
+        ok = r['sound'] and not r['noVoice'] and not r['noPic'] and sorted(r['toothCh']) == mix   # the title's mix
         print(f"1 level {i + 1:2d} = Lesson {r['lesson']:2d} {r['title']:8s} {r['n']:2d} words · sound {r['sound']} · teeth {r['toothCh']} · deco {r['deco']} {r['decoCards']}"
               + ('' if ok else f"  ✗ noVoice {r['noVoice']} noPic {r['noPic']}"))
         if not ok:
