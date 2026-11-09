@@ -196,8 +196,9 @@
     document.querySelectorAll('.player').forEach((pl, p) => {
       const box = pl.querySelector('.wins');
       box.innerHTML = lv.map(k => {
-        const L = LEVELS[k], n = (G.wins[k] || [0, 0])[p];
-        return `<span class="wchip${k === G.level ? ' cur' : ''}${n ? '' : ' zero'}" title="Level ${k + 1}"><b>${lvLabel(L)}</b>`
+        // the crown and the count only (user: "이건 왕관과 갯수만 있으면 될듯해"); the level stays in title / aria-label
+        const n = (G.wins[k] || [0, 0])[p];
+        return `<span class="wchip${k === G.level ? ' cur' : ''}${n ? '' : ' zero'}" title="Level ${k + 1}">`
           + `<img src="assets/img/crown.webp" alt="" draggable="false"><em>${n}</em></span>`;
       }).join('');
       box.setAttribute('aria-label', lv.map(k => `${tr('level', { n: k + 1 })}: ${(G.wins[k] || [0, 0])[p]}`).join(', '));

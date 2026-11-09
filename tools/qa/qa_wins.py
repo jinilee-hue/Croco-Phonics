@@ -61,7 +61,7 @@ with sync_playwright() as p:
         bad.append('the big card did not pulse')
     c1 = pg.evaluate(CHIPS)
     print(f'  winner P{w1 + 1} → chips', c1)
-    if c1[w1] != 'Mm1*' or c1[1 - w1] != 'Mm0*':
+    if c1[w1] != '1*' or c1[1 - w1] != '0*':                # crown + count only (no level label)
         bad.append(f'chips after round 1 {c1}')
     pg.screenshot(path=str(out / 'result1.png'))
     # ── 2. Play Again → another win; Next Level → Aa ──
@@ -71,13 +71,13 @@ with sync_playwright() as p:
     c2 = pg.evaluate(CHIPS)
     exp = [0, 0]; exp[w1] += 1; exp[w2] += 1
     print(f'2 Play Again, winner P{w2 + 1} → chips', c2)
-    if c2 != [f'Mm{exp[0]}*', f'Mm{exp[1]}*']:
+    if c2 != [f'{exp[0]}*', f'{exp[1]}*']:
         bad.append(f'chips after round 2 {c2} (expected {exp})')
     pg.click('#next', force=True)
     pg.wait_for_function("document.querySelector('#turn').classList.contains('show')", timeout=30000)
     c3 = pg.evaluate(CHIPS)
     print('  Next Level → chips', c3)
-    if c3 != [f'Mm{exp[0]} Aa0*', f'Mm{exp[1]} Aa0*']:
+    if c3 != [f'{exp[0]} 0*', f'{exp[1]} 0*']:
         bad.append(f'chips at level 2 {c3}')
     w3 = bite(pg)
     c4 = pg.evaluate(CHIPS)

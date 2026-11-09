@@ -140,7 +140,8 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
   font: 800 calc(var(--u) * 6.6)/1 var(--font); color: #fff; letter-spacing: .03em; border-radius: 999px;
   background: linear-gradient(#ffb578, #ff8c3f 55%, #f27428);
   text-shadow: 0 calc(var(--u) * .35) 0 rgba(185,75,15,.4);
-  box-shadow: inset 0 calc(var(--u) * -1) 0 rgba(195,80,20,.45), inset 0 calc(var(--u) * .6) 0 rgba(255,255,255,.45), 0 calc(var(--u) * 1.4) calc(var(--u) * 2.4) rgba(220,100,30,.38);
+  /* no light band along the top (user: "버튼 위에 밝은 음영 들어간건 빼줘"): the inset white 0.6u band is gone — here and on .next */
+  box-shadow: inset 0 calc(var(--u) * -1) 0 rgba(195,80,20,.45), 0 calc(var(--u) * 1.4) calc(var(--u) * 2.4) rgba(220,100,30,.38);
   animation: breathe 2.2s ease-in-out infinite; transition: opacity .3s, scale .3s; }
 .start svg { width: .72em; height: .72em; fill: #fff; filter: drop-shadow(0 calc(var(--u) * .35) 0 rgba(185,75,15,.4)); }
 .start:active { transform: translateX(-50%) scale(.95); }
@@ -380,7 +381,7 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 @keyframes againIn { from { transform: translateY(14vh) scale(.6); opacity: 0; } }
 /* Next Level (user: "다시하기가 있고 다음레벨로 넘어가는 버튼이 있어야"): croc green, right of Play Again; gone on the last level */
 .next { background: linear-gradient(#93e38c, #55c25d 55%, #37a64a); text-shadow: 0 calc(var(--u) * .35) 0 rgba(25,105,40,.45);
-  box-shadow: inset 0 calc(var(--u) * -1) 0 rgba(30,120,45,.45), inset 0 calc(var(--u) * .6) 0 rgba(255,255,255,.45), 0 calc(var(--u) * 1.4) calc(var(--u) * 2.4) rgba(40,150,60,.35); }
+  box-shadow: inset 0 calc(var(--u) * -1) 0 rgba(30,120,45,.45), 0 calc(var(--u) * 1.4) calc(var(--u) * 2.4) rgba(40,150,60,.35); }
 .next svg { filter: drop-shadow(0 calc(var(--u) * .35) 0 rgba(25,105,40,.45)); }
 #app[data-screen="result"] .next { animation-delay: 1.25s, 2.1s; }
 #app.lastlv .next { display: none; }
