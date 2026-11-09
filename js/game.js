@@ -145,7 +145,10 @@
     const mk = (layer, ch, c) => {
       const o = document.createElement('i');
       o.className = 'ol';
-      o.innerHTML = `<b style="--c:${c.c};--top:${c.top};--deep:${c.deep};--rim:${c.rim}">${ch}</b>`;
+      // the letter is a baked puffy sprite like the logo's letters (tools/make_orbit_letters.py reads ch + colours
+      // from here); the text stays (transparent) for the box and the QA, and shows in colour if the image fails
+      o.innerHTML = `<b style="--c:${c.c};--top:${c.top};--deep:${c.deep};--rim:${c.rim}">${ch}<img src="assets/img/ol_${ch}.webp"`
+        + ` alt="" draggable="false" onerror="this.parentNode.classList.add('noimg')"></b>`;
       layer.appendChild(o);
       return o;
     };

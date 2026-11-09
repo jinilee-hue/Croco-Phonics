@@ -49,15 +49,13 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .ol { position: absolute; left: 0; top: 0; will-change: transform; }
 /* 19u = a front letter's size (user: "악어 주변에 도는 알파벳 너무 작아 크게 키워줘"; was 9u × 1.4): drawn at its natural size in
    front and scaled DOWN toward the back (game.js ORBIT.MIN/MAX), so the big ones stay crisp; the clay shadow in em */
-.ol b { display: block; font: 800 calc(var(--u) * 19)/1 var(--font); color: var(--c);
-  filter: drop-shadow(0 .05em 0 var(--rim)) drop-shadow(0 .13em .14em rgba(70,60,90,.2)); }
-/* the logo's candy letters (user: "인트로 스펠링 로고처럼 좀더 밝은 채도로"): light top → the logo colour → a richer lower part,
-   a white gloss up left; the thickness and shadow are drop-shadows (a text-shadow would paint over this fill) */
-@supports ((-webkit-background-clip: text) or (background-clip: text)) {
-  .ol b { color: transparent; -webkit-background-clip: text; background-clip: text;
-    background-image: radial-gradient(ellipse 26% 9% at 35% 45%, rgba(255,255,255,.9), rgba(255,255,255,0) 75%),
-      linear-gradient(180deg, var(--top) 24%, var(--c) 44%, var(--c) 68%, var(--deep) 92%); }
-}
+.ol b { display: block; position: relative; font: 800 calc(var(--u) * 19)/1 var(--font); color: transparent; }
+/* the logo's puffy candy letters (user: "인트로 스펠링 로고처럼 좀더 밝은 채도로", then "스펠링의 볼륨감 로고와 같아야해"):
+   baked sprites (tools/make_orbit_letters.py: rounded bevels, darker same-hue edges at the bottom right, gloss streaks
+   up left, a soft shadow) laid exactly over the transparent text: the sprite = the text box + .2em at the sides, .2em
+   on top and .38em below; sized by height only, so it never stretches before the font loads */
+.ol b img { position: absolute; left: 50%; top: -0.2em; height: 1.58em; width: auto; transform: translateX(-50%); pointer-events: none; -webkit-user-drag: none; }
+.ol b.noimg { color: var(--c); }
 #app[data-screen="title"] .deco .l3d { opacity: 0; }
 
 .fly, .lay { position: absolute; transition: opacity .6s, transform .6s; }
