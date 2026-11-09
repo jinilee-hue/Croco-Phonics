@@ -39,9 +39,9 @@
 
   const COLORS = {
     skin: '#6e9e6b', interior: '#d98880', palate: '#c96a60', gum: '#ef6c58', tongue: '#e0645c', blush: '#f59aa2',
-    // the mouth's depth (see bakeAO): roof near the lip → deep in the hood, the floor inside the teeth, the throat,
-    // the tongue's lit top and its edges
-    roofNear: '#d4736b', roofDeep: '#953540', floor: '#d9574c', throat: '#7a2b30', tongueTop: '#f28a7e', tongueEdge: '#c2464a',
+    // the mouth's depth (see bakeAO): roof near the lip → deep in the hood, the floor inside the teeth, the throat.
+    // The tongue stays one flat colour (user: "악어 혀 부분은 전에꺼가 나아" — the shaded one read washed out with a dark slit)
+    roofNear: '#d4736b', roofDeep: '#953540', floor: '#d9574c', throat: '#7a2b30',
     tooth: '#fbf6ee', eye: '#f8f5ef', pupil: '#16171a', claw: '#d8c463',
   };
   // the render's letter inks: blue, mint, teal, orange (front teeth in that order)
@@ -183,6 +183,19 @@
     return clamp(1 - occ * k, 0.18, 1);
   }
   const mixInto = (out, a, b, t) => { out[0] = a.r + (b.r - a.r) * t; out[1] = a.g + (b.g - a.g) * t; out[2] = a.b + (b.b - a.b) * t; };
+  /* the hood's material: skin (vertex colour) or the mouth (aInner) by the sign of aSel, per pixel, anti-aliased */
+  function hoodPick(m) {
+    m.onBeforeCompile = sh => {
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute vec3 aInner;\nattribute float aSel;\nvarying vec3 vInner;\nvarying float vSel;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvInner = aInner;\nvSel = aSel;');
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vInner;\nvarying float vSel;')
+        .replace('#include <color_fragment>', '#include <color_fragment>\n{ float fw = max(fwidth(vSel), 1e-5); diffuseColor.rgb = mix(diffuseColor.rgb, vInner, smoothstep(-fw, fw, vSel)); }');
+    };
+    m.customProgramCacheKey = () => 'croc-hood-pick';
+    return m;
+  }
 
   // ── letters on the teeth ─────────────────────────────────────────────────────────────────────────────
   function drawLetter(c, ch, color) {
@@ -279,9 +292,9 @@
     const mat = (hex, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: hex, roughness: 0.82, metalness: 0, envMapIntensity: 0.5 }, o));
     const M = {
       skin: mat(COLORS.skin),
-      hood: mat('#ffffff', { vertexColors: true }),
+      hood: hoodPick(mat('#ffffff', { vertexColors: true })),
       gum: mat('#ffffff', { roughness: 0.74, vertexColors: true }),
-      tongue: mat('#ffffff', { roughness: 0.7, vertexColors: true }),
+      tongue: mat(COLORS.tongue, { roughness: 0.7 }),
       claw: mat(COLORS.claw, { roughness: 0.74 }),
       tooth: mat(COLORS.tooth, { roughness: 0.6, emissive: '#000000', vertexColors: true }),
       eye: eyeMaterial(),
@@ -298,7 +311,6 @@
     base.add(shadowy(new THREE.Mesh(mesh(fClaws, [-2.68, -0.03, -1.82, 2.68, 0.32, 1.2], H * 0.5), M.claw)));
     const C = k => new THREE.Color(COLORS[k]);
     const cGum = C('gum'), cFloor = C('floor'), cThroat = C('throat');
-    const cTongue = C('tongue'), cTongueTop = C('tongueTop'), cTongueEdge = C('tongueEdge');
     // the tray: the floor inside the ring of teeth deeper red, darker toward the back (the throat); the coral rim in
     // front stays bright; AO round the teeth, the tongue, the side walls and where the tray meets the tub
     const trayGeo = mesh(fTray, [-1.5, 0.3, -1.18, 1.5, 0.84, 1.18], H * 0.8, {
@@ -312,18 +324,7 @@
       },
     });
     base.add(shadowy(new THREE.Mesh(trayGeo, M.gum)));
-    // the tongue: a lit top, darker edges and back, AO where it meets the floor and in its groove
-    const tongueGeo = mesh(fTongue, [-0.92, 0.5, -0.92, 0.92, 1.16, 0.58], H, {
-      color(x, y, z, out, nx, ny, nz) {
-        const up = smooth(0.15, 0.95, ny), back = smooth(0.2, -0.8, z);
-        mixInto(out, cTongueEdge, cTongue, up);
-        const lit = up * smooth(0.95, 1.08, y) * (1 - back) * 0.75;
-        out[0] += (cTongueTop.r - out[0]) * lit; out[1] += (cTongueTop.g - out[1]) * lit; out[2] += (cTongueTop.b - out[2]) * lit;
-        const ao = bakeAO(fMouth, x, y, z, nx, ny, nz, 1.7) * (1 - 0.4 * back);
-        out[0] *= ao; out[1] *= ao; out[2] *= ao;
-      },
-    });
-    base.add(shadowy(new THREE.Mesh(tongueGeo, M.tongue)));
+    base.add(shadowy(new THREE.Mesh(mesh(fTongue, [-0.92, 0.5, -0.92, 0.92, 1.16, 0.58], H), M.tongue)));
 
     // hood: pivot at the hinge, children in croc coordinates
     const lid = new THREE.Group();
@@ -335,31 +336,42 @@
     const cSkin = new THREE.Color(COLORS.skin), cPal = new THREE.Color(COLORS.palate);
     const cRoofNear = new THREE.Color(COLORS.roofNear), cRoofDeep = new THREE.Color(COLORS.roofDeep), cIn = new THREE.Color();
     const cBlush = new THREE.Color(COLORS.blush);
-    const hoodGeo = mesh(fHood, [-2.0, 0.1, -1.45, 2.0, EYE.y + SOCKET.r + 0.08, 1.3], H, {
-      color(x, y, z, out, nx, ny, nz) {
-        // outer skin; the inside: a dark-red palate band along the lip, the roof darker the deeper into the hood
-        const solid = hoodSolid(x, y, z), cav = -hoodCavity(x, y, z), cut = -above(y, z);
-        const flap = smooth(-0.02, 0.02, Math.max(solid, cav, cut) - fFlaps(x, y, z));   // 1 where a side wall is the surface
-        const onCut = smooth(-0.02, 0.02, cut - Math.max(solid, cav)) * (1 - flap);
-        const onIn = smooth(-0.02, 0.02, cav - solid) * (1 - onCut) * (1 - flap);
-        const band = smooth(0.32, 0.16, above(y, z)) * smooth(-0.1, 0.35, z);
-        const pal = Math.min(1, onCut + onIn * band), inr = onIn * (1 - band);
-        const sk = Math.max(0, 1 - pal - inr);
+    /* the hood's colours (user: "위에 악어 이빨 옆에 영역들도 정리가 필요해보여"): green skin outside and on the side walls,
+       the mouth's inside (the lip's cut face → a dark-red band along the lip → the roof, darker toward the throat, with
+       AO). Which of the two a point shows is decided PER PIXEL: per-vertex colours could only blend between vertices,
+       so the band's edge zigzagged along the triangles and the side wall / mouth seam was a wide mixed strip. Each vertex
+       carries the skin colour (color), the mouth colour (aInner) and a signed field (aSel: > 0 = the lip's cut face or
+       the cavity is the surface, < 0 = the outside or a side wall); the shader (hoodPick) cuts it at 0, anti-aliased. */
+    const hoodGeo = mesh(fHood, [-2.0, 0.1, -1.45, 2.0, EYE.y + SOCKET.r + 0.08, 1.3], H);
+    {
+      const P = hoodGeo.attributes.position.array, N = hoodGeo.attributes.normal.array, nv = P.length / 3;
+      const col = new Float32Array(nv * 3), inner = new Float32Array(nv * 3), sel = new Float32Array(nv);
+      for (let k = 0; k < nv; k++) {
+        const x = P[3 * k], y = P[3 * k + 1], z = P[3 * k + 2];
+        const solid = hoodSolid(x, y, z), cav = -hoodCavity(x, y, z), cut = -above(y, z), top = Math.max(solid, cav, cut);
         // rosy cheeks on the snout's sides, under the eyes
         const dx = Math.abs(x) - 1.0, dy = y - 2.2, dz = z - 0.5;
         const bl = 0.8 * Math.exp(-(dx * dx + dy * dy * 2.2 + dz * dz * 0.8) / 0.045);
-        const r = cSkin.r + (cBlush.r - cSkin.r) * bl, g = cSkin.g + (cBlush.g - cSkin.g) * bl, b = cSkin.b + (cBlush.b - cSkin.b) * bl;
-        let ao = 1;
-        if (pal + inr > 0.01) {                       // the mouth's side: depth colour + AO (skin vertices skip the cost)
-          // the back wall seen through the open mouth: a warm red up top, darker down toward the throat
-          cIn.copy(cRoofNear).lerp(cRoofDeep, clamp(0.7 * smooth(2.05, 1.2, y) + 0.3 * smooth(0.1, 0.7, above(y, z)), 0, 1));
-          ao = bakeAO(fMouth, x, y, z, nx, ny, nz, 1.1);
-        }
-        out[0] = r * sk + (cPal.r * pal + cIn.r * inr) * ao;
-        out[1] = g * sk + (cPal.g * pal + cIn.g * inr) * ao;
-        out[2] = b * sk + (cPal.b * pal + cIn.b * inr) * ao;
-      },
-    });
+        col[3 * k] = cSkin.r + (cBlush.r - cSkin.r) * bl; col[3 * k + 1] = cSkin.g + (cBlush.g - cSkin.g) * bl; col[3 * k + 2] = cSkin.b + (cBlush.b - cSkin.b) * bl;
+        // … and within 0.1 of a side wall it is the side wall: there the lip's cut face was a thin red sliver squeezed
+        // between the band and the wall (a torn-looking wedge at each corner) — now the band ends cleanly at the green
+        // wall, whose inside stays green like the reference render
+        const s = Math.min(Math.max(cut, cav) - solid, fFlaps(x, y, z) - top - 0.1);
+        sel[k] = s;
+        if (s < -0.05) { inner[3 * k] = cPal.r; inner[3 * k + 1] = cPal.g; inner[3 * k + 2] = cPal.b; continue; }   // skin, far from the edge
+        // the mouth: the lip's cut face and a band along the lip dark red; the roof further in, a warm red up top,
+        // darker down toward the throat; AO in the creases
+        const onCut = smooth(-0.02, 0.02, cut - Math.max(solid, cav));
+        const band = smooth(0.32, 0.16, above(y, z)) * smooth(-0.1, 0.35, z);
+        cIn.copy(cRoofNear).lerp(cRoofDeep, clamp(0.7 * smooth(2.05, 1.2, y) + 0.3 * smooth(0.1, 0.7, above(y, z)), 0, 1));
+        cIn.lerp(cPal, 1 - (1 - onCut) * (1 - band));
+        const ao = bakeAO(fMouth, x, y, z, N[3 * k], N[3 * k + 1], N[3 * k + 2], 1.1);
+        inner[3 * k] = cIn.r * ao; inner[3 * k + 1] = cIn.g * ao; inner[3 * k + 2] = cIn.b * ao;
+      }
+      hoodGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      hoodGeo.setAttribute('aInner', new THREE.BufferAttribute(inner, 3));
+      hoodGeo.setAttribute('aSel', new THREE.BufferAttribute(sel, 1));
+    }
     const head = shadowy(new THREE.Mesh(hoodGeo, M.hood));
     lidIn.add(head);
 
