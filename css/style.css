@@ -83,7 +83,10 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .card .snd svg { width: 1.05em; height: 1.05em; fill: #fff; }
 .card.has-snd { padding-bottom: calc(var(--cw) * .15); }
 .card.say-m .snd { animation: pillPulse .5s ease-in-out infinite alternate; }
-.card.say-m .snd .ltr, .card.say-m .word b { animation: ltrPop .5s ease-in-out infinite alternate; display: inline-block; }
+.card.say-m .snd .ltr, .card.say-m .word b { animation: ltrPop .5s ease-in-out infinite alternate; }
+/* inline-block only for the word's bold letter (an inline box can't scale). On the circle it replaced display:grid, and
+   the M jumped out of its circle while the sound played (user: "단어 카드에 m이 원 영역을 벗어놨다가 제자리로 돌아오던데") */
+.card.say-m .word b { display: inline-block; }
 .card.say-w .word { animation: wordGlow .9s ease-in-out; }
 @keyframes pillPulse { to { transform: translateX(-50%) scale(1.1); } }
 @keyframes ltrPop { to { transform: scale(1.22) rotate(-4deg); } }
