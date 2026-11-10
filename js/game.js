@@ -48,6 +48,7 @@
   // ── the 3D croc (js/croc.js) on the three.js stage (js/stage.js) ─────────────────────────────────────
   Stage.init($('#croc'), { preserve: /[?&]shot\b/.test(location.search) });
   const croc = Stage.view(Croc.build(Stage.scene));
+  croc.lively(true);                              // steam puffs + toe taps (user: "콧김이 난다던가 … 발가락을 움직인다던가")
   Stage.setCroc(croc);
   croc.setFrame(FRAME.title);
   // the playroom tilts with the camera: css .room reads --tilt (0 = the title's 12°, 1 = the game's 35°) (user: "게임화면에서 악어가 기울어졌을때 뒤에 배경도 같이 기울어지면 안돼?")
@@ -368,10 +369,12 @@
     t.appendChild(card);
     return card;
   }
+  /* a round's tension 0…1: the music (tempo, heartbeat) and the croc (toe taps) */
+  function tense(k) { A.setTension(k); croc.nervous(k); }
   async function startRound() {
     const tok = ++G.token;
     G.busy = true;
-    A.setTension(0);
+    tense(0);
     clearIdle();
     A.stopVoice();
     $('#cards').innerHTML = '';
@@ -484,8 +487,9 @@
     await sleep(620);
     if (tok !== G.token) return;
     if (word === G.target) return chomp(i, p, tok);
-    // tension: the fewer safe teeth are left, the faster the music; a heartbeat from half way (audio.js setTension)
-    A.setTension(G.pressed.size / (croc.N_TEETH - 1));
+    // tension: the fewer safe teeth are left, the faster the music; a heartbeat from half way (audio.js setTension);
+    // the croc taps its toes more often
+    tense(G.pressed.size / (croc.N_TEETH - 1));
     await safe(i, p, word, tok);
   }
 
@@ -603,7 +607,9 @@
   // ── the bad tooth: CHOMP ─────────────────────────────────────────────────────────────────────────────
   async function chomp(i, p, tok) {
     const t = $('#target');
-    A.setTension(0);
+    tense(0);
+    croc.snort(1.6);                             // a big double snort of steam before the bite
+    A.sfxPlay('huff');
     croc.release(i);
     croc.glow(i, 1, '#9b4dff');
     croc.squint(0);
@@ -688,7 +694,7 @@
     G.screen = 'title';
     G.busy = true;
     app.dataset.screen = 'title';
-    A.setTrack('title'); A.setTension(0);
+    A.setTrack('title'); tense(0);
     $('#cards').innerHTML = '';
     $('#turn').classList.remove('show');
     $('#lvUp').classList.remove('show', 'say');

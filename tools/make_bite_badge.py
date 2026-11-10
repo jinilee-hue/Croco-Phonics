@@ -97,7 +97,7 @@ with sync_playwright() as p:
         if (o.material && o.material.isShadowMaterial) o.visible = false;                              // no floor shadow
         if (o.material && o.material.map && o.material.map.userData && o.material.map.userData.ch) o.visible = false;   // plain teeth (the letter changes by level)
       });
-      P.base.children.forEach(m => { if (m.material === P.M.skin || m.material === P.M.claw) m.visible = false; });   // no body, legs, claws
+      P.base.traverse(m => { if (m.isMesh && (m.material === P.M.skin || m.material === P.M.claw)) m.visible = false; });   // no body, legs, claws (the toes sit in pivot groups)
       // a green lower jaw under the red lip (user: "턱이 초록색이 아니네?"): the tub without the legs, rounded off
       const chin = Stage.croc.badgeChin();
       chin.mesh.visible = true;

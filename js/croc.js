@@ -78,18 +78,11 @@
     const f = extrude(rrect(x, z, BOWL.hx - tuck, BOWL.hz - tuck, BOWL.rc), y, -0.3, BOWL.top, 0.17);
     return smax(f, CHIN_Y - y, 0.22);
   }
-  function fClaws(x, y, z) {
-    const ax = Math.abs(x);
-    let f = 1e9;
-    for (const L of LEGS) {
-      const cx = L.foot[0] + L.toe[0] * 0.08, cz = L.foot[2] + L.toe[1] * 0.08;      // the foot pad's centre
-      const base = Math.atan2(L.toe[0], L.toe[1]);
-      for (let k = -1; k <= 1; k++) {
-        const a = base + k * 0.5, dx = Math.sin(a), dz = Math.cos(a);
-        f = smin(f, roundCone(ax, y, z, cx + dx * 0.18, 0.15, cz + dz * 0.18, cx + dx * 0.5, 0.105, cz + dz * 0.5, 0.13, 0.1), 0.04);
-      }
-    }
-    return f;
+  /* one claw (toe) in its own frame: from inside the foot pad (pad centre = origin) out along +z. The 12 toes are
+     copies of it on pivots (build), so a foot can tap them (user: "악어 발가락을 움직인다던가"); they sit where the
+     merged claws were: 3 per foot, ±0.5 rad round the foot's direction */
+  function fClaw(x, y, z) {
+    return roundCone(x, y, z, 0, 0.15, 0.18, 0, 0.105, 0.5, 0.13, 0.1);
   }
   function fTray(x, y, z) {
     return extrude(rrect(x, z, TRAY.hx, TRAY.hz, TRAY.rc), y, TRAY.y0, TRAY.top, 0.1);
@@ -325,7 +318,28 @@
     const base = new THREE.Group();
     root.add(base);
     base.add(shadowy(new THREE.Mesh(mesh(fBody, [-2.55, -0.05, -1.62, 2.55, 0.82, 1.5], H), M.skin)));
-    base.add(shadowy(new THREE.Mesh(mesh(fClaws, [-2.68, -0.03, -1.82, 2.68, 0.32, 1.2], H * 0.5), M.claw)));
+    // toes: one claw on 12 pivots (3 per foot); pivot at the claw's root inside the pad, so a tap lifts the tip
+    const clawGeo = mesh(fClaw, [-0.16, -0.04, 0.02, 0.16, 0.3, 0.64], H * 0.5);
+    const feet = [];
+    for (const L of LEGS) {
+      for (const s of [1, -1]) {
+        const cx = s * (L.foot[0] + L.toe[0] * 0.08), cz = L.foot[2] + L.toe[1] * 0.08, a0 = Math.atan2(L.toe[0], L.toe[1]);
+        const toes = [];
+        for (let k = -1; k <= 1; k++) {
+          const g = new THREE.Group();
+          g.position.set(cx, 0, cz);
+          g.rotation.y = s * (a0 + k * 0.5);
+          const pivot = new THREE.Group();
+          pivot.position.set(0, 0.12, 0.2);
+          const claw = shadowy(new THREE.Mesh(clawGeo, M.claw));
+          claw.position.set(0, -0.12, -0.2);
+          pivot.add(claw); g.add(pivot); base.add(g);
+          toes.push(pivot);
+        }
+        if (s < 0) toes.reverse();                    // little toe → big toe, outside in, on both sides
+        feet.push({ toes, front: L === LEGS[0], t: -1 });
+      }
+    }
     const C = k => new THREE.Color(COLORS[k]);
     const cGum = C('gum'), cFloor = C('floor'), cThroat = C('throat');
     // the tray: the floor inside the ring of teeth deeper red, darker toward the back (the throat); the coral rim in
@@ -476,7 +490,25 @@
 
     const glowLight = new THREE.PointLight('#a35bff', 0, 3, 1.4);
     scene.add(glowLight);
-    const api = makeApi({ root, base, lid, lidIn, head, eyes, teeth, upper, M, glowLight });
+    // steam from the nostrils (api.puff / snort; user: "악어 콧구멍에서 콧김이 난다던가"): soft white sprites in world space
+    const puffTex = (() => {
+      const c = document.createElement('canvas');
+      c.width = c.height = 64;
+      const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 1, 32, 32, 31);
+      r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.5, 'rgba(255,255,255,.7)'); r.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = r; g.fillRect(0, 0, 64, 64);
+      const tx = new THREE.CanvasTexture(c);
+      tx.colorSpace = THREE.SRGBColorSpace;
+      return tx;
+    })();
+    const puffs = [];
+    for (let k = 0; k < 30; k++) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex, color: '#ffffff', transparent: true, depthWrite: false, depthTest: false, opacity: 0 }));   // over the face: it starts at its surface
+      sp.visible = false; sp.renderOrder = 6;
+      scene.add(sp);
+      puffs.push({ sp, life: 0, age: 0, v: new THREE.Vector3(), s0: 0, s1: 0, o: 0, side: 1, sp0: 0 });
+    }
+    const api = makeApi({ root, base, lid, lidIn, head, eyes, teeth, upper, M, glowLight, feet, puffs });
     /* the trap badge's green chin (make_bite_badge.py), built on first use */
     let chin = null;
     api.badgeChin = () => {
@@ -500,7 +532,16 @@
       gaze: null, gazeSm: new THREE.Vector3(0, 2, 9), wander: new THREE.Vector3(), nextWander: 2,
       eyeWide: 0, happy: 0, happyT: 0, surp: 0, surpT: 0, cheerTimer: 0, time: 0,
       swayOn: false, swayAmp: 0, enterYaw: 0,
+      lively: false, nervous: 0, nextPuff: 3, nextTap: 2.5,
     };
+    const nost = new THREE.Vector3(), ndir = new THREE.Vector3();
+    /* one nostril's hole in world space + the way it points (its mound's top-front) */
+    function nostril(side) {
+      nost.set(side * NOSTRIL.x, NOSTRIL.y, NOSTRIL.z);
+      P.lidIn.localToWorld(nost);
+      ndir.set(side * 0.25, 0.55, 0.835).transformDirection(P.lidIn.matrixWorld);
+      return nost;
+    }
     const tmpV = new THREE.Vector3(), eyeW = new THREE.Vector3(), dir = new THREE.Vector3(), inv = new THREE.Quaternion();
 
     const api = {
@@ -522,6 +563,31 @@
       enter(ms = 1150) { st.enter = { t: 0, ms: ms / 1000 }; st.snap = null; st.open = 0; st.openVel = 0; st.openTarget = 0; P.root.scale.setScalar(0.35); st.enterYaw = -0.9; P.root.rotation.y = -0.9; },
       /* a gentle left-right turn (game.js: on the title with START only) */
       sway(on) { st.swayOn = !!on; },
+      /* idle life: a huff of steam now and then, a foot tapping its toes (opt-in: the badge tool's renders stay still) */
+      lively(on) { st.lively = !!on; },
+      /* 0…1: a tense round taps toes more often (both front feet from .5) and huffs a little more (game.js) */
+      nervous(v) { st.nervous = clamp(v || 0, 0, 1); },
+      /* steam from both nostrils: 3 puffs each, power ~0.6 (a breath) … 1.6 (a snort) */
+      puff(power = 1) {
+        const sc = P.root.scale.x;
+        for (const side of [1, -1]) {
+          for (let k = 0; k < 3; k++) {
+            const q = P.puffs.find(x => x.life <= 0);
+            if (!q) return;
+            q.life = 0.8 + 0.25 * Math.random() + 0.15 * power; q.age = -k * 0.08; q.side = side;
+            q.s0 = 0.14 * power * sc; q.s1 = (0.58 + 0.15 * Math.random()) * power * sc; q.o = Math.min(0.95, 0.7 + 0.15 * power);
+            q.sp0 = (1.5 + 0.4 * Math.random()) * power * sc;
+          }
+        }
+      },
+      /* a big double huff (the trap tooth) */
+      snort(power = 1.5) { api.puff(power); setTimeout(() => api.puff(power * 0.85), 330); },
+      /* a foot taps its toes, little toe to big toe (i: a foot, default a front one) */
+      tapToes(i) {
+        const front = P.feet.filter(f => f.front);
+        const f = i != null ? P.feet[i] : front[Math.floor(Math.random() * front.length)];
+        if (f && f.t < 0) f.t = 0;
+      },
       blink() { st.blinkT = 0.0001; },
       wide(v = 1) { st.eyeWide = v; },
       // the toy stays put: no trembling, shaking or bouncing (user: "악어 이빨 누르면 떨림이 있어")
@@ -610,6 +676,47 @@
           P.glowLight.color.copy(glowing.glowColor);
           P.glowLight.intensity = 14 * glowing.glow * (0.75 + 0.25 * Math.sin(t * 9));
         } else P.glowLight.intensity = 0;
+        // idle life (lively): a huff of steam every few seconds, a foot tapping its toes; quicker when nervous
+        if (st.lively) {
+          st.nextPuff -= dt;
+          if (st.nextPuff <= 0) { api.puff(0.6 + 0.25 * st.nervous); st.nextPuff = (5 + Math.random() * 4) * (1 - 0.45 * st.nervous); }
+          st.nextTap -= dt;
+          if (st.nextTap <= 0) {
+            api.tapToes();
+            if (st.nervous > 0.5) setTimeout(() => api.tapToes(), 260);
+            st.nextTap = (3.2 + Math.random() * 3) * (1 - 0.6 * st.nervous);
+          }
+        }
+        // toes: each lifts in turn (0.1 s apart, up to ~45°) and drops back, 0.3 s each
+        for (const f of P.feet) {
+          if (f.t < 0) continue;
+          f.t += dt;
+          f.toes.forEach((p, k) => {
+            const x = (f.t - k * 0.1) / 0.3;
+            p.rotation.x = x > 0 && x < 1 ? -0.8 * Math.sin(Math.PI * x) : 0;
+          });
+          if (f.t > 0.2 + 0.3) { f.t = -1; f.toes.forEach(p => { p.rotation.x = 0; }); }
+        }
+        // steam puffs: start at the nostril, drift out along it, slow down, rise a little, grow and fade
+        for (const q of P.puffs) {
+          if (q.life <= 0) continue;
+          const was = q.age;
+          q.age += dt;
+          if (q.age < 0) continue;
+          if (was < 0) {                               // starts now: from the hole, out to its side, a little down and forward
+            q.sp.position.copy(nostril(q.side));
+            q.v.set(q.side * 1.0, -0.18, 0.55).normalize().multiplyScalar(q.sp0);
+            q.sp.visible = true;
+          }
+          const k = q.age / q.life;
+          if (k >= 1) { q.life = 0; q.sp.visible = false; q.sp.material.opacity = 0; continue; }
+          q.sp.position.addScaledVector(q.v, dt);
+          q.v.multiplyScalar(Math.exp(-dt * 3.2));
+          q.v.y += dt * 0.3 * P.root.scale.x;
+          const e = 1 - (1 - k) * (1 - k);
+          q.sp.scale.setScalar(q.s0 + (q.s1 - q.s0) * e);
+          q.sp.material.opacity = q.o * Math.min(1, k / 0.1) * (1 - k * k);          // stays a cloud, then thins out
+        }
         // eyelids: blink timer, squint target, wide
         st.nextBlink -= dt;
         if (st.nextBlink <= 0 && !st.blinkT) { st.blinkT = 0.0001; st.nextBlink = 2.2 + Math.random() * 3.2; }

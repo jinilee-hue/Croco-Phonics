@@ -165,6 +165,8 @@
         osc('square', 260, 60, t, 0.12, 0.22); osc('triangle', 600, 140, t + 0.015, 0.22, 0.2);
         break;
       case 'heart': osc('sine', 78, 46, t, 0.13, 0.5); osc('sine', 70, 42, t + 0.16, 0.11, 0.35); break;
+      // the croc's snort (steam from its nostrils): two breathy huffs
+      case 'huff': noise(t, 0.24, 0.3, 1200, 0.6); noise(t + 0.33, 0.22, 0.24, 1000, 0.6); break;
       case 'boing': osc('sine', 220, 560, t, 0.22, 0.4); osc('sine', 560, 280, t + 0.12, 0.3, 0.22); break;
       // the win: drum hits, a brass run up to a held chord, a crash and a sparkle on top
       case 'fanfare':
