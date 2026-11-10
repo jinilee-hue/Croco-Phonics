@@ -28,8 +28,12 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
    the croc. It pivots on the picture's floor line (70 % down): the wall leans back, the floor comes forward, and it
    rises a little; ×1.2 keeps the receding top and its corners off screen at every size (magenta check, scratch
    pm/croco_check3.py — pivoting on the bottom edge slid it up off that edge) */
+/* game: 22° (was 9°, user: "게임 화면에서 바닥 기울기 더 줘야겠다 각도가 안맞아"): the camera looks down at 35°, but the floor
+   was a thin strip at the bottom (its line at ~80 % of the screen) seen from eye level. Now the floor line rises to the
+   croc's mouth (~57 %) and the floor comes forward under the croc, as seen from above; +16 % up and ×1.6 keep every edge
+   covered (magenta check at 6 sizes incl. 820×1180 and 2560×1080, scratch room_tilt.py) */
 .room { transform-origin: 50% 70%; will-change: transform;
-  transform: perspective(calc(var(--u) * 130)) translateY(calc(var(--tilt, 0) * -4%)) rotateX(calc(var(--tilt, 0) * 9deg)) scale(calc(1 + var(--tilt, 0) * .2)); }
+  transform: perspective(calc(var(--u) * 130)) translateY(calc(var(--tilt, 0) * -16%)) rotateX(calc(var(--tilt, 0) * 22deg)) scale(calc(1 + var(--tilt, 0) * .6)); }
 .room i { position: absolute; display: block; }
 .room .mote { left: var(--x); top: var(--y); width: calc(var(--u) * 1.1); height: calc(var(--u) * 1.1); border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #fff 0 18%, var(--c) 45%); box-shadow: 0 .3vh .8vh rgba(0,0,0,.06);
