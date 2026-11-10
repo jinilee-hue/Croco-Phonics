@@ -371,6 +371,7 @@
   async function startRound() {
     const tok = ++G.token;
     G.busy = true;
+    A.setTension(0);
     clearIdle();
     A.stopVoice();
     $('#cards').innerHTML = '';
@@ -483,6 +484,8 @@
     await sleep(620);
     if (tok !== G.token) return;
     if (word === G.target) return chomp(i, p, tok);
+    // tension: the fewer safe teeth are left, the faster the music; a heartbeat from half way (audio.js setTension)
+    A.setTension(G.pressed.size / (croc.N_TEETH - 1));
     await safe(i, p, word, tok);
   }
 
@@ -600,6 +603,7 @@
   // ── the bad tooth: CHOMP ─────────────────────────────────────────────────────────────────────────────
   async function chomp(i, p, tok) {
     const t = $('#target');
+    A.setTension(0);
     croc.release(i);
     croc.glow(i, 1, '#9b4dff');
     croc.squint(0);
@@ -672,6 +676,7 @@
     teethLetters();
     croc.setFrame(FRAME.game, 900);
     croc.rest(OPEN_REST.game);
+    A.setTrack('game');                          // the exciting, tense loop (user: "좀더 신나고 긴장감 넘치는 음악")
     startRound();
   }
   function goTitle() {
@@ -683,6 +688,7 @@
     G.screen = 'title';
     G.busy = true;
     app.dataset.screen = 'title';
+    A.setTrack('title'); A.setTension(0);
     $('#cards').innerHTML = '';
     $('#turn').classList.remove('show');
     $('#lvUp').classList.remove('show', 'say');
