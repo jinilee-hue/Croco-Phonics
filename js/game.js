@@ -664,7 +664,7 @@
     G.winner = winner;
     (G.wins[G.level] = G.wins[G.level] || [0, 0])[winner]++;
     setTimeout(() => { if (tok === G.token) renderWins(winner); }, 650);
-    $('#rbText').textContent = tr('wins', { n: winner + 1 });
+    setRibbon(winner + 1);
     A.sfxPlay('fanfare');
     FX.pop(window.innerWidth * 0.25, window.innerHeight * 0.6, 60);
     FX.pop(window.innerWidth * 0.75, window.innerHeight * 0.6, 60);
@@ -722,6 +722,17 @@
       a_skip: '설명 건너뛰기', a_lang: '언어: 영어 또는 한국어', a_sound: '소리 켜기/끄기', a_exit: '나가기' },
   };
   const tr = (k, v = {}) => (UI[LANG][k] || UI.en[k] || k).replace(/\{(\w+)\}/g, (_, x) => (v[x] != null ? v[x] : ''));
+  /* the result banner's text: a baked puffy sprite like the logo's letters (tools/make_banner_text.py → CROCO_RB) over
+     the live text (transparent, it sizes the band); a text the tool hasn't baked shows as plain styled text */
+  function setRibbon(n) {
+    const t = tr('wins', { n }), key = LANG + '_' + n, RB = window.CROCO_RB || {}, im = $('#rbImg');
+    $('#rbText').textContent = t;
+    const ok = !!(RB[key] && RB[key].t === t);
+    $('.ribbon').classList.toggle('noimg', !ok);
+    if (ok) im.src = `assets/img/rb_${key}.webp`; else im.removeAttribute('src');
+  }
+  $('#rbImg').addEventListener('error', () => $('.ribbon').classList.add('noimg'));
+  Object.keys(window.CROCO_RB || {}).forEach(k => { new Image().src = `assets/img/rb_${k}.webp`; });   // ready before a win
   function applyLang() {
     document.documentElement.lang = LANG;
     app.dataset.lang = LANG;
@@ -733,7 +744,7 @@
     b.setAttribute('aria-pressed', String(LANG === 'ko'));
     b.querySelectorAll('.flag').forEach(f => f.classList.toggle('on', f.dataset.l === LANG));
     $('#turn .t').textContent = tr('turn', { n: G.turn + 1 });
-    if (G.winner != null) $('#rbText').textContent = tr('wins', { n: G.winner + 1 });
+    if (G.winner != null) setRibbon(G.winner + 1);
     levelText();
   }
   $('#btnLang').addEventListener('click', e => {

@@ -372,14 +372,30 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 /* the hidden Play Again button shares .start (pointer-events: auto): off screen-wide until the result shows, or it
    swallows the START tap on the title (the round then started without the camera move / mic / BGM) */
 #app:not([data-screen="result"]) .result .again { pointer-events: none; }
+/* the result banner, 3D like the logo (user: "좀더 3d 느낌 살게 로고처럼 깨져보이지 않게 만들어줘"): a thick band with soft
+   round shading (no light band or line) and its own side; the tails behind it — elements BEFORE the band, so the band
+   paints over their inner ends (the old ::before/::after tails had z-index −1 in the ribbon's own stacking context and
+   were drawn OVER the band, cutting its rounded ends off); the text = baked puffy letters on a deep-orange plate like
+   the logo's (tools/make_banner_text.py → rb_<lang>_<n>.webp) laid over the transparent live text (which sizes it) */
 .ribbon { position: absolute; left: 50%; top: calc(var(--u) * 3); transform: translateX(-50%); z-index: 2; white-space: nowrap;
-  padding: calc(var(--u) * 1.2) calc(var(--u) * 6) calc(var(--u) * 1.5); border-radius: calc(var(--u) * 1.6);
-  font: 800 calc(var(--u) * 6.2)/1 var(--font); color: #fff; background: linear-gradient(#ffd27a, #ffaf3c 60%, #f79a22);
-  text-shadow: 0 calc(var(--u) * .45) 0 #d9811b; box-shadow: inset 0 calc(var(--u) * -.8) 0 rgba(200,110,20,.35), inset 0 calc(var(--u) * .5) 0 rgba(255,255,255,.45), 0 calc(var(--u) * 1.2) calc(var(--u) * 2) rgba(220,120,30,.35); }
-.ribbon::before, .ribbon::after { content: ''; position: absolute; top: calc(var(--u) * 2.2); width: calc(var(--u) * 6); height: 72%; background: #f09124; z-index: -1;
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 28% 50%); }
-.ribbon::before { left: calc(var(--u) * -4); }
-.ribbon::after { right: calc(var(--u) * -4); transform: scaleX(-1); }
+  font: 800 calc(var(--u) * 6.2)/1 var(--font); color: #fff; }
+.rb-band { position: relative; display: block; padding: calc(var(--u) * 1.5) calc(var(--u) * 6) calc(var(--u) * 1.8); border-radius: calc(var(--u) * 2.6);
+  background: linear-gradient(180deg, #ffc560 0%, #ffad3a 46%, #f9971f 82%, #f18b1b 100%);
+  box-shadow: inset 0 calc(var(--u) * -1.3) calc(var(--u) * 1.6) rgba(200,92,10,.36), inset 0 0 calc(var(--u) * 2.4) rgba(205,100,14,.34),
+    0 calc(var(--u) * .8) 0 #d7761b, 0 calc(var(--u) * 2) calc(var(--u) * 2.4) rgba(150,70,15,.34); }   /* round from darker soft edges, no lighter glow */
+.rb-txt { position: relative; display: inline-block; }
+.rb-txt #rbText { color: transparent; }
+.rb-txt img { position: absolute; left: 50%; top: -0.2em; height: 1.6em; width: auto; transform: translateX(-50%); pointer-events: none; -webkit-user-drag: none; }
+.ribbon.noimg .rb-txt #rbText { color: #fff; text-shadow: 0 calc(var(--u) * .45) 0 #d9811b; }   /* a text the tool hasn't baked */
+.ribbon.noimg .rb-txt img { display: none; }
+/* tails: tucked within the band's height (hung lower, their inner ends showed under the band as cut paper), a V cut
+   at the end, shaded darker where they go under the band */
+.rb-tail { position: absolute; top: calc(var(--u) * 2.6); height: calc(100% - var(--u) * 1.9); width: calc(var(--u) * 10.5); border-radius: calc(var(--u) * .6);
+  background: linear-gradient(90deg, rgba(140,58,6,0) 42%, rgba(140,58,6,.42) 74%), linear-gradient(180deg, #f9a23a, #e57f1a);
+  box-shadow: inset 0 calc(var(--u) * -.9) calc(var(--u) * 1) rgba(160,66,8,.3);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 27% 50%); }
+.rb-tail.l { left: calc(var(--u) * -5.8); }
+.rb-tail.r { right: calc(var(--u) * -5.8); transform: scaleX(-1); }
 #app[data-screen="result"] .ribbon { animation: ribbonIn .7s cubic-bezier(.2,.9,.3,1.35) both; }
 @keyframes ribbonIn { from { transform: translateX(-50%) translateY(-14vh) scale(.6); } }
 .podium { display: none; }
