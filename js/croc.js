@@ -499,20 +499,35 @@
 
     const glowLight = new THREE.PointLight('#a35bff', 0, 3, 1.4);
     scene.add(glowLight);
-    // steam from the nostrils (api.puff / snort; user: "악어 콧구멍에서 콧김이 난다던가"): soft white sprites in world space
-    const puffTex = (() => {
+    // steam from the nostrils (api.puff / snort; user: "악어 콧구멍에서 콧김이 난다던가", then "콧김이 어색해": soft
+    // white blobs sliding across the cheeks read as fog on the face): little CARTOON CLOUDS — overlapping round puffs,
+    // white with a cool shade at the bottom, a light outline and a gloss — that puff out in front of the nose
+    const puffTex = [
+      [[64, 72, 30], [38, 78, 21], [90, 78, 21], [56, 50, 20], [80, 56, 16]],
+      [[60, 70, 31], [88, 74, 23], [36, 80, 17], [72, 48, 19]],
+      [[66, 68, 28], [42, 72, 22], [88, 80, 18], [50, 46, 16], [76, 46, 18]],
+    ].map(blobs => {
       const c = document.createElement('canvas');
-      c.width = c.height = 64;
-      const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 1, 32, 32, 31);
-      r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.5, 'rgba(255,255,255,.7)'); r.addColorStop(1, 'rgba(255,255,255,0)');
-      g.fillStyle = r; g.fillRect(0, 0, 64, 64);
+      c.width = c.height = 128;
+      const g = c.getContext('2d');
+      const path = () => { g.beginPath(); for (const [x, y, r] of blobs) { g.moveTo(x + r, y); g.arc(x, y, r, 0, Math.PI * 2); } };
+      // soft edges, no outline: an outlined cloud read as a cotton ball stuck on the face
+      const fill = g.createLinearGradient(0, 30, 0, 104);
+      fill.addColorStop(0, '#ffffff'); fill.addColorStop(0.55, '#f7fafc'); fill.addColorStop(1, '#e2ebf2');
+      g.filter = 'blur(3px)';
+      path(); g.fillStyle = fill; g.fill();
+      g.filter = 'none';
+      const [hx, hy, hr] = blobs[0];
+      const gl = g.createRadialGradient(hx - hr * 0.35, hy - hr * 0.4, 1, hx - hr * 0.35, hy - hr * 0.4, hr * 0.55);
+      gl.addColorStop(0, 'rgba(255,255,255,.95)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gl; g.fillRect(0, 0, 128, 128);
       const tx = new THREE.CanvasTexture(c);
       tx.colorSpace = THREE.SRGBColorSpace;
       return tx;
-    })();
+    });
     const puffs = [];
-    for (let k = 0; k < 30; k++) {
-      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex, color: '#ffffff', transparent: true, depthWrite: false, depthTest: false, opacity: 0 }));   // over the face: it starts at its surface
+    for (let k = 0; k < 24; k++) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex[k % 3], transparent: true, depthWrite: false, depthTest: false, opacity: 0 }));   // in front of the face
       sp.visible = false; sp.renderOrder = 6;
       scene.add(sp);
       puffs.push({ sp, life: 0, age: 0, v: new THREE.Vector3(), s0: 0, s1: 0, o: 0, side: 1, sp0: 0 });
@@ -541,7 +556,7 @@
       gaze: null, gazeSm: new THREE.Vector3(0, 2, 9), wander: new THREE.Vector3(), nextWander: 2,
       eyeWide: 0, happy: 0, happyT: 0, surp: 0, surpT: 0, cheerTimer: 0, time: 0,
       swayOn: false, swayAmp: 0, enterYaw: 0,
-      lively: false, nervous: 0, nextPuff: 3, nextTap: 2.5,
+      lively: false, nervous: 0, nextPuff: 6, nextTap: 2.5,
     };
     const nost = new THREE.Vector3(), ndir = new THREE.Vector3();
     /* one nostril's hole in world space + the way it points (its mound's top-front) */
@@ -576,21 +591,22 @@
       lively(on) { st.lively = !!on; },
       /* 0…1: a tense round taps toes more often (both front feet from .5) and huffs a little more (game.js) */
       nervous(v) { st.nervous = clamp(v || 0, 0, 1); },
-      /* steam from both nostrils: 3 puffs each, power ~0.6 (a breath) … 1.6 (a snort) */
+      /* steam from both nostrils: 2 little clouds each (pff-pff), power ~0.6 (a breath) … 1.5 (a snort) */
       puff(power = 1) {
         const sc = P.root.scale.x;
         for (const side of [1, -1]) {
-          for (let k = 0; k < 3; k++) {
+          for (let k = 0; k < 2; k++) {
             const q = P.puffs.find(x => x.life <= 0);
             if (!q) return;
-            q.life = 0.8 + 0.25 * Math.random() + 0.15 * power; q.age = -k * 0.08; q.side = side;
-            q.s0 = 0.14 * power * sc; q.s1 = (0.58 + 0.15 * Math.random()) * power * sc; q.o = Math.min(0.95, 0.7 + 0.15 * power);
-            q.sp0 = (1.5 + 0.4 * Math.random()) * power * sc;
+            const m = k ? 0.75 : 1;                    // the second one a little smaller
+            q.life = 0.5 + 0.1 * Math.random() + 0.08 * power; q.age = -k * 0.09 - Math.random() * 0.02; q.side = side;
+            q.s0 = 0.08 * power * sc * m; q.s1 = (0.25 + 0.05 * Math.random()) * power * sc * m; q.o = 0.97;
+            q.sp0 = (2.3 + 0.3 * Math.random()) * power * sc * (k ? 0.85 : 1); q.rot = (Math.random() - 0.5) * 1.2;   // shoots out, brakes
           }
         }
       },
       /* a big double huff (the trap tooth) */
-      snort(power = 1.5) { api.puff(power); setTimeout(() => api.puff(power * 0.85), 330); },
+      snort(power = 1.5) { api.puff(power); setTimeout(() => api.puff(power * 0.85), 360); },
       /* a foot taps its toes, little toe to big toe (i: a foot, default a front one) */
       tapToes(i) {
         const front = P.feet.filter(f => f.front);
@@ -688,7 +704,7 @@
         // idle life (lively): a huff of steam every few seconds, a foot tapping its toes; quicker when nervous
         if (st.lively) {
           st.nextPuff -= dt;
-          if (st.nextPuff <= 0) { api.puff(0.6 + 0.25 * st.nervous); st.nextPuff = (5 + Math.random() * 4) * (1 - 0.45 * st.nervous); }
+          if (st.nextPuff <= 0) { api.puff(0.6 + 0.25 * st.nervous); st.nextPuff = (10 + Math.random() * 6) * (1 - 0.5 * st.nervous); }
           st.nextTap -= dt;
           if (st.nextTap <= 0) {
             api.tapToes();
@@ -706,25 +722,31 @@
           });
           if (f.t > 0.2 + 0.3) { f.t = -1; f.toes.forEach(p => { p.rotation.x = 0; }); }
         }
-        // steam puffs: start at the nostril, drift out along it, slow down, rise a little, grow and fade
+        // steam clouds: pop out just in front of the nostril (toward the viewer), puff down and out like a snort and
+        // toward the viewer, slow down, rise a touch, grow and dissolve
         for (const q of P.puffs) {
           if (q.life <= 0) continue;
           const was = q.age;
           q.age += dt;
           if (q.age < 0) continue;
-          if (was < 0) {                               // starts now: from the hole, out to its side, a little down and forward
-            q.sp.position.copy(nostril(q.side));
-            q.v.set(q.side * 1.0, -0.18, 0.55).normalize().multiplyScalar(q.sp0);
+          const sc = P.root.scale.x;
+          if (was < 0) {
+            const at = nostril(q.side);
+            tmpV.copy(camera.position).sub(at).normalize();
+            q.sp.position.copy(at).addScaledVector(tmpV, 0.12 * sc);
+            q.v.set(q.side * 0.84, -0.46, 0.3).normalize().applyQuaternion(P.root.quaternion).multiplyScalar(q.sp0);   // out past the face
+            q.sp.material.rotation = q.rot;
             q.sp.visible = true;
           }
           const k = q.age / q.life;
           if (k >= 1) { q.life = 0; q.sp.visible = false; q.sp.material.opacity = 0; continue; }
           q.sp.position.addScaledVector(q.v, dt);
-          q.v.multiplyScalar(Math.exp(-dt * 3.2));
-          q.v.y += dt * 0.3 * P.root.scale.x;
-          const e = 1 - (1 - k) * (1 - k);
-          q.sp.scale.setScalar(q.s0 + (q.s1 - q.s0) * e);
-          q.sp.material.opacity = q.o * Math.min(1, k / 0.1) * (1 - k * k);          // stays a cloud, then thins out
+          q.v.multiplyScalar(Math.exp(-dt * 5.5));                                     // a quick burst that brakes
+          q.v.y += dt * 0.3 * sc;
+          const e = 1 - Math.pow(1 - Math.min(1, k / 0.3), 3);                       // pops to size, then keeps swelling
+          q.sp.scale.setScalar(q.s0 + (q.s1 - q.s0) * (0.85 * e + 0.4 * k));
+          q.sp.material.rotation = q.rot + 0.35 * k * q.side;
+          q.sp.material.opacity = q.o * Math.min(1, k / 0.06) * (k < 0.45 ? 1 : 1 - Math.pow((k - 0.45) / 0.55, 1.3));
         }
         // eyelids: blink timer, squint target, wide
         st.nextBlink -= dt;
