@@ -144,8 +144,12 @@
     const t = clamp((y - TOOTH.bot) / (TOOTH.top - TOOTH.bot), 0, 1);
     const w = TOOTH.hx * (1 - 0.07 * t);                        // a little narrower toward the crown
     const cy = (TOOTH.top + TOOTH.bot) / 2, hy = (TOOTH.top - TOOTH.bot) / 2;
-    const f = roundBox(x, y, z, 0, cy, 0, w, hy, TOOTH.hz, TOOTH.r);
-    return smin(f, ellipsoid(x, y, z, 0, cy + 0.02, 0, w * 0.96, hy * 0.98, TOOTH.hz * 1.12), 0.03);   // domed faces
+    let f = roundBox(x, y, z, 0, cy, 0, w, hy, TOOTH.hz, TOOTH.r);
+    f = smin(f, ellipsoid(x, y, z, 0, cy + 0.02, 0, w * 0.96, hy * 0.98, TOOTH.hz * 1.12), 0.03);   // domed faces
+    // a molar's crown (user: "악어 이빨도 어금니처럼 표시가 좀 나면"): a "+" groove → four rounded cusps; front-to-back
+    // deeper (a small two-bump notch on the front's top edge), side-to-side shallower
+    f = smax(f, -ellipsoid(x, y, z, 0, TOOTH.top + 0.035, 0, 0.055, 0.075, TOOTH.hz * 1.6), 0.035);
+    return smax(f, -ellipsoid(x, y, z, 0, TOOTH.top + 0.04, 0, TOOTH.hx * 1.5, 0.06, 0.042), 0.03);
   }
   function fUpperTooth(x, y, z) {
     // hangs along −y from its root at y = 0.06: a blunt rounded peg, a bit narrower at the tip
@@ -459,7 +463,12 @@
     // lower teeth
     // lower teeth: a soft shade at the gum line (the tray top is at local y −0.12), so they stand IN the gum
     const toothGeo = mesh(fTooth, [-0.26, -0.46, -0.22, 0.26, 0.26, 0.23], H * 0.5, {
-      color(x, y, z, out) { const g = 1 - 0.32 * smooth(0.04, -0.13, y); out[0] = g; out[1] = g * 0.975; out[2] = g * 0.955; },
+      color(x, y, z, out) {
+        let g = 1 - 0.32 * smooth(0.04, -0.13, y);
+        // the molar grooves a touch darker, so the four cusps read
+        g *= 1 - 0.14 * Math.max(smooth(0.06, 0, Math.abs(x)), 0.75 * smooth(0.05, 0, Math.abs(z))) * smooth(0.09, 0.16, y);
+        out[0] = g; out[1] = g * 0.975; out[2] = g * 0.955;
+      },
     });
     const decalGeo = decalGeometry(toothGeo);
     const hitGeo = new THREE.BoxGeometry(TOOTH.hx * 2.5, 0.5, TOOTH.hz * 3.2);
