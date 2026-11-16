@@ -43,18 +43,8 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 #croc.point { cursor: pointer; }
 #fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 30; }
 
-/* ── decor: clay letters + picture cards ─────────────────────────────────────────────────────────── */
+/* ── decor: picture cards (title) ─────────────────────────────────────────────────────────── */
 .deco { position: absolute; inset: 0; pointer-events: none; }
-.l3d { position: absolute; left: var(--x); top: var(--y); font: 800 calc(var(--u) * 8.4)/1 var(--font); color: var(--c);
-  text-shadow: 0 calc(var(--u) * .5) 0 color-mix(in srgb, var(--c) 72%, #5a3a2a), 0 calc(var(--u) * 1.3) calc(var(--u) * 1.6) rgba(70,60,90,.18);
-  transform: translate(-50%, -50%) rotate(var(--r)); animation: bob 5.4s ease-in-out infinite var(--d); transition: opacity .6s; }
-.l3d.big { font-size: calc(var(--u) * 9.6); }
-.l3d::after { content: ''; }
-/* the game's floating letters = the title orbit's baked candy sprites (game.js setLevel; user: "게임화면에 들어가있는 알파벳도 인트로에 들어간 알파벳 스타일로 바꿔줘"),
-   laid over the transparent text exactly like .ol b img */
-.l3d.spr { color: transparent; text-shadow: none; }
-.l3d.spr img { position: absolute; left: 50%; top: -0.2em; height: 1.58em; width: auto; transform: translateX(-50%); pointer-events: none; -webkit-user-drag: none; }
-@keyframes bob { 50% { transform: translate(-50%, calc(-50% - var(--u) * 1.6)) rotate(calc(var(--r) * -.4)); } }
 /* on the title the levels' letters go round the croc instead (game.js orbitFrame; user: "동동 떠다지지말고 스펠링은
    커졌다 작아졌다하면서 돌려줘. 할리갈리 카드처럼", "악어를 기준으로"): .orbit-back sits under the croc's canvas (the croc
    hides the back half), .orbit-front over it, both under the cards, the logo and START */
@@ -70,7 +60,6 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
    on top and .38em below; sized by height only, so it never stretches before the font loads */
 .ol b img { position: absolute; left: 50%; top: -0.2em; height: 1.58em; width: auto; transform: translateX(-50%); pointer-events: none; -webkit-user-drag: none; }
 .ol b.noimg { color: var(--c); }
-#app[data-screen="title"] .deco .l3d { opacity: 0; }
 
 .fly, .lay { position: absolute; transition: opacity .6s, transform .6s; }
 .fly { top: 36%; --cw: calc(var(--u) * 24); animation: fly 6s ease-in-out infinite; }
@@ -81,9 +70,6 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .lay-l { left: 1vw; transform: perspective(calc(var(--u) * 70)) rotateX(58deg) rotateZ(-16deg); }
 .lay-r { right: 1vw; transform: perspective(calc(var(--u) * 70)) rotateX(58deg) rotateZ(14deg); }
 #app:not([data-screen="title"]) .fly, #app:not([data-screen="title"]) .lay { opacity: 0; }
-#app:not([data-screen="title"]) .l3d { opacity: .55; }
-#app:not([data-screen="title"]) .l3d.spr { opacity: 1; }   /* the candy letters as on the title (the flat ones were faded) */
-#app:not([data-screen="title"]) .l3d.low { opacity: 0; }
 
 /* ── picture card ─────────────────────────────────────────────────────────────────────────────────── */
 .card { position: relative; width: var(--cw, 24vh); aspect-ratio: .86; background: var(--cream);

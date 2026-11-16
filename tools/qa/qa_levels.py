@@ -60,11 +60,11 @@ with sync_playwright() as p:
           const pics = await Promise.all(L.words.map(w => new Promise(res => { const im = new Image(); im.onload = () => res([w.w, im.naturalWidth]); im.onerror = () => res([w.w, 0]); im.src = w.card; })));
           return { lesson: L.lesson, title: L.title, letter: L.letter, n: L.words.length, sound: A.has('s:' + L.sound),
             noVoice: L.words.filter(w => !A.has('w:' + w.w)).map(w => w.w), noPic: pics.filter(x => !x[1]).map(x => x[0]),
-            toothCh: [...new Set(__croco.croc.teeth.map(t => t.decal.material.map.userData.ch))], deco: [...document.querySelectorAll('.deco .l3d')].map(e => e.textContent).join(''),
+            toothCh: [...new Set(__croco.croc.teeth.map(t => t.decal.material.map.userData.ch))],
             decoCards: [...document.querySelectorAll('.deco [data-word]')].map(e => e.dataset.word) }; }""", i)
         mix = sorted(pg.evaluate("[...new Set(__croco.LEVELS.map(L => L.letter))]"))
         ok = r['sound'] and not r['noVoice'] and not r['noPic'] and sorted(r['toothCh']) == mix   # the title's mix
-        print(f"1 level {i + 1:2d} = Lesson {r['lesson']:2d} {r['title']:8s} {r['n']:2d} words · sound {r['sound']} · teeth {r['toothCh']} · deco {r['deco']} {r['decoCards']}"
+        print(f"1 level {i + 1:2d} = Lesson {r['lesson']:2d} {r['title']:8s} {r['n']:2d} words · sound {r['sound']} · teeth {r['toothCh']} · deco {r['decoCards']}"
               + ('' if ok else f"  ✗ noVoice {r['noVoice']} noPic {r['noPic']}"))
         if not ok:
             bad.append(i + 1)

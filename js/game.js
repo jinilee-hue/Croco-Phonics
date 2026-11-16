@@ -200,13 +200,6 @@
     app.dataset.level = String(G.level + 1);
     app.classList.toggle('lastlv', G.level >= LEVELS.length - 1);
     teethLetters(true);
-    // the game's floating letters in the title orbit's style — its baked candy sprites (user: "게임화면에 들어가있는 알파벳도 인트로에 들어간 알파벳 스타일로 바꿔줘");
-    // a capital has no sprite and stays coloured text
-    document.querySelectorAll('.deco .l3d').forEach(el => {
-      const ch = el.classList.contains('big') ? cap(L.letter) : L.letter, spr = MIX.includes(ch);
-      el.classList.toggle('spr', spr);
-      el.innerHTML = spr ? `${ch}<img src="assets/img/ol_${ch}.webp" alt="" draggable="false" onerror="this.parentNode.classList.remove('spr')">` : ch;
-    });
     const pick = G.level === 0 ? DECOR1.filter(w => BY[w]) : WORDS.map(w => w.w);
     document.querySelectorAll('.deco > [data-word]').forEach((slot, k) => { slot.dataset.word = pick[k % pick.length]; });
     placeDecor();
