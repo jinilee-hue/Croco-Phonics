@@ -57,6 +57,25 @@
     const k = Math.max(0, Math.min(1, (Stage.frame.el - FRAME.title.el) / (FRAME.game.el - FRAME.title.el)));
     if (Math.abs(k - tiltWas) > 0.001) { tiltWas = k; app.style.setProperty('--tilt', k.toFixed(3)); }
   });
+  /* the game view's backdrop (css .room; user: "게임화면에 배경을 너무 늘린거 같은데.."): the picture's floor line (72 % down
+     it) comes up to ~64 % of the screen by panning the picture up inside its own spare height first (cover leaves 44 %
+     of the overflow below it: no zoom, no stretch), then zooming from the bottom centre only for what's left
+     (1.12…1.3; ≥ 1.1 keeps the 4° lean's top corners covered). Wide screens pan, 4:3 and portrait (no spare height) zoom */
+  const bgPic = new Image();
+  function fitRoom() {
+    const room = $('.room'), W = room.clientWidth, H = room.clientHeight;
+    if (!W || !H) return;
+    const k = Math.max(W / (bgPic.naturalWidth || 2400), H / (bgPic.naturalHeight || 1792)), ih = (bgPic.naturalHeight || 1792) * k;
+    const over = Math.max(0, ih - H), floor = -0.56 * over + 0.72 * ih, want = 0.635 * H;
+    const slide = Math.max(0, Math.min(0.44 * over, floor - H + (H - want) / 1.12));
+    const zoom = Math.min(1.3, Math.max(1.12, (H - want) / (H - floor + slide)));
+    app.style.setProperty('--room-slide', slide.toFixed(1) + 'px');
+    app.style.setProperty('--room-zoom', zoom.toFixed(3));
+  }
+  bgPic.onload = fitRoom;
+  bgPic.src = 'assets/img/bg.webp';
+  fitRoom();
+  window.addEventListener('resize', fitRoom);
   Stage.start();
   if (document.fonts && document.fonts.load) document.fonts.load('700 100px "Baloo 2"').then(() => {
     croc.refreshLetters();
