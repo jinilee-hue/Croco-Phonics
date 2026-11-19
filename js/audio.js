@@ -252,8 +252,9 @@
   A.stopBgm = function () { A.bgmOn = false; duck(); };
   A.setBgmLevel = function (v) { A.bgmLevel = v; duck(); };
 
-  // ── microphone: "did they say something?" (voice activity, not word recognition) ─────────────────────
-  const Mic = { state: 'off', stream: null, an: null, buf: null };
+  // ── microphone: "did they say something?" (voice activity). The samples of each listen are kept in memory
+  //    (Mic.lastPcm, Mic.sr) for the phonics-api word check in game.js — sent once with a key on the device, never stored.
+  const Mic = { state: 'off', stream: null, an: null, buf: null, rec: null, lastPcm: null, sr: 48000 };
   Mic.init = async function () {
     if (Mic.state === 'on') return true;
     if (Mic.state === 'asking') { while (Mic.state === 'asking') await sleep(100); return Mic.state === 'on'; }
@@ -267,6 +268,12 @@
       Mic.an.fftSize = 1024;
       src.connect(Mic.an);
       Mic.buf = new Float32Array(Mic.an.fftSize);
+      // the listen's samples (a silent sink keeps the processor running)
+      const proc = A.ctx.createScriptProcessor(4096, 1, 1), sink = A.ctx.createGain();
+      sink.gain.value = 0;
+      src.connect(proc); proc.connect(sink); sink.connect(A.ctx.destination);
+      proc.onaudioprocess = e => { if (Mic.rec) Mic.rec.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+      Mic.proc = proc; Mic.sr = A.ctx.sampleRate;
       Mic.state = 'on';
       return true;
     } catch (e) {
@@ -295,7 +302,18 @@
       A.listening = true; duck();
       const t0 = performance.now();
       let floor = 0, nCal = 0, run = 0, last = t0, heardAt = 0, lastVoice = 0, finished = false;
-      const done = v => { if (finished) return; finished = true; A.listening = false; duck(); if (onLevel) onLevel(0); res(v); };
+      Mic.rec = []; Mic.lastPcm = null;
+      const done = v => {
+        if (finished) return; finished = true; A.listening = false; duck(); if (onLevel) onLevel(0);
+        const rec = Mic.rec; Mic.rec = null;
+        if (v === true && rec && rec.length) {             // from 0.6 s before the voice began to the end
+          const n = rec.reduce((k, c) => k + c.length, 0), pcm = new Float32Array(n);
+          let o = 0; for (const c of rec) { pcm.set(c, o); o += c.length; }
+          const from = Math.max(0, Math.round((heardAt - t0 - 600) / 1000 * Mic.sr));
+          Mic.lastPcm = pcm.subarray(Math.min(from, Math.max(0, n - Mic.sr)));
+        }
+        res(v);
+      };
       const tick = () => {
         if (finished) return;
         if (cancel && cancel()) return done(false);

@@ -81,6 +81,12 @@ window.CROCO_VOICE = {
 0.917,
 1.228
 ],
+"t:again": [
+"t_again.mp3",
+0.02,
+0.817,
+1.78
+],
 "k:turn1": [
 "k_turn1.mp3",
 0.02,
@@ -153,77 +159,11 @@ window.CROCO_VOICE = {
 0.903,
 1.458
 ],
-"w:man": [
-"w_man.mp3",
+"k:again": [
+"k_again.mp3",
 0.03,
-0.851,
-0.978
-],
-"w:map": [
-"w_map.mp3",
-0.02,
-1.261,
-0.508
-],
-"w:meat": [
-"w_meat.mp3",
-0.02,
-0.433,
-0.676
-],
-"w:milk": [
-"w_milk.mp3",
-0.03,
-0.711,
-0.498
-],
-"w:mirror": [
-"w_mirror.mp3",
-0.02,
-0.629,
-0.844
-],
-"w:mitt": [
-"w_mitt.mp3",
-0.02,
-0.706,
-0.676
-],
-"w:monkey": [
-"w_monkey.mp3",
-0.03,
-0.679,
-0.738
-],
-"w:moon": [
-"w_moon.mp3",
-0.02,
-0.824,
-0.988
-],
-"w:mop": [
-"w_mop.mp3",
-0.02,
-0.737,
-0.748
-],
-"w:mouse": [
-"w_mouse.mp3",
-0.03,
-0.881,
-0.738
-],
-"w:mug": [
-"w_mug.mp3",
-0.02,
-0.787,
-0.676
-],
-"w:mushroom": [
-"w_mushroom.mp3",
-0.03,
-2.239,
-1.074
+0.971,
+1.866
 ],
 "w:bag": [
 "w_bag.mp3",
@@ -285,12 +225,6 @@ window.CROCO_VOICE = {
 0.891,
 0.834
 ],
-"w:ten": [
-"w_ten.mp3",
-0.02,
-0.792,
-0.604
-],
 "w:tie": [
 "w_tie.mp3",
 0.02,
@@ -327,12 +261,6 @@ window.CROCO_VOICE = {
 1.412,
 0.666
 ],
-"s:m": [
-"s_m.mp3",
-0.42,
-0.485,
-1.121
-],
 "s:s": [
 "s_s.mp3",
 0.37,
@@ -368,6 +296,96 @@ window.CROCO_VOICE = {
 0.41,
 0.48,
 0.661
+],
+"w:man": [
+"w_man.mp3",
+0.43,
+0.637,
+1.007
+],
+"w:map": [
+"w_map.mp3",
+0.43,
+0.518,
+0.981
+],
+"w:meat": [
+"w_meat.mp3",
+0.42,
+0.487,
+1.069
+],
+"w:milk": [
+"w_milk.mp3",
+0.42,
+0.536,
+0.964
+],
+"w:mirror": [
+"w_mirror.mp3",
+0.01,
+1.037,
+0.878
+],
+"w:mitt": [
+"w_mitt.mp3",
+0.57,
+0.918,
+0.846
+],
+"w:monkey": [
+"w_monkey.mp3",
+0.43,
+0.634,
+0.981
+],
+"w:moon": [
+"w_moon.mp3",
+0.42,
+0.491,
+0.991
+],
+"w:mop": [
+"w_mop.mp3",
+0.42,
+0.457,
+0.964
+],
+"w:mouse": [
+"w_mouse.mp3",
+0.44,
+0.634,
+0.971
+],
+"w:mug": [
+"w_mug.mp3",
+0.42,
+0.462,
+1.043
+],
+"w:mushroom": [
+"w_mushroom.mp3",
+0.01,
+1.751,
+1.502
+],
+"w:ten": [
+"w_ten.mp3",
+0.42,
+0.689,
+0.886
+],
+"w:doll": [
+"w_doll.mp3",
+0.42,
+0.677,
+0.964
+],
+"s:m": [
+"s_m.mp3",
+0.42,
+0.485,
+1.121
 ],
 "w:ant": [
 "w_ant.mp3",
@@ -584,12 +602,6 @@ window.CROCO_VOICE = {
 0.03,
 0.503,
 0.354
-],
-"w:doll": [
-"w_doll.mp3",
-0.02,
-0.945,
-1.156
 ],
 "w:door": [
 "w_door.mp3",
@@ -834,6 +846,7 @@ window.CROCO_VOICE = {
 "nomic": "Say it out loud!",
 "louder": "I can't hear you. Say it loud!",
 "pressstart": "Press start to play!",
+"again": "Try again! Listen.",
 "hello": "Hi, friends! Welcome to Croco Phonics!",
 "rule": "Watch out for this word!",
 "chomp": "Chomp! The croc got you!",
@@ -860,6 +873,7 @@ window.CROCO_VOICE = {
 "nomic": "소리 내어 읽어 봐!",
 "louder": "잘 안 들려. 크게 말해 봐!",
 "pressstart": "스타트 버튼을 눌러 봐!",
+"again": "다시 해 보자! 잘 들어 봐.",
 "hello": "안녕, 친구들! 크로코 파닉스에 온 걸 환영해!",
 "rule": "이 단어를 조심해!",
 "chomp": "덥석! 악어한테 잡혔다!",

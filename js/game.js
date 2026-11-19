@@ -557,17 +557,43 @@
      Home / Exit still end the round (the token). The mic sits in the middle of the screen on the croc's lower jaw
      (user: "마이크는 화면 가운데 악어 아래 턱에 겹쳐서") */
   function placeMic() { const mc = $('#mic'), p = croc.jawScreen(); mc.style.left = p.x + 'px'; mc.style.top = p.y + 'px'; return mc; }
+  /* the word said, checked by the company phonics-api when this device has a key (js/phonics-api.js; the samples of
+     the listen go once to /v1/speech/analyze, the server keeps no audio) against the level's other words:
+     'ok' | 'miss' (a try at it, not right) | 'other' (far from the word: not the child's) | null (no check: a voice is enough, as before) */
+  const PH = window.CROCO_PH || {};
+  async function judgeWord(word) {
+    const pcm = Mic.lastPcm;
+    if (!pcm || !window.PhonicsAPI || !PhonicsAPI.usable() || !PH[word]) return null;
+    const r = await PhonicsAPI.analyze(PhonicsAPI.encodeWav(await PhonicsAPI.to16k(pcm, Mic.sr), 16000), word);
+    if (!r.ok) return null;
+    const j = PhonicsAPI.judge(r.data, word, LV().words.map(w => w.w).filter(w => w !== word), PH);
+    G.lastJudge = { word, verdict: j.verdict, heard: j.heard, rel: j.rel, ms: r.ms };
+    if (Q.has('log')) console.log('phonics-api', JSON.stringify(G.lastJudge));
+    if (j.verdict === 'ok') return 'ok';
+    if (j.verdict === 'wrong' || (j.verdict === 'unclear' && j.rel <= 0.7)) return 'miss';
+    return 'other';
+  }
+
   async function sayIt(word, card, tok) {
     const mic = placeMic();
     mic.classList.add('listen');
     try {
       await say('t:sayit', 600);
       const lv = v => mic.style.setProperty('--lv', v.toFixed(3));
+      let tries = 0;
       for (let k = 0; ; k++) {
         if (tok !== G.token) return;
         const heard = await Mic.listen({ maxMs: k ? 6500 : 5200, onLevel: lv, cancel: () => tok !== G.token });
         if (tok !== G.token) return;
-        if (heard) break;
+        if (heard) {
+          const v = await judgeWord(word);
+          if (tok !== G.token) return;
+          // 3 real tries at it pass too (like Magic Block): a word a child can't say yet doesn't hold the turn for ever
+          if (v === null || v === 'ok' || (v === 'miss' && ++tries >= 3)) break;
+          if (v === 'miss') await say('t:again', 200);          // "Try again! Listen."
+          await sayWord(word, card, tok); if (tok !== G.token) return; await say('t:sayit', 300);
+          continue;
+        }
         if (heard === null) { if (await tapMic(mic, tok)) break; continue; }
         if (k % 2 === 0) await say('t:louder');
         else { await sayWord(word, card, tok); if (tok !== G.token) return; await say('t:sayit', 300); }
@@ -759,6 +785,13 @@
     if (G.winner != null) setRibbon(G.winner + 1);
     levelText();
   }
+  // phonics-api key (title only): a teacher enters it once per device; the dot shows whether the word is checked
+  const keyBtn = $('#btnKey');
+  const showApi = () => { keyBtn.dataset.api = PhonicsAPI.status(); };
+  addEventListener('phonicsapi:status', showApi);
+  keyBtn.addEventListener('click', async e => { e.stopPropagation(); A.unlock(); A.sfxPlay('tap'); await PhonicsAPI.keyDialog(); showApi(); });
+  PhonicsAPI.init().then(showApi);
+
   $('#btnLang').addEventListener('click', e => {
     e.stopPropagation();
     A.unlock();
@@ -1202,7 +1235,7 @@
     // the explanation runs silent until the first tap (the browser's rule): that tap → the croc says the line on screen
     // aloud now. Buttons keep their own job.
     if (first && T.on && T.line && T.wake && !e.target.closest('button')) { T.again = true; T.wake(); }
-    if (!greeted && G.screen === 'title' && !e.target.closest('#btnHome')) {       // leaving: no hello
+    if (!greeted && G.screen === 'title' && !e.target.closest('#btnHome, #btnKey, [role="dialog"]')) {   // leaving / the teacher's key: no hello
       greeted = true;
       A.startBgm(0.1);
       setTimeout(() => { if (G.screen === 'title' && !T.on && !G.bootHowto) say(A.has('t:hello') ? 't:hello' : 't:pressstart'); }, 250);

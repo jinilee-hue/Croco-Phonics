@@ -63,7 +63,7 @@ NEED_VOICE = WJ.get('needVoice', [])
 WORDS = list(dict.fromkeys(w['w'] for lv in LEVELS for w in lv['words']))
 SOUNDS = list(dict.fromkeys(lv['sound'] for lv in LEVELS))
 REUSE_T = ['turn1', 'turn2', 'sayit', 'great1', 'great2', 'great3', 'uhoh', 'win1', 'win2', 'playagain',
-           'nomic', 'louder', 'pressstart']
+           'nomic', 'louder', 'pressstart', 'again']   # again = "Try again! Listen." (a word the phonics-api didn't hear)
 REUSE_K = [k for k in REUSE_T if k != 'great1']        # Magic Block's Korean takes ('great1' says "블럭을 얻었어")
 NEW = {
     'hello': 'Hi, friends! Welcome to Croco Phonics!',
@@ -134,8 +134,16 @@ for k in REUSE_K:
     reuse(f'k:{k}')
     lines_ko[k] = jv['lines_ko'][k]
 
-# ── level words and letter sounds: Magic Block's clips, else Phonics Island's (trimmed + levelled below) ─────────
+# ── level words and letter sounds: the lesson pack's audio (phonics-kit rule 2026-11-19), else Magic Block's clips,
+# else Phonics Island's (trimmed + levelled below) ─────────────────────────────────────────────────────────────────
+sys.path.insert(0, str(pathlib.Path.home() / 'Documents/Jini/2026/Phonics/phonics-kit/tools'))
+import lessonpack  # noqa: E402
+PACK = lessonpack.load(lessonpack.pack_dir('FP.K.U1L1'))
+pack_words = [w for w in WORDS if (PACK['words'].get(w) or {}).get('audio_src') == 'pack']
+pack_sounds = [L for L in SOUNDS if PACK['sound'] and PACK['sound']['text'] == L]
 for w in WORDS:
+    if w in pack_words:
+        continue
     if f'w:{w}' in jv['clips']:
         reuse(f'w:{w}')
     elif island_key(w) in island_keys:
@@ -143,6 +151,8 @@ for w in WORDS:
     else:
         tts_words.append(w)                                 # a company-TTS take (cached), below
 for L in SOUNDS:
+    if L in pack_sounds:
+        continue
     if f's:{L}' in jv['clips']:
         reuse(f's:{L}')
     else:
@@ -208,6 +218,22 @@ def qwen(text, ins, dst, lang='en'):
             time.sleep(4 + 3 * attempt)
 
 
+def as_mp3(src):
+    """trim() stream-copies: the pack's WAV takes (mirror, mitt, mushroom; streamed headers) go to an MP3 first"""
+    if not str(src).lower().endswith('.wav'):
+        return src
+    tmp = pathlib.Path(tempfile.mkdtemp(prefix='croco_pack_')) / (pathlib.Path(src).stem + '.mp3')
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', str(src), '-ac', '1', '-ar', str(SR), '-c:a', 'libmp3lame', '-b:a', '96k', str(tmp)], check=True)
+    return tmp
+
+
+for w in pack_words:                                     # the pack's MP3s and WAV takes, trimmed like the official files
+    dst = OUT / f'w_{w}.mp3'
+    clips[f'w:{w}'] = [dst.name, *trim(as_mp3(PACK['words'][w]['audio']), dst, floor_db=-40)]
+for L in pack_sounds:
+    dst = OUT / f's_{L}.mp3'
+    clips[f's:{L}'] = [dst.name, *trim(PACK['sound']['audio'], dst, target_db=-18, floor_db=-40)]
+print(f"lesson pack audio: {len(pack_words)} words ({', '.join(pack_words)}) + {pack_sounds}")
 for w in island_words:
     dst = OUT / f'w_{w}.mp3'
     clips[f'w:{w}'] = [dst.name, *trim(ISLAND / 'voice' / f'{island_key(w)}.mp3', dst)]

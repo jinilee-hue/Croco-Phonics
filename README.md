@@ -14,7 +14,11 @@
 2. 이빨 10개(앞 4 + 양옆 3)에 그 레벨 단어가 하나씩 숨어 있고, 지시 단어는 딱 한 이빨에만 있다(단어가 10개보다 적은 레벨은 다른 단어를 다시 섞어 채운다).
    이빨의 글자는 그 레벨 글자(m, a, s …)이고, 카드 단어에서 그 글자가 주황색으로 강조된다(첫 글자, 짧은 모음 레벨은 가운데 모음: C**a**t).
    카드 아래 다시 듣기는 주황색 동그란 스피커 버튼 하나(글자 없음): 누르면 음가 + 단어, 음가가 나오는 동안 버튼이 톡톡 커진다.
-3. 이빨을 누르면 → 그림카드가 튀어나오고 → **음가 + 단어**를 들려주고 → "Now say the word." → 마이크로 아이 목소리가 들리면 칭찬 → 카드는 누른 사람 쪽에 쌓이고 → 상대 턴.
+3. 이빨을 누르면 → 그림카드가 튀어나오고 → **음가 + 단어**를 들려주고 → "Now say the word." → 아이가 말한 단어를 확인하면 칭찬 → 카드는 누른 사람 쪽에 쌓이고 → 상대 턴.
+   단어 확인(파닉스 공통 규칙, 2026-11-19 — `../phonics-kit`): 첫 화면 왼쪽 위 열쇠 버튼에 phonics-api 키를 넣은 기기에서는 회사 서버
+   (`/v1/speech/analyze`, 사내 Wav2Vec2 — 녹음은 저장하지 않음)가 들은 소리열을 그 단어·레벨의 다른 단어와 비교한다(`judgeWord`).
+   다른 단어면 "Try again! Listen." → 다시 들려줌, 단어와 거리가 먼 소리(옆 사람 말)는 시도로 치지 않고 다시 들려줌,
+   진짜 시도가 3번 안 통하면 넘어간다(매직블록처럼). 점: 초록 = 서버가 확인, 회색 = 목소리만 들으면 통과(키 없음·오프라인 — 이때 목소리는 기기 밖으로 안 나감).
    **단어를 말하기 전에는 절대 넘어가지 않는다**: 조용하면 악어가 다시 부른다("크게 말해 봐!" → 음가+단어 다시 들려주고 "Now say the word." → 반복).
    마이크를 못 쓰면(거부·없음·허용 대기) 아이가 말한 뒤 마이크 버튼을 눌러야 넘어간다(장갑 손이 버튼을 톡톡, 9초마다 다시 부름).
    소리 감지는 한 덩어리로 약 0.15초 이상 이어진 소리만 말로 친다(따로 떨어진 딸깍·쿵 소리는 쌓이지 않음).
@@ -82,7 +86,10 @@
 | 10 | L10 Dd (p.127–138) | dig, dip, dirt, dog, doll, door, dry, duck |
 - 출처: SAD·FPR 단어 연구 자료집 `~/dev/sadfpr-studio/data/b2_book_FPRK.json` — 각 레슨 쪽에 나오는 단어 중 그 레슨 소리를 가진 것
   (자음 레슨은 그 글자로 시작, 짧은 모음 레슨은 그 모음으로 시작하거나 c-a-t처럼 가운데 짧은 모음, sh·ch·th 등 이중자음과 c/g 연음은 제외).
-- 그림카드(공식 FPR K 그림: 매직블록·파닉스 아일랜드와 같은 그림)와 아이 목소리 음성이 둘 다 있는 단어만 쓴다. 기능어(my, in, it, no …)는 뺀다.
+- 그림카드(공식 FPR K 그림)와 아이 목소리 음성이 둘 다 있는 단어만 쓴다. 기능어(my, in, it, no …)는 뺀다.
+- 카드 그림 = 공통 그림(파닉스 공통 규칙): lesson pack 그림, 없으면 `공통이미지자료/FPR K_U1,2 대표이미지`(76단어; toy만 기존 그림) —
+  `uv run --with pillow --with numpy python tools/rep_cards.py` → `tools/card_boxes.py`. 레벨의 단어 구성은 바꾸지 않는다.
+- 기대 소리열(단어 확인용): `python3 tools/build_phonemes.py` → `js/phonemes.js`(서버 G2P).
   공식 그림카드는 있는데 음성이 없던 단어(sip, toy, paint, pit, cook, face, feel, dirt, dry)는 회사 TTS가 같은 목소리로 읽었다
   (`words.js` `needVoice` → `build_voice.py` → `build_words.py` 다시 → `build_voice.py` 다시).
 - 레슨 11 이후는 공식 그림카드·음성이 아직 없어 레벨이 아니다(스크립트 출력에 레슨마다 빠진 이유가 나온다). 그림과 음성이 생기면 다시 실행.
@@ -93,7 +100,7 @@
   서버는 `tools/serve.py`(캐시 안 함: 고친 뒤 그냥 새로고침해도 최신 파일이 보임).
 - `index.html` 더블클릭(file://)도 동작 (음성·폰트는 js/css에 내장).
 - 테스트 훅: `window.__test = { mic:false | heard:true, target:'moon', teeth:[...] }`, `window.__croco`(LEVELS, setLevel, levelUp …), 주소 `?nohowto` · `?target=` · `?level=`.
-- QA(`tools/qa/`): `qa_flow`·`qa_sizes`·`qa_again`·`qa_file`·`qa_cards`(카드 비행)·`qa_tutor`(페이지 열리면 설명 → START 타이틀 → 게임, 홈, EN|한, Skip, 마이크 위치, 긴 단어)·`qa_sayit`(말하기 전엔 안 넘어감: 조용함·마이크 없음 탭, `--real`은 가짜 마이크로 방 소음·딸깍·실제 단어), `qa_levels`(레벨마다 음성·카드·이빨 글자, 다음 레벨·다시 하기·마지막 레벨)·`qa_wins`(덥석 뒤 음가+단어 다시 읽기 순서, 레벨별 승리 칩 개수·겹침 3사이즈)·`qa_tutor_voice`(설명 음성: 소리 잠김 때 말풍선 시간, 첫 터치에 지금 줄부터 읽기, tut1–8 순서·말풍선 글자 일치·겹침 없음, 한국어)·`qa_intro_letters`(타이틀 이빨·도는 글자 10개·앞이 뒤보다 큼·화면 안, 레벨 5 설명/게임은 p, 나가기 게임→타이틀·타이틀→이전 페이지)·`console`(SDF 경고).
+- QA(`tools/qa/`): `qa_say_api [api|device]`(가짜 마이크로 phonics-api 단어 확인: 맞음·다른 단어·옆 사람 말·3번 시도) · `qa_flow`·`qa_sizes`·`qa_again`·`qa_file`·`qa_cards`(카드 비행)·`qa_tutor`(페이지 열리면 설명 → START 타이틀 → 게임, 홈, EN|한, Skip, 마이크 위치, 긴 단어)·`qa_sayit`(말하기 전엔 안 넘어감: 조용함·마이크 없음 탭, `--real`은 가짜 마이크로 방 소음·딸깍·실제 단어), `qa_levels`(레벨마다 음성·카드·이빨 글자, 다음 레벨·다시 하기·마지막 레벨)·`qa_wins`(덥석 뒤 음가+단어 다시 읽기 순서, 레벨별 승리 칩 개수·겹침 3사이즈)·`qa_tutor_voice`(설명 음성: 소리 잠김 때 말풍선 시간, 첫 터치에 지금 줄부터 읽기, tut1–8 순서·말풍선 글자 일치·겹침 없음, 한국어)·`qa_intro_letters`(타이틀 이빨·도는 글자 10개·앞이 뒤보다 큼·화면 안, 레벨 5 설명/게임은 p, 나가기 게임→타이틀·타이틀→이전 페이지)·`console`(SDF 경고).
   QA는 `window.__ready && window.__intro`(등장 모션 끝)를 기다린 뒤 START를 누른다.
 
 ## 구성
@@ -133,7 +140,7 @@
 - 레퍼런스(사용자 Gemini 이미지)는 `design/*.png` — 용량 때문에 git 제외.
 
 ## 음성
-회사 TTS 소년 목소리(Qwen3 'aiden') = Magic Block과 같은 목소리. 레벨 단어는 Magic Block 음성, 없으면 Phonics Island의 같은 목소리 단어 음성을,
+회사 TTS 소년 목소리(Qwen3 'aiden') = Magic Block과 같은 목소리. 레벨 단어는 lesson pack FP.K.U1L1에 있으면 pack 음성(레벨 1 12단어 + ten, doll), 아니면 Magic Block 음성, 없으면 Phonics Island의 같은 목소리 단어 음성을,
 레벨 음가는 공식 FPR K 녹음(Magic Block에서 다듬은 것, 없으면 Phonics Island에 있는 원본을 같은 방식으로 다듬음)을 쓴다. 공용 대사도 Magic Block에서 재사용.
 한국어(`k:`)는 매직블록의 한국어 공용 대사를 재사용한다(블럭이라고 말하는 great1만 뺌).
 게임 전용 새 대사(인사·규칙·덥석·레벨 업, 악어 튜터 설명 `tut1`–`tut8`)는 영어(`NEW`)·한국어(`NEW_KO`) 모두 **회사망에서** 아래로 생성:

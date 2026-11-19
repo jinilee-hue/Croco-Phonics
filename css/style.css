@@ -445,6 +445,14 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .sysbtn .x { display: none; stroke: #f0484e; }
 #app.muted .sysbtn .wave { display: none; }
 #app.muted .sysbtn .x { display: block; }
+/* phonics-api key (title with START only, top left): a teacher enters it once per device; the dot = green when the
+   company server checks the word, grey when only a voice is listened for (no key / offline) */
+.sys.sys-left { right: auto; left: calc(var(--u) * 2); }
+#app:not([data-screen="title"]) #btnKey, #app.howto #btnKey { display: none; }
+#btnKey { position: relative; }
+#btnKey .dot { position: absolute; right: 4%; top: 4%; width: 26%; height: 26%; border-radius: 50%; background: #b9b2c9;
+  box-shadow: 0 0 0 calc(var(--u) * .3) #fff; pointer-events: none; transition: background .2s; }
+#btnKey[data-api="on"] .dot { background: #34c98a; }
 
 .loading { position: absolute; inset: 0; z-index: 50; background: #cfe7ee; display: grid; place-items: center; transition: opacity .5s; }
 .loading i { width: calc(var(--u) * 7); height: calc(var(--u) * 7); border-radius: 50%; border: calc(var(--u) * 1) solid #fff; border-top-color: #5cbd5e; animation: spin2 .8s linear infinite; }
