@@ -37,7 +37,10 @@
   <section class="title">
     <img class="logo" src="assets/img/logo.webp" alt="Croco Phonics" draggable="false">
     <button id="start" class="start" aria-label="START">START<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.87l12-7.5a1 1 0 0 0 0-1.74l-12-7.5A1 1 0 0 0 7 4.5z"/></svg></button>
+    <!-- the level START plays (the saved one = continue) and the levels to pick from (game.js levelMenu; phonics-progress.js) -->
+    <button id="lvPick" class="lvpick" aria-haspopup="true" aria-expanded="false" aria-label="Level 1"><span class="n">1</span><b>Mm</b><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 14.5 12 9l5.5 5.5"/></svg></button>
   </section>
+  <div class="lvmenu" id="lvMenu" aria-hidden="true"><div class="lm-panel" role="dialog" aria-label="Levels"></div></div>
 
   <!-- game HUD -->
   <section class="hud">
@@ -64,6 +67,8 @@
   </section>
   <button id="skip" class="skip" aria-label="Skip the explanation" data-i18n-aria="a_skip"><span data-i18n="skip">Skip</span></button>
   <div class="cards" id="cards"></div>
+  <!-- JUMP: skip saying this word (no card for it) — Phonics Match's say-card button (phonics-kit rule F0) -->
+  <button id="jump" class="jump" type="button" aria-label="Jump" data-i18n-aria="a_jump"><svg viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(12 12.2) scale(1.12) translate(-12 -12)"><circle cx="15.4" cy="4.1" r="2.45"/><path d="M14.1 7.1 11.2 12"/><path d="M13.6 8.3 18.3 6.2"/><path d="M13.6 8.3 9.3 6.5"/><path d="M11.2 12 14.8 13.5 13 16.5"/><path d="M11.2 12 8 14.3 5 12.9"/><path d="M7.8 20.9h9.8"/></g></svg></button>
 
   <!-- result -->
   <section class="result" id="result" aria-live="polite">
@@ -106,8 +111,9 @@
 <script src="js/croc.js"></script>
 <script src="js/stage.js"></script>
 <script src="js/audio.js"></script>
-<script src="js/phonics-api.js"></script>
+<script src="js/phonics-api.js?v=ce02553b"></script>
 <script src="js/phonemes.js"></script>
+<script src="js/phonics-progress.js"></script>
 <script src="js/fx.js"></script>
 <script src="js/game.js"></script>
 </body>

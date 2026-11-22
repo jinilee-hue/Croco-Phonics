@@ -43,7 +43,12 @@
   const SVG_MIC = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0" fill="none" stroke="#ff7d2e" stroke-width="2.2" stroke-linecap="round"/><path d="M12 17.5V21" stroke="#ff7d2e" stroke-width="2.2" stroke-linecap="round"/></svg>';
   const SVG_OK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg>';
 
-  const G = { screen: 'title', token: 0, busy: true, target: null, nextTarget: null, winner: null, lastTarget: null, teeth: [], pressed: new Set(), turn: 0, starter: 0, got: [[], []], idle: null, said: new Set(), level: 0, bootHowto: null, wins: {} };
+  const G = { screen: 'title', token: 0, busy: true, target: null, nextTarget: null, winner: null, lastTarget: null, teeth: [], pressed: new Set(), turn: 0, starter: 0, got: [[], []], idle: null, said: new Set(), level: 0, bootHowto: null, wins: {},
+    jumpTold: false,          // the JUMP guide was shown in this round (once per round/level, on the first quiet turn)
+    stat: null };             // this round's say turns: said / missed / jumped / skipped, + its start time (progress record)
+  // the shared progress record of the phonics games (js/phonics-progress.js, phonics-kit; localStorage 'phonics.progress')
+  const PP = window.PhonicsProgress || null, GAME_ID = 'croco';
+  const progress = () => (PP ? PP.get(GAME_ID) : { level: null, maxLevel: null, best: {} });
 
   // ── the 3D croc (js/croc.js) on the three.js stage (js/stage.js) ─────────────────────────────────────
   Stage.init($('#croc'), { preserve: /[?&]shot\b/.test(location.search) });
@@ -197,6 +202,7 @@
     const L = LV();
     WORDS = L.words;
     BY = Object.fromEntries(WORDS.map(w => [w.w, w]));
+    if (G.nextTarget && !BY[G.nextTarget]) G.nextTarget = null;     // the explanation's trap word was another level's
     app.dataset.level = String(G.level + 1);
     app.classList.toggle('lastlv', G.level >= LEVELS.length - 1);
     teethLetters(true);
@@ -236,6 +242,11 @@
     b.querySelector('.t').textContent = tr('levelup', { n: G.level + 1 });
     b.querySelector('.lv-ltr b').textContent = lvLabel(L);
     b.querySelector('.lv-sub').textContent = L.kind === 'short' ? L.title : '';
+    const pk = $('#lvPick');                                  // the title's level chip (levelMenu)
+    pk.querySelector('.n').textContent = G.level + 1;
+    pk.querySelector('b').textContent = lvLabel(L);
+    pk.setAttribute('aria-label', `${tr('level', { n: G.level + 1 })} · ${L.title} — ${tr('a_levels')}`);
+    $('#lvMenu .lm-panel').setAttribute('aria-label', tr('a_levels'));
   }
 
   // CSS cubic-bezier curves as functions: the card curves of Halli Galli (deal = comes out, fly = goes to a slot)
@@ -397,6 +408,9 @@
     $('#turn').classList.remove('show');
     G.got = [[], []];
     renderStack(0); renderStack(1);
+    G.stat = { said: 0, missed: 0, jumped: 0, skipped: 0, t0: performance.now() };
+    G.jumpTold = false;                                // a round (판) at this level: the JUMP guide may show once again
+    if (PP) PP.setLevel(GAME_ID, G.level + 1);         // the level reached: the title offers to continue from it
     const pool = WORDS.map(w => w.w);
     let target;
     do { target = pool[rand(pool.length)]; } while (pool.length > 1 && target === G.lastTarget);
@@ -525,9 +539,20 @@
     card.classList.add('busy');
     await sayWord(word, card, tok);
     if (tok !== G.token) return;
-    await sayIt(word, card, tok);
+    const said = await sayIt(word, card, tok);
     if (tok !== G.token) return;
     card.classList.remove('busy');
+    if (!said) {
+      // not said (JUMP, 2 wrong tries, quiet, or it couldn't be judged): nobody gets the card (phonics-kit rule 6) —
+      // it shrinks away where it is and the turn passes
+      A.sfxPlay('whoosh');
+      await card.animate([{ opacity: 1, scale: 1 }, { opacity: 0, scale: 0.55 }], { duration: 420, easing: 'ease-in', fill: 'forwards' }).finished.catch(() => {});
+      f.el.remove();
+      if (tok !== G.token) return;
+      await sleep(150);
+      setTurn(1 - p);
+      return;
+    }
     // onto the player's pile: the pile makes a place, the card arcs over (sparkle trail) and lands on it
     G.got[p].push(word);
     const mini = renderStack(p, true);
@@ -548,22 +573,29 @@
     setTurn(1 - p);
   }
 
-  /* "say it": the croc asks, then WAITS for the word — the turn never moves on without it (user: "단어를 읽지 않았는데
-     그냥 넘어가는 경우 없어야해"; it used to move on after ~10 s of silence, or after a 2.6 s countdown without a mic).
-     - with a mic: it listens with no time-out; each silence brings the croc back, in turn "I can't hear you. Say it
-       loud!" and the word once more (its sound + the word) + "Now say the word.", then it listens again
-     - without one (refused, none, or still being asked) it can't hear, so the player taps the mic once they've said
-       the word (tapMic); if the mic gets allowed meanwhile, it listens instead
+  /* "say it" — the phonics-kit rules for every phonics game (user 2026-11-22, launcher F0 · F3; reference Phonics Match
+     sayItTurn / skipSay / jumpGuide). The word earns its card only when it is heard right:
+     - JUMP (the green button on the card's top corner) is up for the whole turn: it skips the word — no card
+     - 2 wrong tries → "Good try!" and on — no card
+     - silence → the croc reads it once more and waits again; ~20 s with no word → on — no card (never for ever).
+       The first quiet turn of a level the glove taps JUMP while the croc says "Want to skip? Tap the jump button!"
+     - can't be judged (no mic / refused, or no phonics-api: no key, offline, busy, a failed call — this game has no
+       on-device recognizer) → the say turn is skipped — no card. Any sound never passes.
      Home / Exit still end the round (the token). The mic sits in the middle of the screen on the croc's lower jaw
-     (user: "마이크는 화면 가운데 악어 아래 턱에 겹쳐서") */
+     (user: "마이크는 화면 가운데 악어 아래 턱에 겹쳐서"). Resolves true = said right (the card goes to the player). */
   function placeMic() { const mc = $('#mic'), p = croc.jawScreen(); mc.style.left = p.x + 'px'; mc.style.top = p.y + 'px'; return mc; }
   /* the word said, checked by the company phonics-api when this device has a key (js/phonics-api.js; the samples of
      the listen go once to /v1/speech/analyze, the server keeps no audio) against the level's other words:
-     'ok' | 'miss' (a try at it, not right) | 'other' (far from the word: not the child's) | null (no check: a voice is enough, as before) */
+     'ok' | 'miss' (a try at it, not right) | 'other' (far from the word: not the child's) | null (can't judge: no card).
+     QA: scripted listens (__test.heard) are judged by the script — true → 'ok', or the verdict itself ('miss', 'other',
+     'cant' = can't judge) */
   const PH = window.CROCO_PH || {};
-  async function judgeWord(word) {
+  const scripted = () => !!(window.__test && window.__test.heard != null);
+  const canJudge = word => scripted() || !!(window.PhonicsAPI && PhonicsAPI.usable() && PH[word]);
+  async function judgeWord(word, heard) {
+    if (scripted()) return heard === true || heard === 'ok' ? 'ok' : heard === 'miss' || heard === 'other' ? heard : null;
     const pcm = Mic.lastPcm;
-    if (!pcm || !window.PhonicsAPI || !PhonicsAPI.usable() || !PH[word]) return null;
+    if (!pcm || !canJudge(word)) return null;
     const r = await PhonicsAPI.analyze(PhonicsAPI.encodeWav(await PhonicsAPI.to16k(pcm, Mic.sr), 16000), word);
     if (!r.ok) return null;
     const j = PhonicsAPI.judge(r.data, word, LV().words.map(w => w.w).filter(w => w !== word), PH);
@@ -574,71 +606,116 @@
     return 'other';
   }
 
-  async function sayIt(word, card, tok) {
-    const mic = placeMic();
-    mic.classList.add('listen');
+  /* the say turn's JUMP: S.jumped cuts the turn's lines, pauses and listens short (one cut per turn, S.cutP) */
+  const S = { on: false, jumped: false, cut: null, cutP: null };
+  async function turnSay(key, minMs = 0) { if (!S.jumped) await Promise.race([say(key, minMs), S.cutP]); }
+  async function turnWord(word, card, tok) { if (!S.jumped) await Promise.race([sayWord(word, card, tok), S.cutP]); }
+  async function turnPause(ms) { if (!S.jumped) await Promise.race([sleep(ms), S.cutP]); }
+  function placeJump(card) {
+    const jb = $('#jump'), r = card.getBoundingClientRect(), right = r.left + r.width / 2 < window.innerWidth / 2;
+    // the card's top corner toward the croc (player 1's card sits left of it, player 2's right); the ✓ of a word said
+    // right comes up in the top-right corner
+    jb.style.left = (right ? r.right - r.width * 0.1 : r.left + r.width * 0.1) + 'px';
+    jb.style.top = (r.top + r.width * 0.06) + 'px';
+    return jb;
+  }
+  function skipSay(e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (!S.on || S.jumped) return;
+    S.jumped = true;
+    A.unlock();
+    A.sfxPlay('tap');
+    A.stopVoice();
+    $('#jump').classList.remove('show');
+    if (S.cut) S.cut();
+  }
+  $('#jump').addEventListener('pointerdown', skipSay);
+  $('#jump').addEventListener('click', e => { e.stopPropagation(); skipSay(); });   // keyboard
+  /* "Want to skip? Tap the jump button!" — the white glove taps JUMP twice (it hops each time) while the croc says it
+     (Phonics Match jumpGuide); once per level, on the first quiet turn. Without the clip it is the glove only. */
+  async function jumpGuide(jb) {
+    const h = $('#hint'), r = jb.getBoundingClientRect();
+    h.style.left = (r.left + r.width * 0.56) + 'px';
+    h.style.top = (r.top + r.height * 0.6) + 'px';
+    h.classList.add('show', 'on-jump');
+    const hop = () => { if (S.jumped) return; jb.classList.remove('poke'); void jb.offsetWidth; jb.classList.add('poke'); A.sfxPlay('tap'); };
+    const t1 = setTimeout(hop, 700), t2 = setTimeout(hop, 1900);
     try {
-      await say('t:sayit', 600);
-      const lv = v => mic.style.setProperty('--lv', v.toFixed(3));
-      let tries = 0;
-      for (let k = 0; ; k++) {
-        if (tok !== G.token) return;
-        const heard = await Mic.listen({ maxMs: k ? 6500 : 5200, onLevel: lv, cancel: () => tok !== G.token });
-        if (tok !== G.token) return;
-        if (heard) {
-          const v = await judgeWord(word);
-          if (tok !== G.token) return;
-          // 3 real tries at it pass too (like Magic Block): a word a child can't say yet doesn't hold the turn for ever
-          if (v === null || v === 'ok' || (v === 'miss' && ++tries >= 3)) break;
-          if (v === 'miss') await say('t:again', 200);          // "Try again! Listen."
-          await sayWord(word, card, tok); if (tok !== G.token) return; await say('t:sayit', 300);
-          continue;
-        }
-        if (heard === null) { if (await tapMic(mic, tok)) break; continue; }
-        if (k % 2 === 0) await say('t:louder');
-        else { await sayWord(word, card, tok); if (tok !== G.token) return; await say('t:sayit', 300); }
-      }
-      if (tok !== G.token) return;
-      mic.classList.remove('listen');
-      card.classList.add('good');
-      A.sfxPlay('great');
-      const r = card.getBoundingClientRect();
-      FX.burst(r.left + r.width / 2, r.top + r.height / 2, { kind: 'stars', n: 22 });
-      await say(['t:great2', 't:great3'][rand(2)], 500);
-    } finally {
-      mic.classList.remove('listen', 'nomic');
-      mic.style.setProperty('--lv', 0);
-    }
+      if (A.has('t:jump')) await Promise.all([turnSay('t:jump'), turnPause(2600)]);
+      else await turnPause(2800);
+    } finally { clearTimeout(t1); clearTimeout(t2); h.classList.remove('show', 'on-jump'); jb.classList.remove('poke'); }
   }
 
-  /* no mic to hear with: wait for a tap on the mic ("I said it"). The glove taps it from 1.6 s on, and the croc asks
-     again every 9 s. true = tapped; false = the round ended, or the mic got allowed meanwhile (then sayIt listens) */
-  async function tapMic(mic, tok) {
-    let tapped = false;
-    const on = e => { e.preventDefault(); e.stopPropagation(); if (!tapped) { tapped = true; A.stopVoice(); A.sfxPlay('tap'); } };
-    const h = $('#hint');
-    mic.classList.add('nomic');
-    mic.addEventListener('pointerdown', on);
+  async function sayIt(word, card, tok) {
+    const mic = placeMic(), jb = placeJump(card);
+    const live = () => tok === G.token && !S.jumped;
+    let out = 'missed';                                       // said | missed (wrong ×2, quiet) | skipped (can't judge) | jumped
+    Object.assign(S, { on: true, jumped: false });
+    S.cutP = new Promise(r => { S.cut = r; });
+    jb.classList.remove('poke', 'show');
+    const showJump = () => jb.classList.add('show');       // jumps in (css jump-in) as the turn starts
     try {
-      const t0 = performance.now();
-      let again = 9000, hand = false;
-      while (!tapped && tok === G.token && !Mic.ready()) {
-        const el = performance.now() - t0;
-        if (!hand && el > 1600) {
-          hand = true;
-          const r = mic.getBoundingClientRect();
-          h.style.left = (r.left + r.width * 0.6) + 'px';
-          h.style.top = (r.top + r.height * 0.62) + 'px';
-          h.classList.add('show', 'on-mic');
-        }
-        if (el > again) { again = el + 9000; await say('t:sayit', 300); continue; }
-        await sleep(60);
+      // the mic is still being asked for (or never was): wait for the answer, ~20 s at most — JUMP works meanwhile
+      if (!scripted() && (Mic.state === 'off' || Mic.state === 'asking')) {
+        showJump();
+        if (Mic.state === 'off') Mic.init();
+        const t0 = performance.now();
+        while (live() && Mic.state === 'asking' && performance.now() - t0 < 20000) await turnPause(100);
+        if (!live()) return false;
       }
-      return tapped;
+      // can't judge: no mic, or no phonics-api (and no recognizer on the device) — the say turn is skipped, no card.
+      // (QA: scripted listens need no microphone, as before; __test.mic = false still means none)
+      const micOk = scripted() ? window.__test.mic !== false : Mic.ready();
+      if (!micOk || !canJudge(word)) { out = 'skipped'; return false; }
+      showJump();
+      mic.classList.add('listen');
+      const lv = v => mic.style.setProperty('--lv', v.toFixed(3));
+      await turnSay('t:sayit', 600);
+      let misses = 0, quiet = 0;
+      for (let round = 0; round < 6 && live(); round++) {
+        // 5.5 s, then 7.5 s after the word is read again: ~20 s from "Now say the word." to moving on (with the guide)
+        const heard = await Mic.listen({ maxMs: quiet ? 7500 : 5500, onLevel: lv, cancel: () => !live() });
+        if (!live()) break;
+        if (heard === null) { out = 'skipped'; return false; }              // the mic went away: can't judge
+        if (heard) {
+          const v = await judgeWord(word, heard);
+          if (!live()) break;
+          if (v === 'ok') {
+            out = 'said';
+            S.on = false;                                                    // no JUMP over the reward
+            mic.classList.remove('listen');
+            jb.classList.remove('show');
+            card.classList.add('good');
+            A.sfxPlay('great');
+            const r = card.getBoundingClientRect();
+            FX.burst(r.left + r.width / 2, r.top + r.height / 2, { kind: 'stars', n: 22 });
+            await say(['t:great2', 't:great3'][rand(2)], 500);
+            return true;
+          }
+          if (v === null) { out = 'skipped'; return false; }                 // the server failed: can't judge
+          if (v === 'miss') {
+            if (++misses >= 2) { mic.classList.remove('listen'); await turnSay('t:goodtry', 300); return false; }   // "Good try!"
+            await turnSay('t:again', 200);                                    // "Try again! Listen."
+          }
+          // 'other' (far from the word: someone else talking): the word again, not counted
+          await turnWord(word, card, tok); await turnSay('t:sayit', 300);
+          continue;
+        }
+        // silence: the word once more, then one more wait; quiet again → on, no card
+        if (++quiet >= 2) break;
+        if (!G.jumpTold) { G.jumpTold = true; await jumpGuide(jb); if (!live()) break; }
+        await turnWord(word, card, tok); await turnSay('t:sayit', 300);
+      }
+      return false;
     } finally {
-      mic.removeEventListener('pointerdown', on);
-      mic.classList.remove('nomic');
-      h.classList.remove('show', 'on-mic');
+      if (S.jumped) out = 'jumped';
+      if (tok === G.token && G.stat) G.stat[out]++;
+      S.on = false;
+      if (S.cut) S.cut();
+      jb.classList.remove('show', 'poke');
+      $('#hint').classList.remove('show', 'on-jump');
+      mic.classList.remove('listen', 'nomic');
+      mic.style.setProperty('--lv', 0);
     }
   }
 
@@ -701,6 +778,12 @@
     $('#turn').classList.remove('show');
     G.winner = winner;
     (G.wins[G.level] = G.wins[G.level] || [0, 0])[winner]++;
+    // the round in the shared record: level, who won, safe teeth pressed, words said right / not, seconds
+    const st = G.stat || { said: 0, missed: 0, jumped: 0, skipped: 0, t0: performance.now() };
+    if (PP) PP.played(GAME_ID, { level: G.level + 1, winner: winner + 1, teeth: G.pressed.size - 1, words: st.said,
+      misses: st.missed, jumped: st.jumped, skipped: st.skipped, time: Math.round((performance.now() - st.t0) / 100) / 10 },
+      { higher: ['teeth'] });
+    G.stat = null;
     setTimeout(() => { if (tok === G.token) renderWins(winner); }, 650);
     setRibbon(winner + 1);
     A.sfxPlay('fanfare');
@@ -729,6 +812,7 @@
     clearIdle();
     endTutorial();
     $('#mic').classList.remove('listen', 'nomic');
+    $('#jump').classList.remove('show', 'poke');
     G.screen = 'title';
     G.busy = true;
     app.dataset.screen = 'title';
@@ -755,9 +839,9 @@
   let LANG = (() => { try { return localStorage.getItem(LANG_KEY) === 'ko' ? 'ko' : 'en'; } catch (e) { return 'en'; } })();
   const UI = {
     en: { p1: 'Player 1', p2: 'Player 2', turn: 'Your turn!', wins: 'Player {n} Wins!', again: 'Play Again', next: 'Next Level', level: 'Level {n}', levelup: 'Level {n}!', skip: 'Skip',
-      a_skip: 'Skip the explanation', a_lang: 'Language: English or Korean', a_sound: 'Sound on/off', a_exit: 'Exit' },
+      a_skip: 'Skip the explanation', a_lang: 'Language: English or Korean', a_sound: 'Sound on/off', a_exit: 'Exit', a_jump: 'Jump', a_levels: 'Levels', a_locked: 'locked' },
     ko: { p1: '플레이어 1', p2: '플레이어 2', turn: '네 차례!', wins: '플레이어 {n} 승리!', again: '다시 하기', next: '다음 레벨', level: '레벨 {n}', levelup: '레벨 {n}!', skip: '건너뛰기',
-      a_skip: '설명 건너뛰기', a_lang: '언어: 영어 또는 한국어', a_sound: '소리 켜기/끄기', a_exit: '나가기' },
+      a_skip: '설명 건너뛰기', a_lang: '언어: 영어 또는 한국어', a_sound: '소리 켜기/끄기', a_exit: '나가기', a_jump: '점프', a_levels: '레벨 고르기', a_locked: '잠김' },
   };
   const tr = (k, v = {}) => (UI[LANG][k] || UI.en[k] || k).replace(/\{(\w+)\}/g, (_, x) => (v[x] != null ? v[x] : ''));
   /* the result banner's text: a baked puffy sprite like the logo's letters (tools/make_banner_text.py → CROCO_RB) over
@@ -941,6 +1025,7 @@
     G.busy = true;
     window.__intro = false;
     A.stopVoice();
+    levelMenu(false);
     app.classList.add('howto');
     teethLetters();
     $('#skip').classList.add('show');
@@ -1129,15 +1214,84 @@
     teethLetters();
     ORBIT.t0 = performance.now() + d0 + 900;                 // the letters round the croc pop in, one after another
     E($('#start'), [{ scale: 0, opacity: 0 }, { scale: 1.12, opacity: 1, offset: 0.65 }, { scale: 1, opacity: 1 }], { duration: 620, delay: d0 + 1500, easing: 'ease-out' });
+    E($('#lvPick'), [{ scale: 0, opacity: 0 }, { scale: 1.12, opacity: 1, offset: 0.65 }, { scale: 1, opacity: 1 }], { duration: 560, delay: d0 + 1650, easing: 'ease-out' });
+    placeLevelPick();
     window.__intro = false;
     clearTimeout(introTimer);
     introTimer = setTimeout(() => { window.__intro = true; }, d0 + 2250);
   }
+  /* ── the level START plays (phonics-kit F1, user 2026-11-22: levelled games get continue + level select on the title):
+     the chip left of START shows it — the page opens on the saved level, so START continues there — and opens the
+     levels. Open: every level reached and the one after the highest level with a finished round (Next Level only
+     needs one round); the rest show a lock. Picking one says its sound. */
+  function unlockedTop() {
+    const r = progress();
+    return Math.max(1, Math.min(LEVELS.length, Math.max(r.maxLevel || 1, ((r.best && r.best.level) || 0) + 1)));
+  }
+  const SVG_LOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5.2" y="10.6" width="13.6" height="9.6" rx="2.4"/><path d="M8.4 10.6V8.2a3.6 3.6 0 0 1 7.2 0v2.4"/></svg>';
+  function placeLevelPick() {
+    const st = $('#start'), pk = $('#lvPick');
+    if (!st.offsetWidth) return;
+    // START is centred by translateX(-50%): its layout box starts at offsetLeft − half its width
+    pk.style.left = (st.offsetLeft - st.offsetWidth / 2 - 1.8 * u() - pk.offsetWidth) + 'px';
+    pk.style.top = (st.offsetTop + (st.offsetHeight - pk.offsetHeight) / 2) + 'px';
+  }
+  function levelMenu(open) {
+    const m = $('#lvMenu'), pk = $('#lvPick'), panel = m.querySelector('.lm-panel');
+    if (open) {
+      const top = unlockedTop();
+      panel.innerHTML = LEVELS.map((L, k) => {
+        const on = k < top || k === G.level;                  // (?level=N may start past the open ones)
+        return `<button class="lm-t${k === G.level ? ' cur' : ''}${on ? '' : ' lock'}" data-k="${k}" style="--edge:${EDGES[k % EDGES.length]}"`
+          + ` aria-label="${tr('level', { n: k + 1 })} · ${L.title}${on ? '' : ' · ' + tr('a_locked')}"${on ? '' : ' aria-disabled="true"'}>`
+          + `<span class="n">${k + 1}</span><b>${lvLabel(L)}</b>${on ? '' : SVG_LOCK}</button>`;
+      }).join('');
+      // the panel's tail points at the chip
+      const r = pk.getBoundingClientRect();
+      panel.style.setProperty('--tx', (r.left + r.width / 2) + 'px');
+    }
+    m.classList.toggle('show', open);
+    m.setAttribute('aria-hidden', String(!open));
+    pk.setAttribute('aria-expanded', String(open));
+  }
+  $('#lvPick').addEventListener('click', e => {
+    e.stopPropagation();
+    if (T.on || G.screen !== 'title') return;
+    A.unlock();
+    A.sfxPlay('tap');
+    levelMenu(!$('#lvMenu').classList.contains('show'));
+  });
+  $('#lvMenu').addEventListener('click', e => {
+    e.stopPropagation();
+    if (T.on || G.screen !== 'title') { levelMenu(false); return; }
+    const t = e.target.closest('.lm-t');
+    if (!t) { levelMenu(false); return; }                    // outside the tiles: close
+    A.unlock();
+    if (t.classList.contains('lock')) {
+      A.sfxPlay('tick');
+      t.animate([{ translate: '0 0' }, { translate: '-6% 0' }, { translate: '6% 0' }, { translate: '0 0' }], { duration: 260 });
+      return;
+    }
+    A.sfxPlay('pop');
+    levelMenu(false);
+    setLevel(+t.dataset.k);
+    $('#lvPick').animate([{ scale: 1 }, { scale: 1.18, offset: 0.45 }, { scale: 1 }], { duration: 420, easing: 'ease-out' });
+    croc.cheer(900);
+    A.stopVoice();
+    say('s:' + LV().sound);
+  });
+  window.addEventListener('keydown', e => { if (e.key === 'Escape') levelMenu(false); });
+  window.addEventListener('resize', placeLevelPick);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(placeLevelPick);
+
   applyLang();
-  setLevel((parseInt(Q.get('level'), 10) || 1) - 1);       // ?level=N: start at level N (QA, a class on lesson N)
+  // ?level=N: start at level N (QA, a class on lesson N); else the saved level (continue), never past the open ones
+  setLevel((parseInt(Q.get('level'), 10) || Math.min(progress().level || 1, unlockedTop())) - 1);
+  placeLevelPick();
 
   $('#start').addEventListener('click', () => {
     if (T.on || G.screen !== 'title') return;
+    levelMenu(false);
     A.unlock();
     A.stopVoice();
     A.sfxPlay('pop');
@@ -1235,7 +1389,7 @@
     // the explanation runs silent until the first tap (the browser's rule): that tap → the croc says the line on screen
     // aloud now. Buttons keep their own job.
     if (first && T.on && T.line && T.wake && !e.target.closest('button')) { T.again = true; T.wake(); }
-    if (!greeted && G.screen === 'title' && !e.target.closest('#btnHome, #btnKey, [role="dialog"]')) {   // leaving / the teacher's key: no hello
+    if (!greeted && G.screen === 'title' && !e.target.closest('#btnHome, #btnKey, #lvPick, #lvMenu, [role="dialog"]')) {   // leaving / the teacher's key / the levels: no hello
       greeted = true;
       A.startBgm(0.1);
       setTimeout(() => { if (G.screen === 'title' && !T.on && !G.bootHowto) say(A.has('t:hello') ? 't:hello' : 't:pressstart'); }, 250);
@@ -1262,7 +1416,10 @@
     // ends beside the croc (between the side cards and the cards lying at the bottom)
     const box = croc.screenBox(), jaw = croc.jawScreen(), W = window.innerWidth, H = window.innerHeight, U = u(), LS = ORBIT.FONT * U;
     const big = LS * ORBIT.MAX, bh = box.bottom - box.top;                       // big: a front letter's height
-    const st = $('#start').getBoundingClientRect(), stOn = st.width > 0, stX = (st.left + st.right) / 2, stW = st.width / 2;
+    // START and the level chip beside it: a front letter fades behind either
+    const s0 = $('#start').getBoundingClientRect(), s1 = $('#lvPick').getBoundingClientRect();
+    const st = s1.width > 0 ? { left: Math.min(s0.left, s1.left), right: Math.max(s0.right, s1.right), top: s0.top, bottom: s0.bottom, width: s0.width } : s0;
+    const stOn = st.width > 0, stX = (st.left + st.right) / 2, stW = (st.right - st.left) / 2;
     // … and at least as low as START's middle (portrait: the front-side letters pass under the side teeth)
     const frontY = Math.max(jaw.y - 0.09 * bh + big * 0.5 + 0.5 * U, stOn ? (st.top + st.bottom) / 2 : 0), backY = box.top + bh * 0.38;
     const cx = (box.left + box.right) / 2, cy = (frontY + backY) / 2, ry = Math.max(0, (frontY - backY) / 2);
@@ -1321,7 +1478,7 @@
     if (i >= 0) onTooth(i);
   });
   window.addEventListener('keydown', e => {
-    if (G.screen === 'title' && (e.key === 'Enter' || e.key === ' ')) { $('#start').click(); return; }
+    if (G.screen === 'title' && (e.key === 'Enter' || e.key === ' ') && !e.target.closest('#lvPick, #lvMenu')) { $('#start').click(); return; }
     if (G.screen === 'game' && /^[0-9]$/.test(e.key)) onTooth((+e.key + 9) % 10);
   });
 

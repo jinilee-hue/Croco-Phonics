@@ -1,4 +1,4 @@
-"""QA across screen sizes + paths: title / turn / reveal(no mic countdown) / idle hint / result.
+"""QA across screen sizes + paths: title / turn / reveal (no mic: the say turn is skipped, no card) / idle hint / result.
 usage: uv run --with playwright python qa_sizes.py <outdir> [base_url]
 """
 import sys, time, json, pathlib
@@ -28,14 +28,13 @@ with sync_playwright() as p:
         if (W, H) == (1180, 820):
             time.sleep(5.6)
             pg.screenshot(path=str(out / f'{tag}_2b_idlehint.png'))
-        # safe tooth 4 (monkey) → reveal → no-mic countdown
+        # safe tooth 4 (monkey) → reveal → no mic: skipped, no card (phonics-kit rule F3)
         print(tag, 'turn ok; busy', pg.evaluate('__croco.G.busy'), 'teeth', pg.evaluate('__croco.G.teeth'), flush=True)
         pg.evaluate('() => { __croco.onTooth(4); }')
         print(tag, 'after tooth: flyers', pg.evaluate("document.querySelectorAll('.flyer').length"), 'cls', pg.evaluate("(document.querySelector('.flyer .card')||{}).className"), flush=True)
-        pg.wait_for_function("document.querySelector('#mic').classList.contains('nomic')", timeout=20000)
-        time.sleep(0.9)
-        pg.screenshot(path=str(out / f'{tag}_3nomic.png'))
-        pg.click('#mic', force=True)                 # no mic: the turn waits for this tap (said it)
+        pg.wait_for_function("!!document.querySelector('#cards .card')", timeout=20000)
+        time.sleep(1.4)
+        pg.screenshot(path=str(out / f'{tag}_3reveal.png'))
         pg.wait_for_function("document.querySelector('#app').dataset.turn === '1' && document.querySelector('#turn').classList.contains('show')", timeout=20000)
         time.sleep(0.6)
         pg.evaluate('() => { __croco.onTooth(2); }')   # moon = target

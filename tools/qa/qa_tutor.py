@@ -182,18 +182,18 @@ with sync_playwright() as p:
     print('  START →', g3, pg.evaluate("({turnText: document.querySelector('#turn .t').textContent, names: [...document.querySelectorAll('.player .name')].map(e => e.textContent)})"))
     ctx.close()
 
-    # ── 4. the mic on the croc's lower jaw (no mic → countdown), players at the bottom ──
+    # ── 4. the mic on the croc's lower jaw (a listening mic: scripted silence), players at the bottom ──
     for W, H in SIZES:
         ctx, pg = page(W, H)
         pg.goto(BASE + '?shot&nohowto')
         pg.wait_for_function('window.__ready === true && window.__intro === true', timeout=60000)
-        pg.evaluate("window.__test = {mic: false, target: 'moon', teeth: ['map','milk','moon','mouse','monkey','mug','mop','man','meat','mitt']}")
+        pg.evaluate("window.__test = {heard: [false, false, false, false], target: 'moon', teeth: ['map','milk','moon','mouse','monkey','mug','mop','man','meat','mitt']}")
         pg.click('#start', force=True)
         pg.wait_for_function("document.querySelector('#turn').classList.contains('show')", timeout=20000)
         time.sleep(0.8)
         pg.screenshot(path=str(out / f'mic_{W}x{H}_0turn.png'))
         pg.evaluate('() => { __croco.onTooth(0); }')
-        pg.wait_for_function("document.querySelector('#mic').classList.contains('nomic')", timeout=20000)
+        pg.wait_for_function("document.querySelector('#mic').classList.contains('listen')", timeout=20000)
         time.sleep(0.8)
         pg.screenshot(path=str(out / f'mic_{W}x{H}_1mic.png'))
         g = pg.evaluate("""() => { const m = document.querySelector('#mic').getBoundingClientRect(), j = __croco.croc.jawScreen();

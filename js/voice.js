@@ -769,6 +769,18 @@ window.CROCO_VOICE = {
 0.873,
 1.704
 ],
+"t:goodtry": [
+"t_goodtry.mp3",
+0.0,
+0.705,
+0.96
+],
+"t:jump": [
+"t_jump.mp3",
+0.0,
+1.044,
+2.568
+],
 "k:hello": [
 "k_hello.mp3",
 0.0,
@@ -840,6 +852,18 @@ window.CROCO_VOICE = {
 0.0,
 1.289,
 2.04
+],
+"k:goodtry": [
+"k_goodtry.mp3",
+0.0,
+0.924,
+1.632
+],
+"k:jump": [
+"k_jump.mp3",
+0.02,
+1.254,
+2.284
 ]
 },
 "lines": {
@@ -868,7 +892,9 @@ window.CROCO_VOICE = {
 "tut5": "A card pops out. Now say the word.",
 "tut6": "Uh-oh! The trap word!",
 "tut7": "CHOMP! You lose!",
-"tut8": "Ready? Let's play!"
+"tut8": "Ready? Let's play!",
+"goodtry": "Good try!",
+"jump": "Want to skip? Tap the jump button!"
 },
 "lines_ko": {
 "turn1": "플레이어 1, 네 차례야!",
@@ -895,6 +921,8 @@ window.CROCO_VOICE = {
 "tut5": "카드가 톡 나오면, 이제 단어를 읽어 봐.",
 "tut6": "앗! 함정 단어야!",
 "tut7": "덥석! 그럼 지는 거야!",
-"tut8": "준비됐니? 시작하자!"
+"tut8": "준비됐니? 시작하자!",
+"goodtry": "좋아, 잘했어!",
+"jump": "넘어가고 싶으면 점프 버튼을 눌러!"
 }
 };

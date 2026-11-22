@@ -83,6 +83,10 @@ NEW = {
     'tut6': 'Uh-oh! The trap word!',
     'tut7': 'CHOMP! You lose!',
     'tut8': "Ready? Let's play!",
+    # the say turn (phonics-kit rules F0 · F3, 2026-11-22; Phonics Match's texts, so the kit's cached takes are reused):
+    # two wrong tries end it kindly; the JUMP button's guide on the first quiet turn of a round
+    'goodtry': 'Good try!',
+    'jump': 'Want to skip? Tap the jump button!',
 }
 # Korean lines (the bubble text = what the voice reads; game.js TUT.ko holds the same tut* texts)
 NEW_KO = {
@@ -98,6 +102,8 @@ NEW_KO = {
     'tut6': '앗! 함정 단어야!',
     'tut7': '덥석! 그럼 지는 거야!',
     'tut8': '준비됐니? 시작하자!',
+    'goodtry': '좋아, 잘했어!',
+    'jump': '넘어가고 싶으면 점프 버튼을 눌러!',
 }
 assert set(NEW_KO) == set(NEW), f'Korean lines missing/extra: {set(NEW) ^ set(NEW_KO)}'
 

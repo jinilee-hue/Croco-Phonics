@@ -97,7 +97,8 @@ with sync_playwright() as p:
     time.sleep(1.2)
     tt, ot = pg.evaluate(TEETH), pg.evaluate(ORB)
     print(f'  Exit → title: teeth {tt}, letters {ot["n"]}, url {pg.url.split("/")[-1]}')
-    if tt != 'finmapstcd' or ot['n'] < 9: bad.append(f'exit to title: teeth {tt} letters {ot["n"]}')
+    # ≥ 8 like part 1: a front letter fades behind START and behind the level chip beside it (both live moments)
+    if tt != 'finmapstcd' or ot['n'] < 8: bad.append(f'exit to title: teeth {tt} letters {ot["n"]}')
     pg.close()
 
     # ── 4. Exit on the title: back to the page before ──

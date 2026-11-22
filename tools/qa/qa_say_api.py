@@ -7,8 +7,9 @@ Cases (level 1; clips = the lesson pack's recordings, Korean talk = phonics-api 
   right   moon                       → passes
   other   map ← "mop", then "map"    → Try again, passes
   talk    milk ← Korean talk, "milk" → read again (not the child's), passes
-  three   mug ← "moon" ×3            → the 3rd try passes anyway
-In device mode every voice passes at once (the old rule).
+  two     mug ← "moon" ×2            → Try again, then "Good try!" — no card (phonics-kit rule F0, 2026-11-22)
+Each case prints who got the card (a card only for a word heard right).
+In device mode (no key; no on-device recognizer in this game) the say turn is skipped — no listen, no card (rule F3).
 """
 import json
 import pathlib
@@ -49,7 +50,7 @@ def talk():
 TEETH = ['moon', 'map', 'milk', 'mug', 'man', 'meat', 'mirror', 'mitt', 'mop', 'mushroom']
 TARGET = 'mushroom'
 CASES = [('right', 'moon', [word('moon')]), ('other', 'map', [word('mop'), word('map')]),
-         ('talk', 'milk', [talk(), word('milk')]), ('three', 'mug', [word('moon')] * 3)]
+         ('talk', 'milk', [talk(), word('milk')]), ('two', 'mug', [word('moon')] * 2)]
 
 INIT = '''(() => {
   let ctx = null, dest = null;
@@ -89,7 +90,13 @@ with sync_playwright() as p:
         i = TEETH.index(w)
         n0 = len(logs)
         w0 = pg.evaluate('window.__qaListens || 0')
+        g0 = pg.evaluate('__croco.G.got.flat().length')
         pg.evaluate(f'() => {{ __croco.onTooth({i}); }}')
+        if MODE == 'device':      # can't judge: the say turn is skipped, nobody gets the card
+            pg.wait_for_function("__croco.G.stat && __croco.G.stat.skipped > 0 && !__croco.G.busy", timeout=60000)
+            print(f"{name:6s} {w:6s} | skipped, card to: {pg.evaluate('__croco.G.got')} (expect nobody)", flush=True)
+            pg.evaluate("__croco.G.stat.skipped = 0")
+            continue
         pg.wait_for_function("!!document.querySelector('#mic.listen')", timeout=60000)
         fed, t0 = 0, time.time()
         while time.time() - t0 < 90:
@@ -105,5 +112,7 @@ with sync_playwright() as p:
         print(f"{name:6s} {w:6s} | fed {fed}/{len(clips)} | " + ' · '.join(f"{j['verdict']} [{j['heard']}] {j['ms']}ms" for j in judged)
               + ('' if not pg.evaluate("!!document.querySelector('#mic.listen')") else ' | STILL LISTENING'), flush=True)
         pg.wait_for_function("!document.querySelector('#mic.listen')", timeout=30000)
+        pg.wait_for_function("!document.querySelector('#cards .card')", timeout=30000)
+        print(f"         card: {'to the player' if pg.evaluate('__croco.G.got.flat().length') > g0 else 'nobody'}", flush=True)
     b.close()
 print('errors:', errors or 'none')

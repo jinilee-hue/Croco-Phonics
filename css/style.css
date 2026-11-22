@@ -143,6 +143,46 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 @keyframes breathe { 50% { transform: translateX(-50%) scale(1.05); } }
 #app:not([data-screen="title"]) .title { opacity: 0; }
 #app:not([data-screen="title"]) .title .start { pointer-events: none; }
+/* the level START plays — the saved one when the page opens (continue) — left of START, its middle on START's
+   (game.js placeLevelPick); a tap opens the levels (phonics-kit F1). The in-game level tag's look: a green number,
+   the lesson's letters in the cards' orange, a line chevron. */
+.lvpick { position: absolute; left: 0; top: 0; pointer-events: auto; display: flex; align-items: center; gap: calc(var(--u) * 1.1);
+  height: calc(var(--u) * 7.6); padding: 0 calc(var(--u) * 1.5) 0 calc(var(--u) * .8); border-radius: 999px; background: rgba(255,255,255,.94);
+  box-shadow: 0 calc(var(--u) * .9) calc(var(--u) * 1.8) rgba(80,60,120,.22), inset 0 calc(var(--u) * -.45) 0 rgba(150,110,70,.13);
+  font: 800 calc(var(--u) * 4.6)/1 var(--font); color: #f27a1f; transition: opacity .3s, scale .3s; }
+.lvpick .n { display: grid; place-items: center; width: calc(var(--u) * 6); height: calc(var(--u) * 6); border-radius: 50%; padding-top: .08em;
+  font-size: calc(var(--u) * 3.6); color: #fff; background: linear-gradient(#93e38c, #4fbf5a); text-shadow: 0 calc(var(--u) * .2) 0 rgba(25,105,40,.4); }
+.lvpick b { font-weight: 800; padding-top: .06em; }
+.lvpick svg { width: calc(var(--u) * 3.2); height: calc(var(--u) * 3.2); fill: none; stroke: #6a4426; stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round;
+  transition: rotate .25s; }
+.lvpick[aria-expanded="true"] svg { rotate: 180deg; }
+.lvpick:active { transform: scale(.95); }
+#app:not([data-screen="title"]) .lvpick, #app.howto .title .lvpick { opacity: 0; scale: .6; pointer-events: none; }
+/* the levels: a panel of letter tiles over the croc, above START (its tail points at the chip); a tap outside closes it.
+   Open = picked by a tap; locked = grey with a lock line icon; the current one has the gold ring of the win chips */
+.lvmenu { position: absolute; inset: 0; z-index: 35; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s, visibility 0s .2s; }
+.lvmenu.show { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .2s; }
+.lm-panel { position: absolute; left: 50%; bottom: calc(var(--u) * 17); translate: -50% 0; display: grid; grid-template-columns: repeat(5, auto);
+  gap: calc(var(--u) * 1.5); padding: calc(var(--u) * 2.2); border-radius: calc(var(--u) * 3.4); background: #fffaf2;
+  box-shadow: 0 calc(var(--u) * 1.2) calc(var(--u) * 3) rgba(60,50,90,.28); transform-origin: 50% 100%; scale: .8; transition: scale .3s cubic-bezier(.2,.9,.3,1.4); }
+.lvmenu.show .lm-panel { scale: 1; }
+.lm-t { position: relative; width: calc(var(--u) * 11); height: calc(var(--u) * 11); display: grid; place-items: center; padding: 0; border-radius: calc(var(--u) * 2.4);
+  background: #fff; border: calc(var(--u) * .7) solid var(--edge); box-shadow: 0 calc(var(--u) * .5) calc(var(--u) * 1) rgba(120,80,40,.18);
+  font: 800 calc(var(--u) * 5)/1 var(--font); color: #f27a1f; }
+.lm-t b { font-weight: 800; padding-top: .08em; }
+.lm-t .n { position: absolute; left: calc(var(--u) * -1.2); top: calc(var(--u) * -1.2); width: calc(var(--u) * 4.4); height: calc(var(--u) * 4.4); border-radius: 50%;
+  display: grid; place-items: center; padding-top: .08em; font-size: calc(var(--u) * 2.6); color: #fff; background: linear-gradient(#93e38c, #4fbf5a);
+  box-shadow: 0 calc(var(--u) * .3) calc(var(--u) * .6) rgba(25,105,40,.3); }
+.lm-t.cur { box-shadow: 0 0 0 calc(var(--u) * .55) #ffd34d, 0 calc(var(--u) * .5) calc(var(--u) * 1.4) rgba(176,110,20,.4); }
+.lm-t:not(.lock):active { transform: scale(.94); }
+.lm-t.lock { cursor: default; background: #f1ece6; border-color: #d8d0c6; color: #c9bfb4; box-shadow: none; }
+.lm-t.lock .n { background: #c9c0b6; box-shadow: none; }
+.lm-t.lock b { opacity: .45; }
+.lm-t.lock svg { position: absolute; right: calc(var(--u) * .6); bottom: calc(var(--u) * .6); width: calc(var(--u) * 3.6); height: calc(var(--u) * 3.6);
+  fill: none; stroke: #9d9286; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.lm-panel::after { content: ''; position: absolute; bottom: calc(var(--u) * -2); translate: -50% 0;
+  left: clamp(calc(var(--u) * 4.5), calc(var(--tx, 50vw) - 50vw + 50%), calc(100% - var(--u) * 4.5));   /* --tx = the chip's middle (screen px) */
+  border-style: solid; border-width: calc(var(--u) * 2.1) calc(var(--u) * 1.5) 0; border-color: #fffaf2 transparent transparent; }
 
 /* ── game HUD ─────────────────────────────────────────────────────────────────────────────────────── */
 .hud { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .5s; }
@@ -332,12 +372,28 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
   transform: scale(calc(1 + var(--lv) * .5)); opacity: calc(.35 + var(--lv) * .65); transition: transform .08s, opacity .08s; }
 .mic::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: calc(var(--ms) * .05) solid rgba(255,154,77,.6); animation: listenRing 1.2s ease-out infinite; }
 .mic.listen { transform: scale(1); }
-/* no microphone (refused / none / still being asked): the mic is a button — tap it once you've said the word; the glove
-   taps it too (game.js tapMic). It used to count down 2.6 s and move on (user: "단어를 읽지 않았는데 그냥 넘어가는 경우
-   없어야해") */
-.mic.nomic { pointer-events: auto; cursor: pointer; }
-.mic.nomic.listen { animation: micTap 1.1s ease-in-out infinite alternate; }
-@keyframes micTap { to { transform: scale(1.07); } }
+/* (no microphone: the say turn is skipped with no card — phonics-kit rule F3; the old tap-the-mic button is gone) */
+/* JUMP (phonics-kit rule F0, 2026-11-22): skip saying this word — no card for it. Phonics Match's say-card button: a green
+   circle (#a6ea6f → #4fbf43, a #339132 rim at the bottom), the white 'jumping child' line icon, jump-in as the turn starts
+   and a hop when the guide's glove taps it (.poke). It perches on the reveal card's top corner toward the croc (game.js
+   placeJump). No light band at the top (this game's buttons lost theirs: "버튼 위에 밝은 음영 들어간건 빼줘"). opacity /
+   scale / translate for in, out and the hops, so :active (transform) still presses it. Over the cards (z 20). */
+.jump { position: absolute; left: 0; top: 0; z-index: 21; --js: calc(var(--u) * 10.5); width: var(--js); height: var(--js);
+  margin: calc(var(--js) * -.5) 0 0 calc(var(--js) * -.5); padding: 0; border-radius: 50%; display: grid; place-items: center;
+  background: linear-gradient(180deg, #a6ea6f, #4fbf43);
+  box-shadow: inset 0 calc(var(--js) * -.085) 0 #339132, 0 calc(var(--js) * .1) calc(var(--js) * .15) rgba(60,40,50,.25);
+  opacity: 0; scale: .4; pointer-events: none; transition: opacity .2s, scale .3s cubic-bezier(.2,1.6,.4,1), transform .12s ease; }
+.jump.show { opacity: 1; scale: 1; pointer-events: auto; animation: jump-in .62s cubic-bezier(.3,.7,.4,1) both; }
+.jump.show.poke { animation: jump-in .62s cubic-bezier(.3,.7,.4,1) both, jump-hop .52s ease-out; }
+.jump:active { transform: scale(.92); }
+.jump svg { width: 62%; height: 62%; fill: none; stroke: #fff; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round;
+  filter: drop-shadow(0 calc(var(--js) * .025) 0 rgba(0,0,0,.15)); }
+.jump svg circle { fill: #fff; stroke: none; }
+@keyframes jump-in { 0% { opacity: 0; translate: 0 calc(var(--js) * .51); scale: .5; } 18% { opacity: 1; translate: 0 calc(var(--js) * .22); scale: 1.08 .9; }
+  50% { translate: 0 calc(var(--js) * -.34); scale: .94 1.07; } 78% { translate: 0 0; scale: 1.1 .9; } 100% { opacity: 1; translate: 0 0; scale: 1; } }
+@keyframes jump-hop { 0% { translate: 0 0; scale: 1; } 18% { translate: 0 calc(var(--js) * .04); scale: 1.1 .9; } 50% { translate: 0 calc(var(--js) * -.3); scale: .94 1.07; }
+  80% { translate: 0 0; scale: 1.1 .9; } 100% { translate: 0 0; scale: 1; } }
+.hint.on-jump { z-index: 22; }   /* the glove over JUMP (z 21) while the croc shows it */
 @keyframes listenRing { from { transform: scale(1); opacity: .9; } to { transform: scale(1.6); opacity: 0; } }
 .card .ok { position: absolute; right: calc(var(--cw) * -.08); top: calc(var(--cw) * -.08); width: calc(var(--cw) * .26); height: calc(var(--cw) * .26); border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #8ff0a6, #34c46a 65%); display: grid; place-items: center; transform: scale(0); transition: transform .4s cubic-bezier(.2,.9,.3,1.6);
@@ -446,7 +502,7 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 #app.muted .sysbtn .wave { display: none; }
 #app.muted .sysbtn .x { display: block; }
 /* phonics-api key (title with START only, top left): a teacher enters it once per device; the dot = green when the
-   company server checks the word, grey when only a voice is listened for (no key / offline) */
+   company server checks the word, grey when it can't (no key / offline: the say turn is skipped, no card) */
 .sys.sys-left { right: auto; left: calc(var(--u) * 2); }
 #app:not([data-screen="title"]) #btnKey, #app.howto #btnKey { display: none; }
 #btnKey { position: relative; }
