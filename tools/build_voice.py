@@ -52,7 +52,7 @@ W_INS = ['Speak like a cheerful 7-year-old boy, slowly and very clearly, for a c
 # takes picked by the read-back check (Whisper medium + voiced segments; scratch pick_takes.py): key → instruction variant.
 # The company TTS reads the same input the same way every time, so a different take needs a different instruction.
 #   k:chomp 0 put a laugh ("하하") in the middle; t:tut7 0 sounded like "Jump"; k:tut6 0 ended "…단어요"; w:sip 0 "zip"/"dip"
-TAKE_OF = {'k:chomp': 2, 't:tut7': 1, 'k:tut6': 2, 'w:sip': 1}
+TAKE_OF = {'k:chomp': 2, 'k:tut6': 2, 'w:sip': 1}
 # a different input for the TTS where the word as written comes out wrong (key → text it reads; scratch pick_word.py):
 #   pit → "cut" / "P-P-P…", paint → "pink", sip → a second sound after the word
 TEXT_OF = {'w:pit': 'Pit.', 'w:paint': 'Paint', 'w:sip': 'Sip'}
@@ -81,7 +81,7 @@ NEW = {
     'tut4': 'Take turns. Press a tooth.',
     'tut5': 'A card pops out. Now say the word.',
     'tut6': 'Uh-oh! The trap word!',
-    'tut7': 'CHOMP! You lose!',
+    'tut7': 'CHOMP! You lose two cards! Most cards wins!',   # 2026-11-22: the trap costs 2 cards, more cards wins
     'tut8': "Ready? Let's play!",
     # the say turn (phonics-kit rules F0 · F3, 2026-11-22; Phonics Match's texts, so the kit's cached takes are reused):
     # two wrong tries end it kindly; the JUMP button's guide on the first quiet turn of a round
@@ -100,7 +100,7 @@ NEW_KO = {
     'tut4': '번갈아 가며 이빨을 하나씩 눌러 봐.',
     'tut5': '카드가 톡 나오면, 이제 단어를 읽어 봐.',
     'tut6': '앗! 함정 단어야!',
-    'tut7': '덥석! 그럼 지는 거야!',
+    'tut7': '덥석! 카드 두 장을 잃어! 카드가 많으면 이겨!',
     'tut8': '준비됐니? 시작하자!',
     'goodtry': '좋아, 잘했어!',
     'jump': '넘어가고 싶으면 점프 버튼을 눌러!',

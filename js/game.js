@@ -2,7 +2,8 @@
  * Two players take turns pressing the crocodile's teeth. One m-word (FPR K Unit 1 · Lesson 1) is the target shown at
  * the top; every tooth hides one Lesson 1 m-word. A safe tooth pops its picture card out: the game says the sound
  * /m/ and the word, the player says it (mic voice check), the card goes to the player and the turn passes.
- * The tooth that hides the target word makes the croc CHOMP — that player loses, the other one wins.
+ * The tooth that hides the target word makes the croc CHOMP — that player loses 2 cards and the round ends: the player
+ * with more cards wins (the same number: a tie, both win).
  * Interaction beats follow the user's reference video (gemini_generated_video_46830cdd.mp4): card pops from the
  * pressed tooth with sparkles → floats by the presser's side → docks into the player's corner; the bad tooth glows
  * purple while the target card flashes red, then a purple burst and "Player N Wins!" with confetti.
@@ -48,7 +49,8 @@
 
   const G = { screen: 'title', token: 0, busy: true, target: null, nextTarget: null, winner: null, lastTarget: null, teeth: [], pressed: new Set(), turn: 0, starter: 0, got: [[], []], idle: null, said: new Set(), level: 0, bootHowto: null, wins: {},
     jumpTold: false,          // the JUMP guide was shown in this round (once per round/level, on the first quiet turn)
-    stat: null };             // this round's say turns: said / missed / jumped / skipped, + its start time (progress record)
+    stat: null,               // this round's say turns: said / missed / jumped / skipped, cards lost on the trap, + its start time (progress record)
+    last: null };             // the finished round's stat + each player's cards (cards: [p1, p2])
   // the shared progress record of the phonics games (js/phonics-progress.js, phonics-kit; localStorage 'phonics.progress')
   const PP = window.PhonicsProgress || null, GAME_ID = 'croco';
   const progress = () => (PP ? PP.get(GAME_ID) : { level: null, maxLevel: null, best: {} });
@@ -219,7 +221,7 @@
   /* each player's wins, level by level (user: "레벨별 누적 승리 표시도 플레이어한테 있어야하는거 아냐?"): beside the name
      plate, a chip per level played — its letter, a crown, that player's wins there (the same levels for both players,
      the current one outlined). Kept for the visit; a reload starts over. */
-  function renderWins(pop = -1) {
+  function renderWins(pop = []) {
     const lv = [...new Set([...Object.keys(G.wins).map(Number), G.level])].sort((a, b) => a - b);
     document.querySelectorAll('.player').forEach((pl, p) => {
       const box = pl.querySelector('.wins');
@@ -230,7 +232,7 @@
           + `<img src="assets/img/crown.webp" alt="" draggable="false"><em>${n}</em></span>`;
       }).join('');
       box.setAttribute('aria-label', lv.map(k => `${tr('level', { n: k + 1 })}: ${(G.wins[k] || [0, 0])[p]}`).join(', '));
-      const c = p === pop && box.querySelector('.wchip.cur');
+      const c = pop.includes(p) && box.querySelector('.wchip.cur');
       if (c) {
         c.animate([{ transform: 'scale(.4)' }, { transform: 'scale(1.45)', offset: 0.55 }, { transform: 'none' }], { duration: 560, easing: 'ease-out' });
         const r = c.getBoundingClientRect();
@@ -411,7 +413,7 @@
     $('#turn').classList.remove('show');
     G.got = [[], []];
     renderStack(0); renderStack(1);
-    G.stat = { said: 0, missed: 0, jumped: 0, skipped: 0, t0: performance.now() };
+    G.stat = { said: 0, missed: 0, jumped: 0, skipped: 0, lost: 0, t0: performance.now() };
     G.jumpTold = false;                                // a round (판) at this level: the JUMP guide may show once again
     if (PP) PP.setLevel(GAME_ID, G.level + 1);         // the level reached: the title offers to continue from it
     const pool = WORDS.map(w => w.w);
@@ -798,29 +800,72 @@
     if (tok !== G.token) return;
     t.classList.remove('alarm');
     croc.glow(i, 0);
+    await penalty(p, tok);                       // the trap's cost: 2 cards off the bitten player's pile
+    if (tok !== G.token) return;
     // the word that bit, once more (user: "마지막 걸린 단어 다시 한번 음가랑 단어 읽어주고"): its sound, then the word
     await sayWord(G.target, card, tok);
     if (tok !== G.token) return;
     await sleep(200);
     if (tok !== G.token) return;
-    showResult(1 - p, tok);
+    const [n0, n1] = G.got.map(g => g.length);
+    showResult(n0 > n1 ? 0 : n1 > n0 ? 1 : -1, tok, p);         // more cards wins; the same number = a tie
+  }
+  /* the trap's cost (user 2026-11-22: the game needs a cost, and the cards decide the winner): the bitten player loses
+     2 cards, or as many as the pile has — the top ones fly off it and fade, a "−2" pops over it, with the bite's snap.
+     Resolves the number lost; the pile and its count are drawn again without them */
+  const PENALTY = 2;
+  async function penalty(p, tok) {
+    const n = Math.min(PENALTY, G.got[p].length);
+    if (G.stat) G.stat.lost = n;
+    if (!n) return 0;
+    G.got[p].splice(-n);
+    const st = document.querySelector(`.player.p${p + 1} .stack`), r = st.getBoundingClientRect(), dir = p === 0 ? 1 : -1;
+    const pop = document.createElement('div');
+    pop.className = 'minus';
+    pop.textContent = '\u2212' + n;
+    pop.style.left = r.left + r.width / 2 + 'px';
+    pop.style.top = r.top - u() + 'px';
+    $('#cards').appendChild(pop);
+    A.sfxPlay('chomp');
+    const shown = pop.animate([{ scale: 0.3, opacity: 0 }, { scale: 1.25, opacity: 1, offset: 0.22 }, { scale: 1, opacity: 1, translate: '0 0', offset: 0.36 },
+      { scale: 1, opacity: 1, translate: '0 0', offset: 0.72 }, { scale: 0.9, opacity: 0, translate: `0 ${-6 * u()}px` }], { duration: 1500, easing: 'ease-out', fill: 'forwards' }).finished.catch(() => {});
+    const cnt = st.querySelector('.count');
+    if (cnt) {
+      if (G.got[p].length) cnt.textContent = G.got[p].length; else cnt.style.visibility = 'hidden';
+      cnt.animate([{ transform: 'scale(1.35)' }, { transform: 'none' }], { duration: 380, easing: 'ease-out' });
+    }
+    const minis = [...st.querySelectorAll('.mini')].slice(-n).reverse();          // the top card first
+    await Promise.all(minis.map((m, k) => m.animate([{ translate: '0 0', rotate: '0deg', opacity: 1 },
+      { translate: `${dir * 7 * u()}px ${-15 * u()}px`, rotate: `${dir * 30}deg`, opacity: 0 }],
+      { duration: 640, delay: k * 150, easing: 'cubic-bezier(.4,0,.8,.6)', fill: 'forwards' }).finished.catch(() => {})));
+    renderStack(p);
+    await shown;
+    pop.remove();
+    return n;
   }
 
-  async function showResult(winner, tok) {
+  /* winner = the player with more cards after the trap's cost, −1 = a tie (both win); bitten = who pressed the trap */
+  async function showResult(winner, tok, bitten = winner < 0 ? G.turn : 1 - winner) {
     G.screen = 'result';
     app.dataset.screen = 'result';
-    G.starter = 1 - winner;                      // the one who got bitten starts the next round
-    document.querySelectorAll('.player').forEach((el, k) => { el.classList.toggle('on', false); el.classList.toggle('win', k === winner); el.classList.toggle('lose', k !== winner); });
+    G.starter = bitten;                          // the one who got bitten starts the next round
+    const won = k => winner < 0 || k === winner;
+    document.querySelectorAll('.player').forEach((el, k) => { el.classList.toggle('on', false); el.classList.toggle('win', won(k)); el.classList.toggle('lose', !won(k)); });
     $('#turn').classList.remove('show');
     G.winner = winner;
-    (G.wins[G.level] = G.wins[G.level] || [0, 0])[winner]++;
-    // the round in the shared record: level, who won, safe teeth pressed, words said right / not, seconds
-    const st = G.stat || { said: 0, missed: 0, jumped: 0, skipped: 0, t0: performance.now() };
-    if (PP) PP.played(GAME_ID, { level: G.level + 1, winner: winner + 1, teeth: G.pressed.size - 1, words: st.said,
+    const wl = G.wins[G.level] = G.wins[G.level] || [0, 0];
+    [0, 1].filter(won).forEach(k => wl[k]++);
+    // the round in the shared record: level, who won (0 = a tie), each player's cards, the cards lost on the trap, who
+    // pressed it, safe teeth pressed, words said right / not, seconds
+    const st = G.stat || { said: 0, missed: 0, jumped: 0, skipped: 0, lost: 0, t0: performance.now() };
+    st.cards = G.got.map(g => g.length);
+    if (PP) PP.played(GAME_ID, { level: G.level + 1, winner: winner + 1, tie: winner < 0, cards1: st.cards[0], cards2: st.cards[1],
+      lost: st.lost, bitten: bitten + 1, teeth: G.pressed.size - 1, words: st.said,
       misses: st.missed, jumped: st.jumped, skipped: st.skipped, time: Math.round((performance.now() - st.t0) / 100) / 10 },
       { higher: ['teeth'] });
+    G.last = st;                                 // this round's stats (the last result), for QA
     G.stat = null;
-    setTimeout(() => { if (tok === G.token) renderWins(winner); }, 650);
+    setTimeout(() => { if (tok === G.token) renderWins([0, 1].filter(won)); }, 650);
     setRibbon(winner + 1);
     A.sfxPlay('fanfare');
     FX.pop(window.innerWidth * 0.25, window.innerHeight * 0.6, 60);
@@ -828,7 +873,7 @@
     FX.rain(2600, 150);
     await sleep(700);
     if (tok !== G.token) return;
-    await say(winner ? 't:win2' : 't:win1');
+    await say(winner < 0 ? 't:great3' : winner ? 't:win2' : 't:win1');      // a tie: "Yes! You did it!" (no new line)
   }
 
   // ── screens ──────────────────────────────────────────────────────────────────────────────────────────
@@ -875,13 +920,13 @@
   //    audio.js plays 'k:x' for 't:x' in Korean.
   const LANG_KEY = 'croco.lang.v1';
   let LANG = (() => { try { return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'ko'; } catch (e) { return 'ko'; } })();
-  const UI = { p1: 'Player 1', p2: 'Player 2', turn: 'Your turn!', wins: 'Player {n} Wins!', again: 'Play Again', next: 'Next Level', level: 'Level {n}', levelup: 'Level {n}!', skip: 'Skip',
+  const UI = { p1: 'Player 1', p2: 'Player 2', turn: 'Your turn!', wins: 'Player {n} Wins!', tie: "It's a Tie!", again: 'Play Again', next: 'Next Level', level: 'Level {n}', levelup: 'Level {n}!', skip: 'Skip',
     a_skip: 'Skip the explanation', a_lang: 'Language: English or Korean', a_sound: 'Sound on/off', a_exit: 'Exit', a_jump: 'Jump', a_levels: 'Levels', a_locked: 'locked' };
   const tr = (k, v = {}) => (UI[k] || k).replace(/\{(\w+)\}/g, (_, x) => (v[x] != null ? v[x] : ''));
   /* the result banner's text: a baked puffy sprite like the logo's letters (tools/make_banner_text.py → CROCO_RB) over
      the live text (transparent, it sizes the band); a text the tool hasn't baked shows as plain styled text */
-  function setRibbon(n) {
-    const t = tr('wins', { n }), key = 'en_' + n, RB = window.CROCO_RB || {}, im = $('#rbImg');
+  function setRibbon(n) {                       // n = the winner (1, 2), 0 = a tie (no baked sprite: plain styled text)
+    const t = n ? tr('wins', { n }) : tr('tie'), key = 'en_' + (n || 'tie'), RB = window.CROCO_RB || {}, im = $('#rbImg');
     $('#rbText').textContent = t;
     const ok = !!(RB[key] && RB[key].t === t);
     $('.ribbon').classList.toggle('noimg', !ok);
@@ -936,7 +981,7 @@
       tut4: 'Take turns. Press a tooth.',
       tut5: 'A card pops out. Now say the word.',
       tut6: 'Uh-oh! The trap word!',
-      tut7: 'CHOMP! You lose!',
+      tut7: 'CHOMP! You lose two cards! Most cards wins!',
       tut8: "Ready? Let's play!",
     },
     ko: {
@@ -946,7 +991,7 @@
       tut4: '번갈아 가며 이빨을 하나씩 눌러 봐.',
       tut5: '카드가 톡 나오면, 이제 단어를 읽어 봐.',
       tut6: '앗! 함정 단어야!',
-      tut7: '덥석! 그럼 지는 거야!',
+      tut7: '덥석! 카드 두 장을 잃어! 카드가 많으면 이겨!',
       tut8: '준비됐니? 시작하자!',
     },
   };

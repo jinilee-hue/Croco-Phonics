@@ -243,6 +243,10 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .stack .count { position: absolute; top: calc(var(--u) * -1.2); width: calc(var(--u) * 4.4); height: calc(var(--u) * 4.4); border-radius: 50%; display: grid; place-items: center; z-index: 5;
   font: 800 calc(var(--u) * 2.7)/1 var(--font); color: #fff; background: var(--pc); box-shadow: 0 calc(var(--u) * .4) calc(var(--u) * .8) rgba(0,0,0,.18), inset 0 calc(var(--u) * -.3) 0 rgba(0,0,0,.12); padding-top: .1em; }
 .p1 .stack .count { left: calc(var(--u) * 8); } .p2 .stack .count { right: calc(var(--u) * 8); }
+/* the trap's cost over the bitten player's pile (game.js penalty): "−2" pops up like the count badge, then floats off */
+.cards .minus { position: absolute; transform: translate(-50%, -100%); z-index: 6; pointer-events: none; white-space: nowrap;
+  padding: .12em .42em .04em; border-radius: 999px; font: 800 calc(var(--u) * 5.6)/1 var(--font); color: #fff; background: #f2545b;
+  border: calc(var(--u) * .5) solid #fff; box-shadow: 0 calc(var(--u) * .5) calc(var(--u) * 1.2) rgba(0,0,0,.22), inset 0 calc(var(--u) * -.35) 0 rgba(0,0,0,.14); }
 /* wins, level by level (game.js renderWins; user: "레벨별 누적 승리 표시도 플레이어한테"): beside the name plate under the
    card pile, a chip per level — its letter, a crown, the count — growing toward the middle; the current level outlined */
 .player .wins { position: absolute; bottom: 0; display: flex; flex-wrap: wrap-reverse; gap: calc(var(--u) * .7); width: max-content;

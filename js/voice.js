@@ -175,12 +175,6 @@ window.CROCO_VOICE = {
 1.376,
 2.16
 ],
-"w:bag": [
-"w_bag.mp3",
-0.0,
-1.025,
-0.792
-],
 "w:cap": [
 "w_cap.mp3",
 0.01,
@@ -211,12 +205,6 @@ window.CROCO_VOICE = {
 1.374,
 0.888
 ],
-"w:sock": [
-"w_sock.mp3",
-0.0,
-1.005,
-0.888
-],
 "w:spoon": [
 "w_spoon.mp3",
 0.0,
@@ -235,35 +223,17 @@ window.CROCO_VOICE = {
 1.409,
 0.84
 ],
-"w:tie": [
-"w_tie.mp3",
-0.02,
-1.154,
-0.772
-],
 "w:turkey": [
 "w_turkey.mp3",
 0.0,
 0.895,
 0.84
 ],
-"w:pie": [
-"w_pie.mp3",
-0.0,
-1.199,
-0.744
-],
 "w:pop": [
 "w_pop.mp3",
 0.02,
 0.899,
 0.868
-],
-"w:fish": [
-"w_fish.mp3",
-0.0,
-1.062,
-0.888
 ],
 "w:sit": [
 "w_sit.mp3",
@@ -276,12 +246,6 @@ window.CROCO_VOICE = {
 0.0,
 1.015,
 0.768
-],
-"w:duck": [
-"w_duck.mp3",
-0.0,
-0.964,
-0.744
 ],
 "s:s": [
 "s_s.mp3",
@@ -475,6 +439,12 @@ window.CROCO_VOICE = {
 0.865,
 0.912
 ],
+"w:bag": [
+"w_bag.mp3",
+0.0,
+1.025,
+0.792
+],
 "w:seal": [
 "w_seal.mp3",
 0.0,
@@ -505,6 +475,12 @@ window.CROCO_VOICE = {
 0.997,
 0.936
 ],
+"w:sock": [
+"w_sock.mp3",
+0.0,
+1.005,
+0.888
+],
 "w:soup": [
 "w_soup.mp3",
 0.0,
@@ -516,6 +492,12 @@ window.CROCO_VOICE = {
 0.0,
 1.224,
 0.792
+],
+"w:tie": [
+"w_tie.mp3",
+0.02,
+1.154,
+0.772
 ],
 "w:toe": [
 "w_toe.mp3",
@@ -546,6 +528,12 @@ window.CROCO_VOICE = {
 0.01,
 0.985,
 0.878
+],
+"w:pie": [
+"w_pie.mp3",
+0.0,
+1.199,
+0.744
 ],
 "w:pillow": [
 "w_pillow.mp3",
@@ -606,6 +594,12 @@ window.CROCO_VOICE = {
 0.0,
 0.828,
 0.72
+],
+"w:fish": [
+"w_fish.mp3",
+0.0,
+1.062,
+0.888
 ],
 "w:ink": [
 "w_ink.mp3",
@@ -733,6 +727,12 @@ window.CROCO_VOICE = {
 0.967,
 0.758
 ],
+"w:duck": [
+"w_duck.mp3",
+0.0,
+0.964,
+0.744
+],
 "t:hello": [
 "t_hello.mp3",
 0.0,
@@ -795,9 +795,9 @@ window.CROCO_VOICE = {
 ],
 "t:tut7": [
 "t_tut7.mp3",
-0.0,
-0.9,
-2.064
+0.02,
+0.985,
+4.3
 ],
 "t:tut8": [
 "t_tut8.mp3",
@@ -880,8 +880,8 @@ window.CROCO_VOICE = {
 "k:tut7": [
 "k_tut7.mp3",
 0.0,
-1.12,
-1.848
+1.279,
+3.648
 ],
 "k:tut8": [
 "k_tut8.mp3",
@@ -927,7 +927,7 @@ window.CROCO_VOICE = {
 "tut4": "Take turns. Press a tooth.",
 "tut5": "A card pops out. Now say the word.",
 "tut6": "Uh-oh! The trap word!",
-"tut7": "CHOMP! You lose!",
+"tut7": "CHOMP! You lose two cards! Most cards wins!",
 "tut8": "Ready? Let's play!",
 "goodtry": "Good try!",
 "jump": "Want to skip? Tap the jump button!"
@@ -956,7 +956,7 @@ window.CROCO_VOICE = {
 "tut4": "번갈아 가며 이빨을 하나씩 눌러 봐.",
 "tut5": "카드가 톡 나오면, 이제 단어를 읽어 봐.",
 "tut6": "앗! 함정 단어야!",
-"tut7": "덥석! 그럼 지는 거야!",
+"tut7": "덥석! 카드 두 장을 잃어! 카드가 많으면 이겨!",
 "tut8": "준비됐니? 시작하자!",
 "goodtry": "좋아, 잘했어!",
 "jump": "넘어가고 싶으면 점프 버튼을 눌러!"
