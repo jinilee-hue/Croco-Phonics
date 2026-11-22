@@ -10,7 +10,7 @@
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const A = {
     ctx: null, master: null, sfx: null, voice: null, bgm: null, muted: false, buffers: {}, playing: new Set(),
-    talking: 0, listening: false, bgmOn: false, bgmLevel: 0.12,
+    talking: 0, listening: false, bgmOn: false, bgmLevel: 0.25,
   };
   try { A.muted = localStorage.getItem('croco-muted') === '1'; } catch (e) { /* private mode */ }
 

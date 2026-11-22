@@ -16,6 +16,9 @@
   const HOWTO_FIRST = !Q.has('nohowto');
   const HOWTO_AFTER = 550 + 2250 + 1000;               // ms: the title's entrance (START up at 2.8 s), a moment, then explain
   const A = window.Sound, Mic = window.Mic;
+  // music level (× audio.js MUSIC_GAIN 0.56). 0.1 left Croco the quietest of the phonics games, ~8 dB under Eye Catch /
+  // Puzzle (-40.6 vs -32.5 LUFS heard; user 2026-11-22: "croco 배경음악만 좀 소리가 기본적으로 작은거 아냐?"); 0.25 = -32.6
+  const BGM_LEVEL = 0.25;
   // levels = the FPR K lessons in book order (tools/build_words.py; user: "레벨1이 끝나면 레벨2로 넘어가게 … lesson2에
   // 배워야하는 음가와 단어로 … 교재기반으로 계속 레벨 올라가게"). Level N = Lesson N: its letter on the teeth, the sound pill
   // and in bold in each word, its official letter sound, its words. WORDS / BY follow the current level (setLevel).
@@ -1296,7 +1299,7 @@
     A.stopVoice();
     A.sfxPlay('pop');
     Mic.init();
-    A.startBgm(0.1);
+    A.startBgm(BGM_LEVEL);
     clearTimeout(G.bootHowto);                   // pressed before the explanation began: straight into the game
     G.bootHowto = null;
     howtoDone();
@@ -1391,7 +1394,7 @@
     if (first && T.on && T.line && T.wake && !e.target.closest('button')) { T.again = true; T.wake(); }
     if (!greeted && G.screen === 'title' && !e.target.closest('#btnHome, #btnKey, #lvPick, #lvMenu, [role="dialog"]')) {   // leaving / the teacher's key / the levels: no hello
       greeted = true;
-      A.startBgm(0.1);
+      A.startBgm(BGM_LEVEL);
       setTimeout(() => { if (G.screen === 'title' && !T.on && !G.bootHowto) say(A.has('t:hello') ? 't:hello' : 't:pressstart'); }, 250);
     }
   }, true);
