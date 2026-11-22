@@ -184,42 +184,77 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
   left: clamp(calc(var(--u) * 4.5), calc(var(--tx, 50vw) - 50vw + 50%), calc(100% - var(--u) * 4.5));   /* --tx = the chip's middle (screen px) */
   border-style: solid; border-width: calc(var(--u) * 2.1) calc(var(--u) * 1.5) 0; border-color: #fffaf2 transparent transparent; }
 
-/* ── MY CARDS (game.js albumShow): the cards kept by saying the word, a page per level. Phonics Puzzle's sticker book in
-   this game's look: a cream panel framed like the level-up letter tile, the title on Next Level's green pill over its top
-   edge, the levels as tabs (the page's one in START's orange), Croco's picture cards with ×N, '?' slots like the locked
-   level tiles; a fixed grid area (3 rows of the 18-word level; a 2-row level gets bigger cards) with room under it */
-.album { position: absolute; inset: 0; z-index: 45; display: grid; place-items: center; background: rgba(40,60,80,.4);
+/* ── CHARACTERS (game.js charsShow): the cards kept are spent on clay kids for the players (Phonics Match's outfits in
+   this game's look): the cream panel, the title on Next Level's green pill over its top edge, the wallet (a card + the
+   number) inside the top right, a tab per player in the players' colours with the kid it plays now, the six kids as the
+   game's round avatars — "1" / "2" = who plays it (the tab's player's one glows), a locked one dimmed with a lock and its
+   price under it (first tap: the price grows with a gold ring); room under the last row */
+.chars { position: absolute; inset: 0; z-index: 45; display: grid; place-items: center; background: rgba(40,60,80,.4);
   opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s, visibility 0s .2s; }
-.album.show { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .2s; }
-.al-panel { --pw: min(calc(var(--u) * 110), 94vw); position: relative; width: var(--pw); display: grid; justify-items: center; gap: calc(var(--u) * 2.6);
-  padding: calc(var(--u) * 7) calc(var(--u) * 3) calc(var(--u) * 5); border-radius: calc(var(--u) * 4); background: #fffaf2;
+.chars.show { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .2s; }
+.chars.show ~ #fx { z-index: 46; }                    /* the unlock's sparkles over the panel */
+.ch-panel { --pw: min(calc(var(--u) * 92), 94vw); --gx: calc(var(--u) * 6); --gy: calc(var(--u) * 6.5);
+  --cs: min(calc(var(--u) * 21), calc((var(--pw) - var(--u) * 8 - 2 * var(--gx)) / 3));
+  position: relative; width: var(--pw); display: grid; justify-items: center; gap: calc(var(--u) * 4);
+  padding: calc(var(--u) * 8.5) calc(var(--u) * 3) calc(var(--u) * 9.5); border-radius: calc(var(--u) * 4); background: #fffaf2;
   border: calc(var(--u) * 1) solid #f6b043; box-shadow: 0 calc(var(--u) * 1.4) calc(var(--u) * 3.4) rgba(60,50,90,.3);
   scale: .85; transition: scale .3s cubic-bezier(.2,.9,.3,1.4); }
-.album.show .al-panel { scale: 1; }
-.al-title { position: absolute; left: 50%; top: 0; translate: -50% -55%; white-space: nowrap; padding: calc(var(--u) * 1.3) calc(var(--u) * 5) calc(var(--u) * 1.5);
+.chars.show .ch-panel { scale: 1; }
+.ch-title { position: absolute; left: 50%; top: 0; translate: -50% -55%; white-space: nowrap; padding: calc(var(--u) * 1.3) calc(var(--u) * 5) calc(var(--u) * 1.5);
   border-radius: 999px; font: 800 calc(var(--u) * 6.2)/1 var(--font); color: #fff; letter-spacing: .03em;
   background: linear-gradient(#93e38c, #55c25d 60%, #37a64a); text-shadow: 0 calc(var(--u) * .45) 0 #2b8a3c;
   box-shadow: inset 0 calc(var(--u) * -.8) 0 rgba(30,120,45,.4), 0 calc(var(--u) * 1.2) calc(var(--u) * 2) rgba(40,150,60,.35); }
-.al-tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: calc(var(--u) * .9); }
-.al-tab { height: calc(var(--u) * 5.6); padding: .12em calc(var(--u) * 1.4) 0; border-radius: 999px; background: #fff; border: calc(var(--u) * .45) solid var(--edge);
-  font: 800 calc(var(--u) * 2.8)/1 var(--font); color: #f27a1f; white-space: nowrap; box-shadow: 0 calc(var(--u) * .4) calc(var(--u) * .8) rgba(120,80,40,.16); transition: transform .15s; }
-.al-tab.cur { border-color: #fff; color: #fff; background: linear-gradient(#ffad66, #f67b2b); text-shadow: 0 calc(var(--u) * .25) 0 rgba(185,75,15,.4);
-  box-shadow: 0 calc(var(--u) * .5) calc(var(--u) * 1.2) rgba(220,100,30,.35); transform: translateY(calc(var(--u) * -.3)); }
-.al-tab:active { transform: scale(.94); }
-.al-grid { --gh: calc(var(--u) * 49); --gx: calc(var(--u) * 1.8); --gy: calc(var(--u) * 2.4);
-  --cw: min(calc((var(--gh) - (var(--rows, 3) - 1) * var(--gy)) / var(--rows, 3) * .86), calc(var(--u) * 18), calc((var(--pw) - var(--u) * 8 - (var(--cols, 6) - 1) * var(--gx)) / var(--cols, 6)));
-  height: var(--gh); display: grid; grid-template-columns: repeat(var(--cols, 6), var(--cw)); gap: var(--gy) var(--gx); justify-content: center; align-content: center; }
-.al-c { position: relative; width: var(--cw); padding: 0; background: none; border-radius: calc(var(--cw) * .1); }
-.al-c .card { transition: transform .15s; }
-.al-c:active .card { transform: scale(.95); }
-.al-n { position: absolute; right: calc(var(--cw) * -.09); top: calc(var(--cw) * -.09); padding: .14em .4em .02em; border-radius: 999px; pointer-events: none;
-  font: 800 calc(var(--cw) * .19)/1 var(--font); color: #fff; background: linear-gradient(#ffad66, #f67b2b); text-shadow: 0 calc(var(--cw) * .012) 0 rgba(185,75,15,.4);
-  border: calc(var(--cw) * .028) solid #fff; box-shadow: 0 calc(var(--cw) * .02) calc(var(--cw) * .05) rgba(90,60,30,.25); }
-.al-c.none { aspect-ratio: .86; display: grid; place-items: center; border: calc(var(--cw) * .036) dashed #d8d0c6; background: #f1ece6; }
-.al-q { font: 800 calc(var(--cw) * .42)/1 var(--font); color: #c9bfb4; padding-top: .12em; }
-.al-close { position: absolute; right: calc(var(--u) * -2.6); top: calc(var(--u) * -2.6); width: calc(var(--u) * 7.2); height: calc(var(--u) * 7.2);
+/* a card (the picture cards' cream + orange rim, a star) — the wallet's and the prices' unit */
+.ci { display: block; flex: none; width: calc(var(--u) * 4.6); height: auto; overflow: visible; }
+.ci .bk { fill: #ffd9a8; stroke: #fff; stroke-width: 1.3; }
+.ci .bd { fill: #fff; stroke: #f6b043; stroke-width: 1.8; }
+.ci .st { fill: #f27a1f; }
+.ch-wallet { position: absolute; right: calc(var(--u) * 6.4); top: calc(var(--u) * 2.2); display: flex; align-items: center; gap: calc(var(--u) * .6);
+  height: calc(var(--u) * 6.2); padding: 0 calc(var(--u) * 2) 0 calc(var(--u) * 1.1); border-radius: 999px; background: #fff;
+  border: calc(var(--u) * .45) solid #f6b043; font: 800 calc(var(--u) * 4)/1 var(--font); color: #f27a1f;
+  box-shadow: 0 calc(var(--u) * .4) calc(var(--u) * .8) rgba(120,80,40,.16); }
+.ch-wallet b { padding-top: .12em; }
+.ch-tabs { display: flex; gap: calc(var(--u) * 1.6); }
+.ch-tab { --pc: var(--p1); display: flex; align-items: center; gap: calc(var(--u) * 1); height: calc(var(--u) * 7); padding: 0 calc(var(--u) * 2.6) 0 calc(var(--u) * .7);
+  border-radius: 999px; background: #fff; border: calc(var(--u) * .5) solid var(--pc); font: 800 calc(var(--u) * 3.4)/1 var(--font); color: var(--ink); white-space: nowrap;
+  box-shadow: 0 calc(var(--u) * .4) calc(var(--u) * .8) rgba(120,80,40,.16); transition: transform .15s; }
+.ch-tab[data-p="1"] { --pc: var(--p2); }
+.ch-tab > span:last-child { padding-top: .12em; }
+.ch-tab.cur { background: var(--pc); color: #fff; border-color: #fff; text-shadow: 0 calc(var(--u) * .2) 0 rgba(0,0,0,.15);
+  box-shadow: 0 0 0 calc(var(--u) * .45) var(--pc), 0 calc(var(--u) * .6) calc(var(--u) * 1.4) rgba(60,80,110,.25); transform: translateY(calc(var(--u) * -.3)); }
+.ch-tab:active { transform: scale(.94); }
+.ch-mini { display: block; width: calc(var(--u) * 5.2); height: calc(var(--u) * 5.2); border-radius: 50%; padding: calc(var(--u) * .3); background: #fff; }
+.ch-mini img, .ch-ava img { width: 100%; height: 100%; border-radius: 50%; display: block; scale: var(--fit, 1); translate: 0 var(--dy, 0); }
+.ch-grid { display: grid; grid-template-columns: repeat(3, var(--cs)); gap: var(--gy) var(--gx); padding-top: calc(var(--u) * 1.2); }
+.ch-c { position: relative; width: var(--cs); height: var(--cs); padding: 0; border-radius: 50%; background: none; transition: transform .15s; }
+.ch-c:active { transform: scale(.95); }
+.ch-c[data-who="1"] { --pc: var(--p1); } .ch-c[data-who="2"] { --pc: var(--p2); }
+.ch-ava { position: absolute; inset: 0; display: block; border-radius: 50%; padding: calc(var(--cs) * .05); background: #fff;
+  box-shadow: 0 calc(var(--u) * .8) calc(var(--u) * 1.8) rgba(60,80,110,.2), inset 0 calc(var(--u) * -.4) 0 rgba(0,0,0,.05); transition: box-shadow .3s; }
+.ch-c[data-who] .ch-ava { box-shadow: 0 0 0 calc(var(--u) * .75) var(--pc), 0 calc(var(--u) * .8) calc(var(--u) * 1.8) rgba(60,80,110,.2); }
+.ch-c.cur .ch-ava { box-shadow: 0 0 0 calc(var(--u) * .75) var(--pc), 0 0 calc(var(--u) * 3.4) var(--pc), 0 calc(var(--u) * .8) calc(var(--u) * 1.8) rgba(60,80,110,.2); }
+.ch-who { position: absolute; left: calc(var(--cs) * -.03); top: calc(var(--cs) * -.03); width: calc(var(--cs) * .28); height: calc(var(--cs) * .28); border-radius: 50%;
+  display: grid; place-items: center; padding-top: .1em; font: 800 calc(var(--cs) * .16)/1 var(--font); color: #fff; background: var(--pc);
+  border: calc(var(--u) * .5) solid #fff; box-shadow: 0 calc(var(--u) * .4) calc(var(--u) * .8) rgba(0,0,0,.18); text-shadow: 0 calc(var(--u) * .2) 0 rgba(0,0,0,.15); }
+.ch-c.lock .ch-ava img { filter: grayscale(.9) brightness(1.08); opacity: .5; }
+.ch-lock { position: absolute; left: 50%; top: 44%; translate: -50% -50%; width: calc(var(--cs) * .34); height: calc(var(--cs) * .34); border-radius: 50%;
+  display: grid; place-items: center; background: rgba(255,255,255,.92); box-shadow: 0 calc(var(--u) * .4) calc(var(--u) * .9) rgba(60,50,90,.2); pointer-events: none; }
+.ch-lock svg { width: 60%; height: 60%; fill: none; stroke: #8d7f72; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.ch-price { position: absolute; left: 50%; bottom: 0; transform: translate(-50%, 45%); display: flex; align-items: center; gap: calc(var(--u) * .4);
+  height: calc(var(--u) * 6); padding: 0 calc(var(--u) * 1.9) 0 calc(var(--u) * .8); border-radius: 999px; white-space: nowrap; pointer-events: none;
+  font: 800 calc(var(--u) * 3.7)/1 var(--font); color: #fff; background: linear-gradient(#ffad66, #f67b2b); text-shadow: 0 calc(var(--u) * .25) 0 rgba(185,75,15,.4);
+  border: calc(var(--u) * .45) solid #fff; box-shadow: 0 calc(var(--u) * .4) calc(var(--u) * .9) rgba(90,60,30,.25); transition: scale .2s; }
+.ch-price b { padding-top: .12em; }
+.ch-price .ci { width: calc(var(--u) * 4.2); }
+.ch-c.ask .ch-price { scale: 1.25; box-shadow: 0 0 0 calc(var(--u) * .6) #ffd34d, 0 0 calc(var(--u) * 2.6) #ffd34d; animation: askPulse 1.1s ease-in-out .4s infinite; }
+.ch-c.ask .ch-ava { box-shadow: 0 0 0 calc(var(--u) * .75) #ffd34d, 0 0 calc(var(--u) * 3) #ffd34d; }
+.ch-c.ask .ch-ava img { filter: grayscale(.4); opacity: .8; }
+@keyframes askPulse { 50% { scale: 1.33; } }
+.ch-close { position: absolute; right: calc(var(--u) * -2.6); top: calc(var(--u) * -2.6); width: calc(var(--u) * 7.2); height: calc(var(--u) * 7.2);
   background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
-.al-close svg { stroke-width: 3; }
+.ch-close svg { stroke-width: 3; }
+/* the players' avatars follow the picks (p3–p6: scaled so the coloured circle fills the ring like p1 / p2) */
+.player .ava img, #champImg { scale: var(--fit, 1); translate: 0 var(--dy, 0); }
 
 /* ── game HUD ─────────────────────────────────────────────────────────────────────────────────────── */
 .hud { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .5s; }
@@ -546,7 +581,7 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
    company server checks the word, grey when it can't (no key / offline: the say turn is skipped, no card) */
 .sys.sys-left { right: auto; left: calc(var(--u) * 2); }
 #app:not([data-screen="title"]) #btnKey, #app.howto #btnKey,
-#app:not([data-screen="title"]) #btnAlbum, #app.howto #btnAlbum { display: none; }   /* MY CARDS: on the title with START only, like the key */
+#app:not([data-screen="title"]) #btnChars, #app.howto #btnChars { display: none; }   /* CHARACTERS: on the title with START only, like the key */
 #btnKey { position: relative; }
 #btnKey .dot { position: absolute; right: 4%; top: 4%; width: 26%; height: 26%; border-radius: 50%; background: #b9b2c9;
   box-shadow: 0 0 0 calc(var(--u) * .3) #fff; pointer-events: none; transition: background .2s; }

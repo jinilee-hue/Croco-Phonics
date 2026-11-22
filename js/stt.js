@@ -51,7 +51,7 @@
   // other spellings of the SAME sounds (plurals, true homophones, numerals) — never a different word. Level 1 = Eye Catch's.
   // Checked with every level word's own clip (scratch stt_words.py): 'Aunt.' (ant), '7.' (seven), '10.' (ten), '4.' (four),
   // 'Inc.' (ink) came back for the right word.
-  const SAME = { meat: ['meet'], mitt: ['mit', 'mitts'], mouse: ['mouses'], man: ['men'], mail: ['mails', 'male'], mask: ['masks'], mat: ['mats', 'matt'], match: ['matches'], mice: [], mouth: ['mouths'], monkey: ['monkeys'], mushroom: ['mushrooms'], mirror: ['mirrors'], moon: ['moons'], milk: ['milks'], mug: ['mugs', 'muck', 'mugg'], map: ['maps'], mop: ['mops'],
+  const SAME = { meat: ['meet'], mitt: ['mit', 'mitts'], mouse: ['mouses'], man: ['men'], mail: ['mails', 'male'], mask: ['masks'], mat: ['mats', 'matt'], match: ['matches'], mice: [], mouth: ['mouths'], monkey: ['monkeys'], mushroom: ['mushrooms'], mirror: ['mirrors', 'mira', 'mirra', 'miro', 'mirro'], moon: ['moons'], milk: ['milks'], mug: ['mugs', 'muck', 'mugg'], map: ['maps'], mop: ['mops'],
     ant: ['ants', 'aunt'], apple: ['apples'], bag: ['bags'], cap: ['caps'], cat: ['cats'], fan: ['fans'], hat: ['hats'], van: ['vans'],
     seal: ['seals'], see: ['sea'], seven: ['7'], sink: ['sinks'], sock: ['socks'], spoon: ['spoons'], sun: ['son', 'suns'],
     tail: ['tails', 'tale'], ten: ['10'], tent: ['tents'], tie: ['ties'], toe: ['toes', 'tow'], toy: ['toys'], turkey: ['turkeys'], turtle: ['turtles'],

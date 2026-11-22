@@ -110,8 +110,8 @@
   const FONT = getComputedStyle(document.documentElement).getPropertyValue('--font').trim() || '"Baloo 2", sans-serif';
   /* the word as the cards show it: capitalised, the lesson's letter in bold (hl / hn from tools/build_words.py) — the
      initial (Map), a short vowel (C-a-t) or the final x */
-  function wordParts(word, e0) {                 // e0: the entry of a given level (a word can be in two: cat = Short a, Cc)
-    const e = e0 || BY[word] || ANY[word] || {}, s = cap(word), i = e.hl || 0, n = e.hn || 1;
+  function wordParts(word) {
+    const e = BY[word] || ANY[word] || {}, s = cap(word), i = e.hl || 0, n = e.hn || 1;
     return [s.slice(0, i), s.slice(i, i + n), s.slice(i + n)];
   }
   function wordFit(word, tgt) {
@@ -125,7 +125,7 @@
   }
   function fitCardWord(el) { el.style.setProperty('--wf', wordFit(el.dataset.word, el.classList.contains('tgt')).toFixed(4)); }
   function makeCard(word, opts = {}) {
-    const w = opts.e || BY[word] || ANY[word], [pa, pb, pc] = wordParts(word, opts.e);
+    const w = BY[word] || ANY[word], [pa, pb, pc] = wordParts(word);
     const el = document.createElement('div');
     el.className = 'card' + (opts.cls ? ' ' + opts.cls : '') + (opts.sound ? ' has-snd' : '');
     el.style.setProperty('--edge', opts.edge || EDGES[edgeN++ % EDGES.length]);
@@ -560,7 +560,7 @@
     }
     // onto the player's pile: the pile makes a place, the card arcs over (sparkle trail) and lands on it
     G.got[p].push(word);
-    albumKeep(word);                             // MY CARDS: kept on the device (the trap's cost never takes it back)
+    walletAdd(1);                                // CHARACTERS: +1 card to spend (the trap's cost never takes it back)
     const mini = renderStack(p, true);
     const mr = mini.getBoundingClientRect(), to = { x: mr.left + mr.width / 2, y: mr.top + mr.height / 2 };
     const sc = mini.firstChild.offsetWidth / (card.offsetWidth || 1);
@@ -854,6 +854,7 @@
     document.querySelectorAll('.player').forEach((el, k) => { el.classList.toggle('on', false); el.classList.toggle('win', won(k)); el.classList.toggle('lose', !won(k)); });
     $('#turn').classList.remove('show');
     G.winner = winner;
+    applyPicks();
     const wl = G.wins[G.level] = G.wins[G.level] || [0, 0];
     [0, 1].filter(won).forEach(k => wl[k]++);
     // the round in the shared record: level, who won (0 = a tie), each player's cards, the cards lost on the trap, who
@@ -923,7 +924,7 @@
   let LANG = (() => { try { return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'ko'; } catch (e) { return 'ko'; } })();
   const UI = { p1: 'Player 1', p2: 'Player 2', turn: 'Your turn!', wins: 'Player {n} Wins!', tie: "It's a Tie!", again: 'Play Again', next: 'Next Level', level: 'Level {n}', levelup: 'Level {n}!', skip: 'Skip',
     a_skip: 'Skip the explanation', a_lang: 'Language: English or Korean', a_sound: 'Sound on/off', a_exit: 'Exit', a_jump: 'Jump', a_levels: 'Levels', a_locked: 'locked',
-    album: 'MY CARDS', a_album: 'My cards', a_close: 'Close' };
+    chars: 'CHARACTERS', a_chars: 'Characters', a_close: 'Close', a_wallet: 'Cards' };
   const tr = (k, v = {}) => (UI[k] || k).replace(/\{(\w+)\}/g, (_, x) => (v[x] != null ? v[x] : ''));
   /* the result banner's text: a baked puffy sprite like the logo's letters (tools/make_banner_text.py → CROCO_RB) over
      the live text (transparent, it sizes the band); a text the tool hasn't baked shows as plain styled text */
@@ -1108,7 +1109,7 @@
     window.__intro = false;
     A.stopVoice();
     levelMenu(false);
-    albumOpen(false);
+    charsOpen(false);
     app.classList.add('howto');
     teethLetters();
     $('#skip').classList.add('show');
@@ -1363,81 +1364,147 @@
     A.stopVoice();
     say('s:' + LV().sound);
   });
-  window.addEventListener('keydown', e => { if (e.key === 'Escape') { levelMenu(false); if (albumIsOpen()) albumOpen(false); } });
+  window.addEventListener('keydown', e => { if (e.key === 'Escape') { levelMenu(false); if (charsIsOpen()) charsOpen(false); } });
   window.addEventListener('resize', placeLevelPick);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(placeLevelPick);
 
-  /* ── MY CARDS (user 2026-11-22: every game needs a place where the things collected go; Phonics Puzzle's sticker book,
-     in this game's own look): every card a player keeps by saying its word goes into the device's album
-     (localStorage croco.album.v1 {word: count}); the trap's cost takes cards off the pile, never out of the album. The
-     title's album button (top left, by the key) opens it: a page per level (tabs), the level's words as picture cards,
-     ×N on the ones kept, '?' for the rest; a tap on a kept card says its word. */
-  const ALBUM_KEY = 'croco.album.v1';
-  function albumGet() {
-    try { const a = JSON.parse(localStorage.getItem(ALBUM_KEY) || '{}'); return a && typeof a === 'object' ? a : {}; } catch (e) { return {}; }
+  /* ── CHARACTERS (user 2026-11-22: "획득한 카드를 쓸곳이 없는데 보상이라 할수 없어" — the cards kept are spent, like
+     Phonics Match's coins on outfits): every card a player keeps by saying its word adds 1 to the device's wallet
+     (localStorage croco.wallet.v1 {earned, spent}; the first time, earned = the old MY CARDS album's counts); the trap's
+     cost takes cards off the pile, never out of the wallet. The title's character button (top left, by the key) opens
+     CHARACTERS: a tab per player, the six clay kids — p1 / p2 free, the animal hats 3 / 6 / 9 / 12 cards. A tap on an
+     owned one gives it to the tab's player (the other player's: the two swap); a locked one shows its price on the first
+     tap and is bought on the second (not enough: the price and the wallet shake, nothing spent). Bought ones
+     (croco.owned.v1) and the picks (croco.pick.v1 [Player 1, Player 2]) are kept; the picks show on the players' avatars. */
+  const WALLET_KEY = 'croco.wallet.v1', OWNED_KEY = 'croco.owned.v1', PICK_KEY = 'croco.pick.v1';
+  // fit / dy: p3–p6 are drawn with a margin round their coloured circle (p5's sits lower, under the ears): scaled so
+  // the circle fills the avatar's white ring like p1 / p2's (measured: circle radius 236 / 223 of 256)
+  const CHARS = [{ id: 'p1', price: 0, name: 'Girl' }, { id: 'p2', price: 0, name: 'Bear' },
+    { id: 'p3', price: 3, name: 'Frog', fit: 1.085 }, { id: 'p4', price: 6, name: 'Tiger', fit: 1.082 },
+    { id: 'p5', price: 9, name: 'Bunny', fit: 1.147, dy: -3.06 }, { id: 'p6', price: 12, name: 'Lion', fit: 1.084 }];
+  const CH = Object.fromEntries(CHARS.map(c => [c.id, c]));
+  const SVG_CARD = '<svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><rect class="bk" x="8.2" y="2.2" width="12" height="16" rx="2.4" transform="rotate(12 14.2 10.2)"/>'
+    + '<g transform="rotate(-7 10 13)"><rect class="bd" x="4" y="5" width="12" height="16" rx="2.4"/><path class="st" d="M10 9.4l.88 2.39 2.54.1-1.99 1.57.69 2.45L10 14.5l-2.12 1.41.69-2.45-1.99-1.57 2.54-.1z"/></g></svg>';
+  const load = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
+  const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode: not kept */ } };
+  function wallet() {
+    let w = load(WALLET_KEY);
+    if (!w || typeof w !== 'object') {
+      const al = load('croco.album.v1');
+      w = { earned: al && typeof al === 'object' ? Object.values(al).reduce((n, c) => n + (c | 0), 0) : 0, spent: 0 };
+      store(WALLET_KEY, w);
+    }
+    return { earned: w.earned | 0, spent: w.spent | 0 };
   }
-  function albumKeep(word) {
-    const a = albumGet();
-    a[word] = (a[word] | 0) + 1;
-    try { localStorage.setItem(ALBUM_KEY, JSON.stringify(a)); } catch (e) { /* private mode: not kept */ }
+  const balance = () => { const w = wallet(); return Math.max(0, w.earned - w.spent); };
+  function walletAdd(n) { const w = wallet(); if (n > 0) w.earned += n; else w.spent -= n; store(WALLET_KEY, w); }
+  const owned = () => { const o = load(OWNED_KEY); return new Set(['p1', 'p2'].concat(Array.isArray(o) ? o.filter(id => CH[id]) : [])); };
+  function picks() {
+    const p = load(PICK_KEY), o = owned();
+    return Array.isArray(p) && p.length === 2 && p[0] !== p[1] && p.every(id => o.has(id)) ? p : ['p1', 'p2'];
   }
-  const albumIsOpen = () => $('#album').classList.contains('show');
-  $('#album .al-tabs').innerHTML = LEVELS.map((L, k) => `<button class="al-tab" role="tab" data-k="${k}" style="--edge:${EDGES[k % EDGES.length]}"`
-    + ` aria-label="${tr('level', { n: k + 1 })} · ${L.title}">${L.title}</button>`).join('');
-  function albumShow(k) {
-    const L = LEVELS[Math.max(0, Math.min(LEVELS.length - 1, k))], a = albumGet(), grid = $('#album .al-grid');
-    $('#album .al-tabs').querySelectorAll('.al-tab').forEach(t => { const on = L === LEVELS[+t.dataset.k]; t.classList.toggle('cur', on); t.setAttribute('aria-selected', String(on)); });
-    const n = L.words.length, rows = n > 10 ? 3 : 2;               // 18 words: 6 × 3; up to 10: two rows of bigger cards
-    grid.style.setProperty('--rows', rows);
-    grid.style.setProperty('--cols', Math.ceil(n / rows));
-    grid.innerHTML = '';
-    L.words.forEach((x, i) => {
-      const c = a[x.w] | 0, el = document.createElement(c ? 'button' : 'div');
-      el.className = 'al-c' + (c ? '' : ' none');
-      if (c) {
-        el.dataset.w = x.w;
-        el.setAttribute('aria-label', `${x.w} ×${c}`);
-        el.appendChild(makeCard(x.w, { edge: EDGES[i % EDGES.length], e: x }));
-        el.insertAdjacentHTML('beforeend', `<span class="al-n">×${c}</span>`);
-      } else el.innerHTML = '<span class="al-q" aria-hidden="true">?</span>';
-      grid.appendChild(el);
+  function charImg(img, id) {
+    const c = CH[id] || CH.p1;
+    img.src = `assets/img/${c.id}.webp`;
+    img.style.setProperty('--fit', c.fit || 1);
+    img.style.setProperty('--dy', (c.dy || 0) + '%');
+  }
+  function applyPicks() {                       // the players' avatars (corners, turn, result crown) + the podium's
+    const pk = picks();
+    [0, 1].forEach(k => charImg($(`.player.p${k + 1} .ava img`), pk[k]));
+    charImg($('#champImg'), pk[G.winner === 1 ? 1 : 0]);
+  }
+  const CHS = { p: 0, ask: null };               // the tab's player; the locked one whose price is up (first tap)
+  const charsIsOpen = () => $('#chars').classList.contains('show');
+  const chCell = id => $(`#chars .ch-c[data-id="${id}"]`);
+  function charsShow() {
+    const m = $('#chars'), o = owned(), pk = picks();
+    m.querySelector('.ch-n').textContent = balance();
+    m.querySelector('.ch-wallet').setAttribute('aria-label', `${tr('a_wallet')}: ${balance()}`);
+    m.querySelectorAll('.ch-tab').forEach(t => {
+      const k = +t.dataset.p, on = k === CHS.p;
+      t.classList.toggle('cur', on);
+      t.setAttribute('aria-selected', String(on));
+      charImg(t.querySelector('img'), pk[k]);
     });
+    m.querySelector('.ch-grid').innerHTML = CHARS.map(c => {
+      const has = o.has(c.id), who = pk.indexOf(c.id);
+      return `<button class="ch-c${has ? '' : ' lock'}${who === CHS.p ? ' cur' : ''}${CHS.ask === c.id ? ' ask' : ''}" data-id="${c.id}"${who >= 0 ? ` data-who="${who + 1}"` : ''}`
+        + ` aria-label="${c.name}${has ? '' : ' · ' + c.price}"><span class="ch-ava"><img alt="" draggable="false"></span>`
+        + (who >= 0 ? `<span class="ch-who">${who + 1}</span>` : '')
+        + (has ? '' : `<span class="ch-lock">${SVG_LOCK}</span><span class="ch-price">${SVG_CARD}<b>${c.price}</b></span>`) + '</button>';
+    }).join('');
+    m.querySelectorAll('.ch-c').forEach(b => charImg(b.querySelector('img'), b.dataset.id));
   }
-  function albumOpen(open) {
-    const m = $('#album');
-    if (open) { levelMenu(false); albumShow(G.level); } else if (albumIsOpen()) A.stopVoice();
+  function charsOpen(open) {
+    const m = $('#chars');
+    if (open) { levelMenu(false); CHS.ask = null; charsShow(); }
     m.classList.toggle('show', open);
     m.setAttribute('aria-hidden', String(!open));
   }
-  $('#btnAlbum').addEventListener('click', e => {
+  const shake = el => el.animate([{ translate: '0 0' }, { translate: '-9% 0' }, { translate: '8% 0' }, { translate: '-5% 0' }, { translate: '3% 0' }, { translate: '0 0' }], { duration: 420, easing: 'ease-out' });
+  function charTap(id) {
+    const c = CH[id], me = CHS.p, pk = picks();
+    if (!c) return;
+    if (owned().has(id)) {                                      // give it to the tab's player (the other's: they swap)
+      CHS.ask = null;
+      if (pk[me] !== id) {
+        if (pk[1 - me] === id) pk[1 - me] = pk[me];
+        pk[me] = id;
+        store(PICK_KEY, pk);
+        applyPicks();
+      }
+      A.sfxPlay('pop');
+      charsShow();
+      chCell(id).querySelector('.ch-ava').animate([{ scale: 1 }, { scale: 1.12, offset: 0.4 }, { scale: 1 }], { duration: 380, easing: 'ease-out' });
+      return;
+    }
+    if (CHS.ask !== id) {                                       // first tap: the price
+      CHS.ask = id;
+      A.sfxPlay('tap');
+      charsShow();
+      chCell(id).querySelector('.ch-price').animate([{ scale: 1 }, { scale: 1.45, offset: 0.45 }, { scale: 1.25 }], { duration: 360, easing: 'ease-out' });
+      return;
+    }
+    if (balance() < c.price) {                                  // not enough: nothing spent
+      A.sfxPlay('boing');
+      shake(chCell(id).querySelector('.ch-price'));
+      shake($('#chars .ch-wallet'));
+      return;
+    }
+    walletAdd(-c.price);
+    store(OWNED_KEY, [...owned(), id].filter((x, i, a) => CH[x].price && a.indexOf(x) === i));
+    pk[me] = id;
+    store(PICK_KEY, pk);
+    applyPicks();
+    CHS.ask = null;
+    charsShow();
+    const cell = chCell(id), r = cell.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    A.sfxPlay('great');
+    A.sfxPlay('sparkle');
+    cell.querySelector('.ch-ava').animate([{ scale: 0.55 }, { scale: 1.2, offset: 0.55 }, { scale: 0.96, offset: 0.8 }, { scale: 1 }], { duration: 620, easing: 'ease-out' });
+    $('#chars .ch-wallet').animate([{ scale: 1 }, { scale: 1.25, offset: 0.4 }, { scale: 1 }], { duration: 420, easing: 'ease-out' });
+    FX.burst(x, y, { kind: 'sparkle', n: 34, ring: '#ffd34d' });
+    FX.burst(x, y, { kind: 'stars', n: 12, speed: 0.7 });
+  }
+  $('#btnChars').addEventListener('click', e => {
     e.stopPropagation();
     if (T.on || G.screen !== 'title') return;
     A.unlock();
     A.sfxPlay('pop');
-    albumOpen(true);
+    charsOpen(true);
   });
-  $('#album').addEventListener('click', e => {
+  $('#chars').addEventListener('click', e => {
     e.stopPropagation();
     A.unlock();
-    const tab = e.target.closest('.al-tab'), c = e.target.closest('.al-c');
-    if (tab) { A.sfxPlay('tap'); albumShow(+tab.dataset.k); return; }
-    if (c && c.classList.contains('none')) {                    // not kept yet
-      A.sfxPlay('tick');
-      c.animate([{ translate: '0 0' }, { translate: '-6% 0' }, { translate: '6% 0' }, { translate: '0 0' }], { duration: 260 });
-      return;
-    }
-    if (c) {                                                    // a kept card: its word
-      const card = c.querySelector('.card');
-      A.stopVoice();
-      card.classList.remove('say-w');
-      void card.offsetWidth;
-      card.classList.add('say-w');
-      c.animate([{ scale: 1 }, { scale: 1.08, offset: 0.4 }, { scale: 1 }], { duration: 420, easing: 'ease-out' });
-      A.say('w:' + c.dataset.w).then(() => card.classList.remove('say-w'));
-      return;
-    }
-    if (e.target.closest('.al-close') || !e.target.closest('.al-panel')) { A.sfxPlay('tap'); albumOpen(false); }   // Close, or outside the panel
+    const tab = e.target.closest('.ch-tab'), c = e.target.closest('.ch-c');
+    if (tab) { A.sfxPlay('tap'); CHS.p = +tab.dataset.p; CHS.ask = null; charsShow(); return; }
+    if (c) { charTap(c.dataset.id); return; }
+    if (e.target.closest('.ch-close') || !e.target.closest('.ch-panel')) { A.sfxPlay('tap'); charsOpen(false); return; }   // Close, or outside the panel
+    if (CHS.ask) { CHS.ask = null; charsShow(); }               // elsewhere on the panel: the price goes back
   });
+  wallet();                                     // the first visit after MY CARDS: its cards become the wallet
+  applyPicks();
 
   applyLang();
   // ?level=N: start at level N (QA, a class on lesson N); else the saved level (continue), never past the open ones
@@ -1546,7 +1613,7 @@
     // the explanation runs silent until the first tap (the browser's rule): that tap → the croc says the line on screen
     // aloud now. Buttons keep their own job.
     if (first && T.on && T.line && T.wake && !e.target.closest('button')) { T.again = true; T.wake(); }
-    if (!greeted && G.screen === 'title' && !e.target.closest('#btnHome, #btnKey, #lvPick, #lvMenu, #btnAlbum, #album, [role="dialog"]')) {   // leaving / the teacher's key / the levels / the album: no hello
+    if (!greeted && G.screen === 'title' && !e.target.closest('#btnHome, #btnKey, #lvPick, #lvMenu, #btnChars, #chars, [role="dialog"]')) {   // leaving / the teacher's key / the levels / the characters: no hello
       greeted = true;
       A.startBgm(BGM_LEVEL);
       setTimeout(() => { if (G.screen === 'title' && !T.on && !G.bootHowto) say(A.has('t:hello') ? 't:hello' : 't:pressstart'); }, 250);
@@ -1635,11 +1702,11 @@
     if (i >= 0) onTooth(i);
   });
   window.addEventListener('keydown', e => {
-    if (G.screen === 'title' && (e.key === 'Enter' || e.key === ' ') && !e.target.closest('#lvPick, #lvMenu') && !albumIsOpen()) { $('#start').click(); return; }
+    if (G.screen === 'title' && (e.key === 'Enter' || e.key === ' ') && !e.target.closest('#lvPick, #lvMenu') && !charsIsOpen()) { $('#start').click(); return; }
     if (G.screen === 'game' && /^[0-9]$/.test(e.key)) onTooth((+e.key + 9) % 10);
   });
 
   // QA hooks (headless checks)
   window.__croco = { G, croc, goGame, goTitle, onTooth, startRound, showResult, toothScreen, revealSlot, makeCard, T, LANG_KEY, lang: () => LANG, howtoSeen: () => howtoSeen, LEVELS, setLevel, levelUp,
-    album: { key: ALBUM_KEY, get: albumGet, open: albumOpen, show: albumShow } };
+    chars: { CHARS, WALLET_KEY, OWNED_KEY, PICK_KEY, wallet, balance, owned, picks, open: charsOpen, tap: charTap } };
 })();

@@ -41,13 +41,18 @@
     <button id="lvPick" class="lvpick" aria-haspopup="true" aria-expanded="false" aria-label="Level 1"><span class="n">1</span><b>Mm</b><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 14.5 12 9l5.5 5.5"/></svg></button>
   </section>
   <div class="lvmenu" id="lvMenu" aria-hidden="true"><div class="lm-panel" role="dialog" aria-label="Levels"></div></div>
-  <!-- MY CARDS: the cards kept by saying the word, a page per level (game.js albumShow; localStorage croco.album.v1) -->
-  <div class="album" id="album" aria-hidden="true">
-    <div class="al-panel" role="dialog" aria-labelledby="alTitle">
-      <div class="al-title" id="alTitle" data-i18n="album">MY CARDS</div>
-      <div class="al-tabs" role="tablist"></div>
-      <div class="al-grid"></div>
-      <button class="sysbtn al-close" aria-label="Close" data-i18n-aria="a_close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+  <!-- CHARACTERS: the cards kept by saying the word buy clay kids for the players (game.js charsShow; localStorage
+       croco.wallet.v1 / croco.owned.v1 / croco.pick.v1) -->
+  <div class="chars" id="chars" aria-hidden="true">
+    <div class="ch-panel" role="dialog" aria-labelledby="chTitle">
+      <div class="ch-title" id="chTitle" data-i18n="chars">CHARACTERS</div>
+      <div class="ch-wallet" aria-label="Cards"><svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><rect class="bk" x="8.2" y="2.2" width="12" height="16" rx="2.4" transform="rotate(12 14.2 10.2)"/><g transform="rotate(-7 10 13)"><rect class="bd" x="4" y="5" width="12" height="16" rx="2.4"/><path class="st" d="M10 9.4l.88 2.39 2.54.1-1.99 1.57.69 2.45L10 14.5l-2.12 1.41.69-2.45-1.99-1.57 2.54-.1z"/></g></svg><b class="ch-n">0</b></div>
+      <div class="ch-tabs" role="tablist">
+        <button class="ch-tab" role="tab" data-p="0"><span class="ch-mini"><img alt="" draggable="false"></span><span data-i18n="p1">Player 1</span></button>
+        <button class="ch-tab" role="tab" data-p="1"><span class="ch-mini"><img alt="" draggable="false"></span><span data-i18n="p2">Player 2</span></button>
+      </div>
+      <div class="ch-grid"></div>
+      <button class="sysbtn ch-close" aria-label="Close" data-i18n-aria="a_close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
     </div>
   </div>
 
@@ -95,7 +100,7 @@
 
   <div class="sys sys-left">
     <button id="btnKey" class="sysbtn" aria-label="발음 인식 서버 키" data-api="unknown"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="12" r="3.6"/><path d="M11.6 12H20.5M17.6 12v3.2M20.5 12v2.4"/></svg><i class="dot"></i></button>
-    <button id="btnAlbum" class="sysbtn" aria-label="My cards" data-i18n-aria="a_album"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9.2" y="2.6" width="10.4" height="14" rx="2" transform="rotate(13 14.4 9.6)"/><rect x="4" y="6.8" width="10.4" height="14" rx="2" fill="#fff"/><path d="M9.2 16.6s-2.8-1.75-2.8-3.7a1.5 1.5 0 0 1 2.8-.75 1.5 1.5 0 0 1 2.8.75c0 1.95-2.8 3.7-2.8 3.7z"/></svg></button>
+    <button id="btnChars" class="sysbtn" aria-label="Characters" data-i18n-aria="a_chars"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.2" r="3.9"/><path d="M4.6 20.2c.8-3.9 3.8-6.3 7.4-6.3s6.6 2.4 7.4 6.3"/></svg></button>
   </div>
   <div class="sys">
     <button id="btnLang" class="lang-tog" data-l="en" aria-label="Language: English or Korean" data-i18n-aria="a_lang" aria-pressed="false">
