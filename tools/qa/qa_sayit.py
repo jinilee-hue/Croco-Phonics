@@ -6,8 +6,10 @@ usage: uv run --with playwright python tools/qa/qa_sayit.py <outdir> [base_url] 
   quiet    scripted silence: 2 listens, the JUMP guide (glove + "Want to skip? Tap the jump button!") once per round, no card
   cant     scripted "can't judge" → skipped, no card
   nomic    no mic (__test.mic = false) → the say turn is skipped at once (no mic / JUMP shown), no card
-  nokey    a (stubbed) mic but no phonics-api key, no on-device recognizer → skipped, no listen, no card
-  apifail  a voice is heard, the server call fails → no card (never "any sound passes"); a server 'ok' → the card
+  nokey    a (stubbed) mic, no phonics-api key and the on-device recogniser unavailable (worker blocked) → skipped,
+           no listen, no card (with the recogniser it judges instead: scratch e2e with real clips)
+  apifail  a voice is heard, the server call fails, the recogniser blocked → no card (never "any sound passes");
+           a server 'ok' → the card
   silence  real time: a silent mic, the server usable (stubbed) → the turn ends by itself in ~20 s, no card
 The repo's old version checked the opposite rule ("the turn never moves on until the word is said", tap the mic).
 """
@@ -41,8 +43,10 @@ def check(name, ok, detail=''):
     print(('PASS ' if ok else 'FAIL ') + name + (' — ' + str(detail) if detail else ''), flush=True)
 
 
-def page(b, w=1280, h=800, test=None, stub_mic=False, url='index.html?nohowto', ctx=None):
+def page(b, w=1280, h=800, test=None, stub_mic=False, url='index.html?nohowto', ctx=None, no_stt=False):
     c = ctx or b.new_context(viewport={'width': w, 'height': h})
+    if no_stt:      # the on-device recogniser can't start (STT.state 'error'): neither judge without a key
+        c.route('**/js/stt-worker.js', lambda route: route.fulfill(status=404, body=''))
     pg = c.new_page()
     errs = []
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None)
@@ -163,8 +167,8 @@ with sync_playwright() as p:
         c.close()
 
     if want('nokey'):
-        # a real (stubbed) microphone, no phonics-api key on this fresh profile, no on-device recognizer → skipped
-        c, pg, errs = page(b, stub_mic=True, test=None)
+        # a real (stubbed) microphone, no phonics-api key on this fresh profile, the on-device recogniser blocked → skipped
+        c, pg, errs = page(b, stub_mic=True, test=None, no_stt=True)
         pg.evaluate("window.__test = {target: 'moon', teeth: %s}" % json.dumps(TEETH))
         api = pg.evaluate('PhonicsAPI.status()')
         pg.evaluate("() => { window.__lis = false; setInterval(() => { if (Sound.listening || document.querySelector('#mic.listen')) window.__lis = true; }, 30); }")
@@ -176,8 +180,8 @@ with sync_playwright() as p:
         c.close()
 
     if want('apifail'):
-        # key ok (stubbed), a voice is heard, the server call fails → can't judge, no card (never "any sound passes")
-        c, pg, errs = page(b, stub_mic=True, test=None)
+        # key ok (stubbed), a voice is heard, the server call fails, no recogniser → can't judge, no card (never "any sound passes")
+        c, pg, errs = page(b, stub_mic=True, test=None, no_stt=True)
         pg.evaluate("""() => { window.__test = {target: 'moon', teeth: %s}; window.__an = 0;
           PhonicsAPI.usable = () => true; PhonicsAPI.analyze = async () => { window.__an++; return { ok: false, reason: 'network' }; }; }""" % json.dumps(TEETH))
         start_and_press(pg)

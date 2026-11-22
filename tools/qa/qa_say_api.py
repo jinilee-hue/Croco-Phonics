@@ -9,7 +9,8 @@ Cases (level 1; clips = the lesson pack's recordings, Korean talk = phonics-api 
   talk    milk ← Korean talk, "milk" → read again (not the child's), passes
   two     mug ← "moon" ×2            → Try again, then "Good try!" — no card (phonics-kit rule F0, 2026-11-22)
 Each case prints who got the card (a card only for a word heard right).
-In device mode (no key; no on-device recognizer in this game) the say turn is skipped — no listen, no card (rule F3).
+In device mode (no key) the on-device recogniser (js/stt.js, whisper tiny.en) judges the same clips — 'ok' only when it
+hears the word itself; with it blocked too the say turn is skipped — no listen, no card (rule F3; qa_sayit nokey).
 """
 import json
 import pathlib
@@ -81,6 +82,9 @@ with sync_playwright() as p:
     print('phonics-api:', pg.evaluate('PhonicsAPI.status()'), f'({MODE})', flush=True)
     pg.click('.title .start', force=True)
     pg.wait_for_function("__croco.G.screen === 'game'", timeout=60000)
+    if MODE == 'device':      # the recogniser loads after START (~55 MB, a worker)
+        pg.wait_for_function("STT.state !== 'loading'", timeout=60000)
+        print('on-device recogniser:', pg.evaluate('STT.state'), flush=True)
     # count the listen windows: clip k goes into window k of the turn (not into the tutor's lines in between)
     pg.evaluate("() => { const L = Mic.listen; Mic.listen = (o) => { window.__qaListens = (window.__qaListens || 0) + 1; return L(o); }; }")
     for name, w, clips in CASES:
@@ -92,11 +96,6 @@ with sync_playwright() as p:
         w0 = pg.evaluate('window.__qaListens || 0')
         g0 = pg.evaluate('__croco.G.got.flat().length')
         pg.evaluate(f'() => {{ __croco.onTooth({i}); }}')
-        if MODE == 'device':      # can't judge: the say turn is skipped, nobody gets the card
-            pg.wait_for_function("__croco.G.stat && __croco.G.stat.skipped > 0 && !__croco.G.busy", timeout=60000)
-            print(f"{name:6s} {w:6s} | skipped, card to: {pg.evaluate('__croco.G.got')} (expect nobody)", flush=True)
-            pg.evaluate("__croco.G.stat.skipped = 0")
-            continue
         pg.wait_for_function("!!document.querySelector('#mic.listen')", timeout=60000)
         fed, t0 = 0, time.time()
         while time.time() - t0 < 90:
@@ -108,8 +107,8 @@ with sync_playwright() as p:
                 pg.evaluate(f"__qaPlay('./qa-clip/{urllib.parse.quote(clips[fed])}')")
                 fed += 1
             time.sleep(0.2)
-        judged = [json.loads(l.split('phonics-api ', 1)[1]) for l in logs[n0:] if l.startswith('phonics-api ')]
-        print(f"{name:6s} {w:6s} | fed {fed}/{len(clips)} | " + ' · '.join(f"{j['verdict']} [{j['heard']}] {j['ms']}ms" for j in judged)
+        judged = [json.loads(l.split(' ', 1)[1]) for l in logs[n0:] if l.startswith(('phonics-api {', 'device {'))]
+        print(f"{name:6s} {w:6s} | fed {fed}/{len(clips)} | " + ' · '.join(f"{j['by']} {j['verdict']} [{j.get('heard', j.get('text'))}] {j['ms']}ms" for j in judged)
               + ('' if not pg.evaluate("!!document.querySelector('#mic.listen')") else ' | STILL LISTENING'), flush=True)
         pg.wait_for_function("!document.querySelector('#mic.listen')", timeout=30000)
         pg.wait_for_function("!document.querySelector('#cards .card')", timeout=30000)

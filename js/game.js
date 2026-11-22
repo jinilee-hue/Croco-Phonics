@@ -582,31 +582,58 @@
      - 2 wrong tries → "Good try!" and on — no card
      - silence → the croc reads it once more and waits again; ~20 s with no word → on — no card (never for ever).
        The first quiet turn of a level the glove taps JUMP while the croc says "Want to skip? Tap the jump button!"
-     - can't be judged (no mic / refused, or no phonics-api: no key, offline, busy, a failed call — this game has no
-       on-device recognizer) → the say turn is skipped — no card. Any sound never passes.
+     - the judge: the company phonics-api when this device has a key, else the on-device recogniser (js/stt.js, whisper
+       tiny.en in a worker, loaded after the first touch; user 2026-11-22: every phonics game has it as the backup)
+     - can't be judged (no mic / refused, or neither judge: no key / a failed call AND the recogniser off, failed or
+       still loading after ~8 s) → the say turn is skipped — no card. Any sound never passes.
      Home / Exit still end the round (the token). The mic sits in the middle of the screen on the croc's lower jaw
      (user: "마이크는 화면 가운데 악어 아래 턱에 겹쳐서"). Resolves true = said right (the card goes to the player). */
   function placeMic() { const mc = $('#mic'), p = croc.jawScreen(); mc.style.left = p.x + 'px'; mc.style.top = p.y + 'px'; return mc; }
   /* the word said, checked by the company phonics-api when this device has a key (js/phonics-api.js; the samples of
-     the listen go once to /v1/speech/analyze, the server keeps no audio) against the level's other words:
+     the listen go once to /v1/speech/analyze, the server keeps no audio) against the level's other words; when it
+     can't answer (no key, offline, busy, a failed call) by the on-device recogniser (js/stt.js; 'ok' only when the word
+     itself is heard, another level word → a miss):
      'ok' | 'miss' (a try at it, not right) | 'other' (far from the word: not the child's) | null (can't judge: no card).
      QA: scripted listens (__test.heard) are judged by the script — true → 'ok', or the verdict itself ('miss', 'other',
      'cant' = can't judge) */
   const PH = window.CROCO_PH || {};
   const scripted = () => !!(window.__test && window.__test.heard != null);
-  const canJudge = word => scripted() || !!(window.PhonicsAPI && PhonicsAPI.usable() && PH[word]);
+  const apiOk = word => !!(window.PhonicsAPI && PhonicsAPI.usable() && PH[word]);
+  const devOk = () => !!(window.STT && STT.state === 'ready');
+  const canJudge = word => scripted() || apiOk(word) || devOk();
+  // for whisper: peak-normalised, 0.25 s of silence each side (Eye Catch Mic.prepare)
+  function forDevice(pcm) {
+    let peak = 0; for (let i = 0; i < pcm.length; i++) peak = Math.max(peak, Math.abs(pcm[i]));
+    const g = peak > 0.001 ? Math.min(8, 0.9 / peak) : 1, pad = 4000, out = new Float32Array(pcm.length + pad * 2);
+    for (let i = 0; i < pcm.length; i++) out[pad + i] = pcm[i] * g;
+    return out;
+  }
   async function judgeWord(word, heard) {
     if (scripted()) return heard === true || heard === 'ok' ? 'ok' : heard === 'miss' || heard === 'other' ? heard : null;
     const pcm = Mic.lastPcm;
     if (!pcm || !canJudge(word)) return null;
-    const r = await PhonicsAPI.analyze(PhonicsAPI.encodeWav(await PhonicsAPI.to16k(pcm, Mic.sr), 16000), word);
-    if (!r.ok) return null;
-    const j = PhonicsAPI.judge(r.data, word, LV().words.map(w => w.w).filter(w => w !== word), PH);
-    G.lastJudge = { word, verdict: j.verdict, heard: j.heard, rel: j.rel, ms: r.ms };
-    if (Q.has('log')) console.log('phonics-api', JSON.stringify(G.lastJudge));
-    if (j.verdict === 'ok') return 'ok';
-    if (j.verdict === 'wrong' || (j.verdict === 'unclear' && j.rel <= 0.7)) return 'miss';
-    return 'other';
+    const pcm16 = await PhonicsAPI.to16k(pcm, Mic.sr), rivals = LV().words.map(w => w.w).filter(w => w !== word);
+    if (apiOk(word)) {
+      const r = await PhonicsAPI.analyze(PhonicsAPI.encodeWav(pcm16, 16000), word);
+      if (r.ok) {
+        const j = PhonicsAPI.judge(r.data, word, rivals, PH);
+        G.lastJudge = { by: 'phonics-api', word, verdict: j.verdict, heard: j.heard, rel: j.rel, ms: r.ms };
+        if (Q.has('log')) console.log('phonics-api', JSON.stringify(G.lastJudge));
+        if (j.verdict === 'ok') return 'ok';
+        if (j.verdict === 'wrong' || (j.verdict === 'unclear' && j.rel <= 0.7)) return 'miss';
+        return 'other';
+      }
+      if (Q.has('log')) console.log('phonics-api failed -> on-device', r.reason, r.status || '');
+    }
+    if (!window.STT || STT.state === 'off' || STT.state === 'error') return null;
+    const v = await STT.judge(forDevice(pcm16), word, rivals);         // null: it failed / timed out → can't judge
+    const text = STT.last && STT.last.text || '';
+    G.lastJudge = { by: 'device', word, verdict: v, text, ms: STT.last && STT.last.ms };
+    if (Q.has('log')) console.log('device', JSON.stringify(G.lastJudge));
+    if (v === 'ok') return 'ok';
+    if (v === 'wrong') return 'miss';                                  // another word of the level
+    if (v === 'unclear') return /[a-z0-9]/i.test(text) ? 'miss' : 'other';   // nothing in it: not counted, read again
+    return null;
   }
 
   /* the say turn's JUMP: S.jumped cuts the turn's lines, pauses and listens short (one cut per turn, S.cutP) */
@@ -666,9 +693,15 @@
         while (live() && Mic.state === 'asking' && performance.now() - t0 < 20000) await turnPause(100);
         if (!live()) return false;
       }
-      // can't judge: no mic, or no phonics-api (and no recognizer on the device) — the say turn is skipped, no card.
+      // can't judge: no mic, or neither phonics-api nor the on-device recogniser — the say turn is skipped, no card.
       // (QA: scripted listens need no microphone, as before; __test.mic = false still means none)
       const micOk = scripted() ? window.__test.mic !== false : Mic.ready();
+      // no server judge and the recogniser still loading: wait for it ~8 s at most — JUMP works meanwhile
+      if (micOk && !scripted() && !apiOk(word) && window.STT) {
+        if (STT.state === 'off') STT.preload();
+        if (STT.state === 'loading') { showJump(); await Promise.race([STT.whenReady(8000), S.cutP]); }
+        if (!live()) return false;
+      }
       if (!micOk || !canJudge(word)) { out = 'skipped'; return false; }
       showJump();
       mic.classList.add('listen');
@@ -870,7 +903,8 @@
     if (G.winner != null) setRibbon(G.winner + 1);
     levelText();
   }
-  // phonics-api key (title only): a teacher enters it once per device; the dot shows whether the word is checked
+  // phonics-api key (title only): a teacher enters it once per device; the dot shows whether the SERVER judges the word
+  // (green) — without it the on-device recogniser does, so the game works with no key too
   const keyBtn = $('#btnKey');
   const showApi = () => { keyBtn.dataset.api = PhonicsAPI.status(); };
   addEventListener('phonicsapi:status', showApi);
@@ -1297,6 +1331,7 @@
     A.stopVoice();
     A.sfxPlay('pop');
     Mic.init();
+    STT.preload();                               // the on-device backup recogniser loads while the round starts
     A.startBgm(BGM_LEVEL);
     clearTimeout(G.bootHowto);                   // pressed before the explanation began: straight into the game
     G.bootHowto = null;
@@ -1387,6 +1422,7 @@
   window.addEventListener('pointerdown', e => {
     const first = !A.ctx;
     A.unlock();
+    STT.preload();                               // the on-device recogniser (~55 MB, a worker) loads in the background
     // the explanation runs silent until the first tap (the browser's rule): that tap → the croc says the line on screen
     // aloud now. Buttons keep their own job.
     if (first && T.on && T.line && T.wake && !e.target.closest('button')) { T.again = true; T.wake(); }
