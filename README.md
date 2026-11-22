@@ -1,7 +1,7 @@
 # Croco Phonics (악어 이빨 파닉스)
 
 두 명이 번갈아 악어 이빨을 누르는 파닉스 보드게임. **레벨 N = FPR K 교재 Lesson N**: 그 레슨의 음가와 그 레슨 쪽에 나오는 단어로 한다.
-레벨 1은 Lesson 1(p.9–20)의 m 단어, 레벨 2는 Lesson 2(Short a)… 지금 레벨 1–10(Unit 1–2, Lesson 1–10).
+레벨 1은 Lesson 1 Mm(레슨팩 FP.K.U1L1의 m단어 18개), 레벨 2는 Lesson 2(Short a)… 지금 레벨 1–10(Unit 1–2, Lesson 1–10).
 
 ## 규칙
 1. 라운드가 시작되면 그 레벨의 단어 하나가 **지시 단어**로 나온다(화면 위 카드 · 왼쪽 위에서 입을 계속 덥석거리는 악어 얼굴 배지 = 이 단어는 덥석). 그 레벨 음가(공식 FPR K 녹음) + 단어를 들려준다.
@@ -101,7 +101,7 @@
   공식 그림카드는 있는데 음성이 없던 단어(sip, toy, paint, pit, cook, face, feel, dirt, dry)는 회사 TTS가 같은 목소리로 읽었다
   (`words.js` `needVoice` → `build_voice.py` → `build_words.py` 다시 → `build_voice.py` 다시).
 - 레슨 11 이후는 공식 그림카드·음성이 아직 없어 레벨이 아니다(스크립트 출력에 레슨마다 빠진 이유가 나온다). 그림과 음성이 생기면 다시 실행.
-- 레벨 1은 처음 정한 12단어 그대로(스크립트가 확인).
+- 레벨 1 = 레슨팩 FP.K.U1L1의 m단어 18개(스크립트가 확인): mail man map mask mat match meat mice milk mirror mitt monkey moon mop mouse mouth mug mushroom.
 
 ## 실행
 - `실행.command` 더블클릭 → http://127.0.0.1:5211/ (마이크는 http(s) 또는 파일에서 허용 필요)
@@ -148,7 +148,7 @@
 - 레퍼런스(사용자 Gemini 이미지)는 `design/*.png` — 용량 때문에 git 제외.
 
 ## 음성
-회사 TTS 소년 목소리(Qwen3 'aiden') = Magic Block과 같은 목소리. 레벨 단어는 lesson pack FP.K.U1L1에 있으면 pack 음성(레벨 1 12단어 + ten, doll), 아니면 Magic Block 음성, 없으면 Phonics Island의 같은 목소리 단어 음성을,
+회사 TTS 소년 목소리(Qwen3 'aiden') = Magic Block과 같은 목소리. 레벨 단어는 lesson pack FP.K.U1L1에 있으면 pack 음성(레벨 1 18단어 + ten, doll), 아니면 Magic Block 음성, 없으면 Phonics Island의 같은 목소리 단어 음성을,
 레벨 음가는 공식 FPR K 녹음(Magic Block에서 다듬은 것, 없으면 Phonics Island에 있는 원본을 같은 방식으로 다듬음)을 쓴다. 공용 대사도 Magic Block에서 재사용.
 한국어(`k:`)는 매직블록의 한국어 공용 대사를 재사용한다(블럭이라고 말하는 great1만 뺌).
 게임 전용 새 대사(인사·규칙·덥석·레벨 업, 악어 튜터 설명 `tut1`–`tut8`)는 영어(`NEW`)·한국어(`NEW_KO`) 모두 **회사망에서** 아래로 생성:

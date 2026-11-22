@@ -17,6 +17,14 @@ window.CROCO_WORDS = {
    ],
    "words": [
     {
+     "w": "mail",
+     "ko": "우편",
+     "pages": [],
+     "hl": 0,
+     "hn": 1,
+     "card": "assets/cards/mail.webp"
+    },
+    {
      "w": "man",
      "ko": "남자",
      "pages": [
@@ -37,6 +45,30 @@ window.CROCO_WORDS = {
      "card": "assets/cards/map.webp"
     },
     {
+     "w": "mask",
+     "ko": "가면",
+     "pages": [],
+     "hl": 0,
+     "hn": 1,
+     "card": "assets/cards/mask.webp"
+    },
+    {
+     "w": "mat",
+     "ko": "매트",
+     "pages": [],
+     "hl": 0,
+     "hn": 1,
+     "card": "assets/cards/mat.webp"
+    },
+    {
+     "w": "match",
+     "ko": "성냥·어울리다",
+     "pages": [],
+     "hl": 0,
+     "hn": 1,
+     "card": "assets/cards/match.webp"
+    },
+    {
      "w": "meat",
      "ko": "고기",
      "pages": [
@@ -45,6 +77,14 @@ window.CROCO_WORDS = {
      "hl": 0,
      "hn": 1,
      "card": "assets/cards/meat.webp"
+    },
+    {
+     "w": "mice",
+     "ko": "쥐",
+     "pages": [],
+     "hl": 0,
+     "hn": 1,
+     "card": "assets/cards/mice.webp"
     },
     {
      "w": "milk",
@@ -116,6 +156,14 @@ window.CROCO_WORDS = {
      "hl": 0,
      "hn": 1,
      "card": "assets/cards/mouse.webp"
+    },
+    {
+     "w": "mouth",
+     "ko": "입",
+     "pages": [],
+     "hl": 0,
+     "hn": 1,
+     "card": "assets/cards/mouth.webp"
     },
     {
      "w": "mug",
@@ -1106,7 +1154,7 @@ window.CROCO_WORDS = {
   {
    "lesson": 23,
    "title": "Jj",
-   "why": "1 playable words (a level needs 4)"
+   "why": "0 playable words (a level needs 4)"
   },
   {
    "lesson": 24,
@@ -1147,6 +1195,14 @@ window.CROCO_WORDS = {
  "needVoice": [],
  "words": [
   {
+   "w": "mail",
+   "ko": "우편",
+   "pages": [],
+   "hl": 0,
+   "hn": 1,
+   "card": "assets/cards/mail.webp"
+  },
+  {
    "w": "man",
    "ko": "남자",
    "pages": [
@@ -1167,6 +1223,30 @@ window.CROCO_WORDS = {
    "card": "assets/cards/map.webp"
   },
   {
+   "w": "mask",
+   "ko": "가면",
+   "pages": [],
+   "hl": 0,
+   "hn": 1,
+   "card": "assets/cards/mask.webp"
+  },
+  {
+   "w": "mat",
+   "ko": "매트",
+   "pages": [],
+   "hl": 0,
+   "hn": 1,
+   "card": "assets/cards/mat.webp"
+  },
+  {
+   "w": "match",
+   "ko": "성냥·어울리다",
+   "pages": [],
+   "hl": 0,
+   "hn": 1,
+   "card": "assets/cards/match.webp"
+  },
+  {
    "w": "meat",
    "ko": "고기",
    "pages": [
@@ -1175,6 +1255,14 @@ window.CROCO_WORDS = {
    "hl": 0,
    "hn": 1,
    "card": "assets/cards/meat.webp"
+  },
+  {
+   "w": "mice",
+   "ko": "쥐",
+   "pages": [],
+   "hl": 0,
+   "hn": 1,
+   "card": "assets/cards/mice.webp"
   },
   {
    "w": "milk",
@@ -1246,6 +1334,14 @@ window.CROCO_WORDS = {
    "hl": 0,
    "hn": 1,
    "card": "assets/cards/mouse.webp"
+  },
+  {
+   "w": "mouth",
+   "ko": "입",
+   "pages": [],
+   "hl": 0,
+   "hn": 1,
+   "card": "assets/cards/mouth.webp"
   },
   {
    "w": "mug",

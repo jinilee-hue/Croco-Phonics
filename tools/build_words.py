@@ -183,9 +183,25 @@ for L in sorted(int(k) for k in B['lp']):
     levels.append({'level': len(levels) + 1, 'lesson': L, 'unit': B['lu'][str(L)], 'title': title, 'letter': ch, 'kind': kind,
                    'sound': sound, 'pages': [p0, p1], 'words': words, 'lacking': lacking})
 
-# Level 1 = the user's Lesson 1 list exactly (12 m-words; "my" is a printed-only function word)
-L1 = ['man', 'map', 'meat', 'milk', 'mirror', 'mitt', 'monkey', 'moon', 'mop', 'mouse', 'mug', 'mushroom']
-assert [w['w'] for w in levels[0]['words']] == L1, [w['w'] for w in levels[0]['words']]
+# Level 1 = the lesson pack FP.K.U1L1's 18 m-words (user 2026-11-22: "둘 다 18개로" — the games use the lesson pack, like Puzzle
+# and Magic Block). The book's Lesson 1 pages (p.9–20) give the first 12 (asserted); the pack adds mail mask mat match mice
+# mouth (not on those pages: their `pages` stay empty). Cards and clips come from Magic Block, which has all 18.
+import sys  # noqa: E402
+sys.path.insert(0, str(PH / 'phonics-kit' / 'tools'))
+import lessonpack  # noqa: E402
+PACK = lessonpack.load(lessonpack.pack_dir('FP.K.U1L1'))
+BOOK_L1 = ['man', 'map', 'meat', 'milk', 'mirror', 'mitt', 'monkey', 'moon', 'mop', 'mouse', 'mug', 'mushroom']
+L1 = ['mail', 'man', 'map', 'mask', 'mat', 'match', 'meat', 'mice', 'milk', 'mirror', 'mitt', 'monkey', 'moon', 'mop', 'mouse',
+      'mouth', 'mug', 'mushroom']
+assert [w['w'] for w in levels[0]['words']] == BOOK_L1, [w['w'] for w in levels[0]['words']]
+assert all(w in PACK['words'] for w in L1)
+have = {w['w']: w for w in levels[0]['words']}
+for wl in L1:
+    if wl not in have:
+        assert card_for(wl) and has_voice(wl), f'{wl}: no card or clip in Magic Block'
+        have[wl] = {'w': wl, 'ko': (GM.get(wl) or [PACK['words'][wl].get('ko', '')])[0] or PACK['words'][wl].get('ko', ''),
+                    'pages': [], 'hl': 0, 'hn': 1, 'card': f'assets/cards/{wl}.webp'}
+levels[0]['words'] = [have[wl] for wl in L1]
 used = {w['w'] for lv in levels for w in lv['words']}
 for f in CARDS.glob('*.webp'):                              # cards no level uses (made by an earlier run)
     if f.stem not in used:

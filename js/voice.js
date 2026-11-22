@@ -259,6 +259,12 @@ window.CROCO_VOICE = {
 0.899,
 0.868
 ],
+"w:fish": [
+"w_fish.mp3",
+0.0,
+1.062,
+0.888
+],
 "w:sit": [
 "w_sit.mp3",
 0.0,
@@ -270,6 +276,12 @@ window.CROCO_VOICE = {
 0.0,
 1.015,
 0.768
+],
+"w:duck": [
+"w_duck.mp3",
+0.0,
+0.964,
+0.744
 ],
 "s:s": [
 "s_s.mp3",
@@ -307,6 +319,12 @@ window.CROCO_VOICE = {
 0.48,
 0.661
 ],
+"w:mail": [
+"w_mail.mp3",
+0.42,
+0.431,
+1.043
+],
 "w:man": [
 "w_man.mp3",
 0.43,
@@ -319,11 +337,35 @@ window.CROCO_VOICE = {
 0.518,
 0.981
 ],
+"w:mask": [
+"w_mask.mp3",
+0.42,
+0.624,
+1.095
+],
+"w:mat": [
+"w_mat.mp3",
+0.42,
+0.634,
+1.069
+],
+"w:match": [
+"w_match.mp3",
+0.0,
+1.478,
+1.224
+],
 "w:meat": [
 "w_meat.mp3",
 0.42,
 0.487,
 1.069
+],
+"w:mice": [
+"w_mice.mp3",
+0.43,
+0.612,
+1.033
 ],
 "w:milk": [
 "w_milk.mp3",
@@ -366,6 +408,12 @@ window.CROCO_VOICE = {
 0.44,
 0.634,
 0.971
+],
+"w:mouth": [
+"w_mouth.mp3",
+0.43,
+0.636,
+1.033
 ],
 "w:mug": [
 "w_mug.mp3",
@@ -559,12 +607,6 @@ window.CROCO_VOICE = {
 0.828,
 0.72
 ],
-"w:fish": [
-"w_fish.mp3",
-0.0,
-1.062,
-0.888
-],
 "w:ink": [
 "w_ink.mp3",
 0.02,
@@ -690,12 +732,6 @@ window.CROCO_VOICE = {
 0.01,
 0.967,
 0.758
-],
-"w:duck": [
-"w_duck.mp3",
-0.0,
-0.964,
-0.744
 ],
 "t:hello": [
 "t_hello.mp3",
