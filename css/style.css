@@ -184,6 +184,43 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
   left: clamp(calc(var(--u) * 4.5), calc(var(--tx, 50vw) - 50vw + 50%), calc(100% - var(--u) * 4.5));   /* --tx = the chip's middle (screen px) */
   border-style: solid; border-width: calc(var(--u) * 2.1) calc(var(--u) * 1.5) 0; border-color: #fffaf2 transparent transparent; }
 
+/* ── MY CARDS (game.js albumShow): the cards kept by saying the word, a page per level. Phonics Puzzle's sticker book in
+   this game's look: a cream panel framed like the level-up letter tile, the title on Next Level's green pill over its top
+   edge, the levels as tabs (the page's one in START's orange), Croco's picture cards with ×N, '?' slots like the locked
+   level tiles; a fixed grid area (3 rows of the 18-word level; a 2-row level gets bigger cards) with room under it */
+.album { position: absolute; inset: 0; z-index: 45; display: grid; place-items: center; background: rgba(40,60,80,.4);
+  opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s, visibility 0s .2s; }
+.album.show { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .2s; }
+.al-panel { --pw: min(calc(var(--u) * 110), 94vw); position: relative; width: var(--pw); display: grid; justify-items: center; gap: calc(var(--u) * 2.6);
+  padding: calc(var(--u) * 7) calc(var(--u) * 3) calc(var(--u) * 5); border-radius: calc(var(--u) * 4); background: #fffaf2;
+  border: calc(var(--u) * 1) solid #f6b043; box-shadow: 0 calc(var(--u) * 1.4) calc(var(--u) * 3.4) rgba(60,50,90,.3);
+  scale: .85; transition: scale .3s cubic-bezier(.2,.9,.3,1.4); }
+.album.show .al-panel { scale: 1; }
+.al-title { position: absolute; left: 50%; top: 0; translate: -50% -55%; white-space: nowrap; padding: calc(var(--u) * 1.3) calc(var(--u) * 5) calc(var(--u) * 1.5);
+  border-radius: 999px; font: 800 calc(var(--u) * 6.2)/1 var(--font); color: #fff; letter-spacing: .03em;
+  background: linear-gradient(#93e38c, #55c25d 60%, #37a64a); text-shadow: 0 calc(var(--u) * .45) 0 #2b8a3c;
+  box-shadow: inset 0 calc(var(--u) * -.8) 0 rgba(30,120,45,.4), 0 calc(var(--u) * 1.2) calc(var(--u) * 2) rgba(40,150,60,.35); }
+.al-tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: calc(var(--u) * .9); }
+.al-tab { height: calc(var(--u) * 5.6); padding: .12em calc(var(--u) * 1.4) 0; border-radius: 999px; background: #fff; border: calc(var(--u) * .45) solid var(--edge);
+  font: 800 calc(var(--u) * 2.8)/1 var(--font); color: #f27a1f; white-space: nowrap; box-shadow: 0 calc(var(--u) * .4) calc(var(--u) * .8) rgba(120,80,40,.16); transition: transform .15s; }
+.al-tab.cur { border-color: #fff; color: #fff; background: linear-gradient(#ffad66, #f67b2b); text-shadow: 0 calc(var(--u) * .25) 0 rgba(185,75,15,.4);
+  box-shadow: 0 calc(var(--u) * .5) calc(var(--u) * 1.2) rgba(220,100,30,.35); transform: translateY(calc(var(--u) * -.3)); }
+.al-tab:active { transform: scale(.94); }
+.al-grid { --gh: calc(var(--u) * 49); --gx: calc(var(--u) * 1.8); --gy: calc(var(--u) * 2.4);
+  --cw: min(calc((var(--gh) - (var(--rows, 3) - 1) * var(--gy)) / var(--rows, 3) * .86), calc(var(--u) * 18), calc((var(--pw) - var(--u) * 8 - (var(--cols, 6) - 1) * var(--gx)) / var(--cols, 6)));
+  height: var(--gh); display: grid; grid-template-columns: repeat(var(--cols, 6), var(--cw)); gap: var(--gy) var(--gx); justify-content: center; align-content: center; }
+.al-c { position: relative; width: var(--cw); padding: 0; background: none; border-radius: calc(var(--cw) * .1); }
+.al-c .card { transition: transform .15s; }
+.al-c:active .card { transform: scale(.95); }
+.al-n { position: absolute; right: calc(var(--cw) * -.09); top: calc(var(--cw) * -.09); padding: .14em .4em .02em; border-radius: 999px; pointer-events: none;
+  font: 800 calc(var(--cw) * .19)/1 var(--font); color: #fff; background: linear-gradient(#ffad66, #f67b2b); text-shadow: 0 calc(var(--cw) * .012) 0 rgba(185,75,15,.4);
+  border: calc(var(--cw) * .028) solid #fff; box-shadow: 0 calc(var(--cw) * .02) calc(var(--cw) * .05) rgba(90,60,30,.25); }
+.al-c.none { aspect-ratio: .86; display: grid; place-items: center; border: calc(var(--cw) * .036) dashed #d8d0c6; background: #f1ece6; }
+.al-q { font: 800 calc(var(--cw) * .42)/1 var(--font); color: #c9bfb4; padding-top: .12em; }
+.al-close { position: absolute; right: calc(var(--u) * -2.6); top: calc(var(--u) * -2.6); width: calc(var(--u) * 7.2); height: calc(var(--u) * 7.2);
+  background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.al-close svg { stroke-width: 3; }
+
 /* ── game HUD ─────────────────────────────────────────────────────────────────────────────────────── */
 .hud { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .5s; }
 #app[data-screen="game"] .hud, #app[data-screen="result"] .hud { opacity: 1; }
@@ -508,7 +545,8 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 /* phonics-api key (title with START only, top left): a teacher enters it once per device; the dot = green when the
    company server checks the word, grey when it can't (no key / offline: the say turn is skipped, no card) */
 .sys.sys-left { right: auto; left: calc(var(--u) * 2); }
-#app:not([data-screen="title"]) #btnKey, #app.howto #btnKey { display: none; }
+#app:not([data-screen="title"]) #btnKey, #app.howto #btnKey,
+#app:not([data-screen="title"]) #btnAlbum, #app.howto #btnAlbum { display: none; }   /* MY CARDS: on the title with START only, like the key */
 #btnKey { position: relative; }
 #btnKey .dot { position: absolute; right: 4%; top: 4%; width: 26%; height: 26%; border-radius: 50%; background: #b9b2c9;
   box-shadow: 0 0 0 calc(var(--u) * .3) #fff; pointer-events: none; transition: background .2s; }

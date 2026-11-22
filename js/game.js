@@ -110,8 +110,8 @@
   const FONT = getComputedStyle(document.documentElement).getPropertyValue('--font').trim() || '"Baloo 2", sans-serif';
   /* the word as the cards show it: capitalised, the lesson's letter in bold (hl / hn from tools/build_words.py) — the
      initial (Map), a short vowel (C-a-t) or the final x */
-  function wordParts(word) {
-    const e = BY[word] || ANY[word] || {}, s = cap(word), i = e.hl || 0, n = e.hn || 1;
+  function wordParts(word, e0) {                 // e0: the entry of a given level (a word can be in two: cat = Short a, Cc)
+    const e = e0 || BY[word] || ANY[word] || {}, s = cap(word), i = e.hl || 0, n = e.hn || 1;
     return [s.slice(0, i), s.slice(i, i + n), s.slice(i + n)];
   }
   function wordFit(word, tgt) {
@@ -125,7 +125,7 @@
   }
   function fitCardWord(el) { el.style.setProperty('--wf', wordFit(el.dataset.word, el.classList.contains('tgt')).toFixed(4)); }
   function makeCard(word, opts = {}) {
-    const w = BY[word] || ANY[word], [pa, pb, pc] = wordParts(word);
+    const w = opts.e || BY[word] || ANY[word], [pa, pb, pc] = wordParts(word, opts.e);
     const el = document.createElement('div');
     el.className = 'card' + (opts.cls ? ' ' + opts.cls : '') + (opts.sound ? ' has-snd' : '');
     el.style.setProperty('--edge', opts.edge || EDGES[edgeN++ % EDGES.length]);
@@ -560,6 +560,7 @@
     }
     // onto the player's pile: the pile makes a place, the card arcs over (sparkle trail) and lands on it
     G.got[p].push(word);
+    albumKeep(word);                             // MY CARDS: kept on the device (the trap's cost never takes it back)
     const mini = renderStack(p, true);
     const mr = mini.getBoundingClientRect(), to = { x: mr.left + mr.width / 2, y: mr.top + mr.height / 2 };
     const sc = mini.firstChild.offsetWidth / (card.offsetWidth || 1);
@@ -921,7 +922,8 @@
   const LANG_KEY = 'croco.lang.v1';
   let LANG = (() => { try { return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'ko'; } catch (e) { return 'ko'; } })();
   const UI = { p1: 'Player 1', p2: 'Player 2', turn: 'Your turn!', wins: 'Player {n} Wins!', tie: "It's a Tie!", again: 'Play Again', next: 'Next Level', level: 'Level {n}', levelup: 'Level {n}!', skip: 'Skip',
-    a_skip: 'Skip the explanation', a_lang: 'Language: English or Korean', a_sound: 'Sound on/off', a_exit: 'Exit', a_jump: 'Jump', a_levels: 'Levels', a_locked: 'locked' };
+    a_skip: 'Skip the explanation', a_lang: 'Language: English or Korean', a_sound: 'Sound on/off', a_exit: 'Exit', a_jump: 'Jump', a_levels: 'Levels', a_locked: 'locked',
+    album: 'MY CARDS', a_album: 'My cards', a_close: 'Close' };
   const tr = (k, v = {}) => (UI[k] || k).replace(/\{(\w+)\}/g, (_, x) => (v[x] != null ? v[x] : ''));
   /* the result banner's text: a baked puffy sprite like the logo's letters (tools/make_banner_text.py → CROCO_RB) over
      the live text (transparent, it sizes the band); a text the tool hasn't baked shows as plain styled text */
@@ -1106,6 +1108,7 @@
     window.__intro = false;
     A.stopVoice();
     levelMenu(false);
+    albumOpen(false);
     app.classList.add('howto');
     teethLetters();
     $('#skip').classList.add('show');
@@ -1360,9 +1363,81 @@
     A.stopVoice();
     say('s:' + LV().sound);
   });
-  window.addEventListener('keydown', e => { if (e.key === 'Escape') levelMenu(false); });
+  window.addEventListener('keydown', e => { if (e.key === 'Escape') { levelMenu(false); if (albumIsOpen()) albumOpen(false); } });
   window.addEventListener('resize', placeLevelPick);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(placeLevelPick);
+
+  /* ── MY CARDS (user 2026-11-22: every game needs a place where the things collected go; Phonics Puzzle's sticker book,
+     in this game's own look): every card a player keeps by saying its word goes into the device's album
+     (localStorage croco.album.v1 {word: count}); the trap's cost takes cards off the pile, never out of the album. The
+     title's album button (top left, by the key) opens it: a page per level (tabs), the level's words as picture cards,
+     ×N on the ones kept, '?' for the rest; a tap on a kept card says its word. */
+  const ALBUM_KEY = 'croco.album.v1';
+  function albumGet() {
+    try { const a = JSON.parse(localStorage.getItem(ALBUM_KEY) || '{}'); return a && typeof a === 'object' ? a : {}; } catch (e) { return {}; }
+  }
+  function albumKeep(word) {
+    const a = albumGet();
+    a[word] = (a[word] | 0) + 1;
+    try { localStorage.setItem(ALBUM_KEY, JSON.stringify(a)); } catch (e) { /* private mode: not kept */ }
+  }
+  const albumIsOpen = () => $('#album').classList.contains('show');
+  $('#album .al-tabs').innerHTML = LEVELS.map((L, k) => `<button class="al-tab" role="tab" data-k="${k}" style="--edge:${EDGES[k % EDGES.length]}"`
+    + ` aria-label="${tr('level', { n: k + 1 })} · ${L.title}">${L.title}</button>`).join('');
+  function albumShow(k) {
+    const L = LEVELS[Math.max(0, Math.min(LEVELS.length - 1, k))], a = albumGet(), grid = $('#album .al-grid');
+    $('#album .al-tabs').querySelectorAll('.al-tab').forEach(t => { const on = L === LEVELS[+t.dataset.k]; t.classList.toggle('cur', on); t.setAttribute('aria-selected', String(on)); });
+    const n = L.words.length, rows = n > 10 ? 3 : 2;               // 18 words: 6 × 3; up to 10: two rows of bigger cards
+    grid.style.setProperty('--rows', rows);
+    grid.style.setProperty('--cols', Math.ceil(n / rows));
+    grid.innerHTML = '';
+    L.words.forEach((x, i) => {
+      const c = a[x.w] | 0, el = document.createElement(c ? 'button' : 'div');
+      el.className = 'al-c' + (c ? '' : ' none');
+      if (c) {
+        el.dataset.w = x.w;
+        el.setAttribute('aria-label', `${x.w} ×${c}`);
+        el.appendChild(makeCard(x.w, { edge: EDGES[i % EDGES.length], e: x }));
+        el.insertAdjacentHTML('beforeend', `<span class="al-n">×${c}</span>`);
+      } else el.innerHTML = '<span class="al-q" aria-hidden="true">?</span>';
+      grid.appendChild(el);
+    });
+  }
+  function albumOpen(open) {
+    const m = $('#album');
+    if (open) { levelMenu(false); albumShow(G.level); } else if (albumIsOpen()) A.stopVoice();
+    m.classList.toggle('show', open);
+    m.setAttribute('aria-hidden', String(!open));
+  }
+  $('#btnAlbum').addEventListener('click', e => {
+    e.stopPropagation();
+    if (T.on || G.screen !== 'title') return;
+    A.unlock();
+    A.sfxPlay('pop');
+    albumOpen(true);
+  });
+  $('#album').addEventListener('click', e => {
+    e.stopPropagation();
+    A.unlock();
+    const tab = e.target.closest('.al-tab'), c = e.target.closest('.al-c');
+    if (tab) { A.sfxPlay('tap'); albumShow(+tab.dataset.k); return; }
+    if (c && c.classList.contains('none')) {                    // not kept yet
+      A.sfxPlay('tick');
+      c.animate([{ translate: '0 0' }, { translate: '-6% 0' }, { translate: '6% 0' }, { translate: '0 0' }], { duration: 260 });
+      return;
+    }
+    if (c) {                                                    // a kept card: its word
+      const card = c.querySelector('.card');
+      A.stopVoice();
+      card.classList.remove('say-w');
+      void card.offsetWidth;
+      card.classList.add('say-w');
+      c.animate([{ scale: 1 }, { scale: 1.08, offset: 0.4 }, { scale: 1 }], { duration: 420, easing: 'ease-out' });
+      A.say('w:' + c.dataset.w).then(() => card.classList.remove('say-w'));
+      return;
+    }
+    if (e.target.closest('.al-close') || !e.target.closest('.al-panel')) { A.sfxPlay('tap'); albumOpen(false); }   // Close, or outside the panel
+  });
 
   applyLang();
   // ?level=N: start at level N (QA, a class on lesson N); else the saved level (continue), never past the open ones
@@ -1471,7 +1546,7 @@
     // the explanation runs silent until the first tap (the browser's rule): that tap → the croc says the line on screen
     // aloud now. Buttons keep their own job.
     if (first && T.on && T.line && T.wake && !e.target.closest('button')) { T.again = true; T.wake(); }
-    if (!greeted && G.screen === 'title' && !e.target.closest('#btnHome, #btnKey, #lvPick, #lvMenu, [role="dialog"]')) {   // leaving / the teacher's key / the levels: no hello
+    if (!greeted && G.screen === 'title' && !e.target.closest('#btnHome, #btnKey, #lvPick, #lvMenu, #btnAlbum, #album, [role="dialog"]')) {   // leaving / the teacher's key / the levels / the album: no hello
       greeted = true;
       A.startBgm(BGM_LEVEL);
       setTimeout(() => { if (G.screen === 'title' && !T.on && !G.bootHowto) say(A.has('t:hello') ? 't:hello' : 't:pressstart'); }, 250);
@@ -1560,10 +1635,11 @@
     if (i >= 0) onTooth(i);
   });
   window.addEventListener('keydown', e => {
-    if (G.screen === 'title' && (e.key === 'Enter' || e.key === ' ') && !e.target.closest('#lvPick, #lvMenu')) { $('#start').click(); return; }
+    if (G.screen === 'title' && (e.key === 'Enter' || e.key === ' ') && !e.target.closest('#lvPick, #lvMenu') && !albumIsOpen()) { $('#start').click(); return; }
     if (G.screen === 'game' && /^[0-9]$/.test(e.key)) onTooth((+e.key + 9) % 10);
   });
 
   // QA hooks (headless checks)
-  window.__croco = { G, croc, goGame, goTitle, onTooth, startRound, showResult, toothScreen, revealSlot, makeCard, T, LANG_KEY, lang: () => LANG, howtoSeen: () => howtoSeen, LEVELS, setLevel, levelUp };
+  window.__croco = { G, croc, goGame, goTitle, onTooth, startRound, showResult, toothScreen, revealSlot, makeCard, T, LANG_KEY, lang: () => LANG, howtoSeen: () => howtoSeen, LEVELS, setLevel, levelUp,
+    album: { key: ALBUM_KEY, get: albumGet, open: albumOpen, show: albumShow } };
 })();
