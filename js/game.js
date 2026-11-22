@@ -1321,7 +1321,7 @@
     pk.style.top = (st.offsetTop + (st.offsetHeight - pk.offsetHeight) / 2) + 'px';
   }
   function levelMenu(open) {
-    const m = $('#lvMenu'), pk = $('#lvPick'), panel = m.querySelector('.lm-panel');
+    const m = $('#lvMenu'), pk = $('#lvTag'), panel = m.querySelector('.lm-panel');   // (the game's level tag opens it)
     if (open) {
       const top = unlockedTop();
       panel.innerHTML = LEVELS.map((L, k) => {
@@ -1330,24 +1330,20 @@
           + ` aria-label="${tr('level', { n: k + 1 })} · ${L.title}${on ? '' : ' · ' + tr('a_locked')}"${on ? '' : ' aria-disabled="true"'}>`
           + `<span class="n">${k + 1}</span><b>${lvLabel(L)}</b>${on ? '' : SVG_LOCK}</button>`;
       }).join('');
-      // the panel's tail points at the chip
+      // under the tag, its tail pointing at it
       const r = pk.getBoundingClientRect();
+      panel.classList.add('below');
       panel.style.setProperty('--tx', (r.left + r.width / 2) + 'px');
+      panel.style.setProperty('--ty', (r.bottom + 2.6 * u()) + 'px');
     }
     m.classList.toggle('show', open);
     m.setAttribute('aria-hidden', String(!open));
     pk.setAttribute('aria-expanded', String(open));
   }
-  $('#lvPick').addEventListener('click', e => {
-    e.stopPropagation();
-    if (T.on || G.screen !== 'title') return;
-    A.unlock();
-    A.sfxPlay('tap');
-    levelMenu(!$('#lvMenu').classList.contains('show'));
-  });
+  // (no opener any more: the levels follow one another — START continues, Next Level leads on; user 2026-11-22)
   $('#lvMenu').addEventListener('click', e => {
     e.stopPropagation();
-    if (T.on || G.screen !== 'title') { levelMenu(false); return; }
+    if (T.on || G.screen !== 'game') { levelMenu(false); return; }
     const t = e.target.closest('.lm-t');
     if (!t) { levelMenu(false); return; }                    // outside the tiles: close
     A.unlock();
@@ -1358,11 +1354,8 @@
     }
     A.sfxPlay('pop');
     levelMenu(false);
-    setLevel(+t.dataset.k);
-    $('#lvPick').animate([{ scale: 1 }, { scale: 1.18, offset: 0.45 }, { scale: 1 }], { duration: 420, easing: 'ease-out' });
-    croc.cheer(900);
-    A.stopVoice();
-    say('s:' + LV().sound);
+    const k = +t.dataset.k;
+    if (k !== G.level) levelUp(k);                       // the croc snaps, the new level's banner and sound, a new round
   });
   window.addEventListener('keydown', e => { if (e.key === 'Escape') { levelMenu(false); if (charsIsOpen()) charsOpen(false); } });
   window.addEventListener('resize', placeLevelPick);
@@ -1540,8 +1533,9 @@
   });
   /* the croc snaps shut, the new lesson's letter goes onto its teeth, a banner shows the level and its sound is said,
      then the round starts with the new words */
-  async function levelUp() {
+  async function levelUp(to = G.level + 1) {                // (Next Level, or a level picked on the game's level tag)
     const tok = ++G.token;
+    levelMenu(false);
     G.screen = 'game';
     app.dataset.screen = 'game';
     G.busy = true;
@@ -1558,7 +1552,7 @@
     A.sfxPlay('chomp');
     await sleep(300);
     if (tok !== G.token) return;
-    setLevel(G.level + 1);
+    setLevel(to);
     const b = $('#lvUp');
     b.classList.remove('show', 'say');
     void b.offsetWidth;

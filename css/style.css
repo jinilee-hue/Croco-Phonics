@@ -535,6 +535,10 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
   padding: calc(var(--u) * .45) calc(var(--u) * 1.4) calc(var(--u) * .45) calc(var(--u) * .45); border-radius: 999px; background: rgba(255,255,255,.92);
   box-shadow: 0 calc(var(--u) * .4) calc(var(--u) * 1.1) rgba(80,60,120,.16); font: 800 calc(var(--u) * 2.5)/1 var(--font); color: #5a4636;
   pointer-events: none; transition: opacity .4s; }
+/* no level picking (user 2026-11-22: "꼭 레벨 선택이 들어가지 않고 lessen1이 끝나면 lessen2가 이어지게" → "고르기 없이 이어 하기만"):
+   START continues at the saved level, Next Level leads on lesson by lesson; this tag only shows the level. The title's
+   chip is hidden. */
+.lvpick { display: none !important; }
 .lvtag .n { padding: calc(var(--u) * .5) calc(var(--u) * 1.2) calc(var(--u) * .6); border-radius: 999px; color: #fff;
   background: linear-gradient(#93e38c, #4fbf5a); text-shadow: 0 calc(var(--u) * .2) 0 rgba(25,105,40,.4); }
 #app[data-screen="title"] .lvtag, #app[data-screen="result"] .lvtag { opacity: 0; }
