@@ -48,7 +48,7 @@
     return A.buffers[key];
   }
 
-  /* one clip → resolves true when it ends (false if stopped / missing) */
+  /* one clip → resolves true when it ends (false if stopped / missing / timed out) */
   A.say = async function (key, opts = {}) {
     key = A.voiceKey(key);
     if (!A.ctx || !V.clips[key]) return false;
@@ -66,6 +66,13 @@
       talk(+1);
       src.onended = () => { if (A.playing.delete(item)) { talk(-1); res(true); } };
       src.start(0, start, Math.max(0.05, dur));
+      // safety net: a suspended context never fires onended, which would leave the game waiting (G.busy) for good
+      const len = dur > 0 ? dur : buf.duration - start;
+      setTimeout(() => {
+        if (!A.playing.delete(item)) return;
+        try { src.onended = null; src.stop(); } catch (e) { /* not started */ }
+        talk(-1); res(false);
+      }, ((len > 0 ? len : 3) + 0.8) * 1000);
     });
   };
   A.stopVoice = function () {

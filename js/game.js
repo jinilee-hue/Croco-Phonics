@@ -835,29 +835,27 @@
     introMotion(false);
   }
 
-  // ── language: EN | 한 in the top bar (user: "튜터설명에 한글과 영어버전 설명 듣는게 있어야해" → a toggle like Magic
-  //    Block's, remembered per device). The croc's voice + bubbles and the screen words switch; the words and the /m/
-  //    sound stay English. Korean voice = 'k:' clips (tools/build_voice.py); audio.js plays 'k:x' for 't:x' in Korean.
+  // ── language: EN | 한 in the top bar, on the title only (user: "튜터설명에 한글과 영어버전 설명 듣는게 있어야해" → a
+  //    toggle like Magic Block's, remembered per device; a first visit starts in Korean). It switches the croc's voice +
+  //    bubbles only; every screen word and the result banner stay English in both (user 2026-11-22: "화면 글자는 모두
+  //    영어로"), and the words and the /m/ sound are English anyway. Korean voice = 'k:' clips (tools/build_voice.py);
+  //    audio.js plays 'k:x' for 't:x' in Korean.
   const LANG_KEY = 'croco.lang.v1';
-  let LANG = (() => { try { return localStorage.getItem(LANG_KEY) === 'ko' ? 'ko' : 'en'; } catch (e) { return 'en'; } })();
-  const UI = {
-    en: { p1: 'Player 1', p2: 'Player 2', turn: 'Your turn!', wins: 'Player {n} Wins!', again: 'Play Again', next: 'Next Level', level: 'Level {n}', levelup: 'Level {n}!', skip: 'Skip',
-      a_skip: 'Skip the explanation', a_lang: 'Language: English or Korean', a_sound: 'Sound on/off', a_exit: 'Exit', a_jump: 'Jump', a_levels: 'Levels', a_locked: 'locked' },
-    ko: { p1: '플레이어 1', p2: '플레이어 2', turn: '네 차례!', wins: '플레이어 {n} 승리!', again: '다시 하기', next: '다음 레벨', level: '레벨 {n}', levelup: '레벨 {n}!', skip: '건너뛰기',
-      a_skip: '설명 건너뛰기', a_lang: '언어: 영어 또는 한국어', a_sound: '소리 켜기/끄기', a_exit: '나가기', a_jump: '점프', a_levels: '레벨 고르기', a_locked: '잠김' },
-  };
-  const tr = (k, v = {}) => (UI[LANG][k] || UI.en[k] || k).replace(/\{(\w+)\}/g, (_, x) => (v[x] != null ? v[x] : ''));
+  let LANG = (() => { try { return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'ko'; } catch (e) { return 'ko'; } })();
+  const UI = { p1: 'Player 1', p2: 'Player 2', turn: 'Your turn!', wins: 'Player {n} Wins!', again: 'Play Again', next: 'Next Level', level: 'Level {n}', levelup: 'Level {n}!', skip: 'Skip',
+    a_skip: 'Skip the explanation', a_lang: 'Language: English or Korean', a_sound: 'Sound on/off', a_exit: 'Exit', a_jump: 'Jump', a_levels: 'Levels', a_locked: 'locked' };
+  const tr = (k, v = {}) => (UI[k] || k).replace(/\{(\w+)\}/g, (_, x) => (v[x] != null ? v[x] : ''));
   /* the result banner's text: a baked puffy sprite like the logo's letters (tools/make_banner_text.py → CROCO_RB) over
      the live text (transparent, it sizes the band); a text the tool hasn't baked shows as plain styled text */
   function setRibbon(n) {
-    const t = tr('wins', { n }), key = LANG + '_' + n, RB = window.CROCO_RB || {}, im = $('#rbImg');
+    const t = tr('wins', { n }), key = 'en_' + n, RB = window.CROCO_RB || {}, im = $('#rbImg');
     $('#rbText').textContent = t;
     const ok = !!(RB[key] && RB[key].t === t);
     $('.ribbon').classList.toggle('noimg', !ok);
     if (ok) im.src = `assets/img/rb_${key}.webp`; else im.removeAttribute('src');
   }
   $('#rbImg').addEventListener('error', () => $('.ribbon').classList.add('noimg'));
-  Object.keys(window.CROCO_RB || {}).forEach(k => { new Image().src = `assets/img/rb_${k}.webp`; });   // ready before a win
+  Object.keys(window.CROCO_RB || {}).filter(k => k.startsWith('en_')).forEach(k => { new Image().src = `assets/img/rb_${k}.webp`; });   // ready before a win
   function applyLang() {
     document.documentElement.lang = LANG;
     app.dataset.lang = LANG;
