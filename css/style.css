@@ -528,7 +528,18 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
   box-shadow: inset 0 calc(var(--u) * -1) 0 rgba(30,120,45,.45), 0 calc(var(--u) * 1.4) calc(var(--u) * 2.4) rgba(40,150,60,.35); }
 .next svg { filter: drop-shadow(0 calc(var(--u) * .35) 0 rgba(25,105,40,.45)); }
 #app[data-screen="result"] .next { animation-delay: 1.25s, 2.1s; }
-#app.lastlv .next { display: none; }
+/* shown only after a round done well (game.js planNext): the next step of the lesson or the next lesson — gone on the
+   last level's last step */
+#app:not(.go-next) .next { display: none; }
+/* a step up in the same lesson (game.js STEPS): the button reads "Next" under a "LEVEL UP! ★★☆" tag */
+.next .up { position: absolute; left: 50%; bottom: calc(100% + var(--u) * .5); transform: translateX(-50%) rotate(-3deg); display: none;
+  align-items: center; gap: calc(var(--u) * .8); padding: calc(var(--u) * .55) calc(var(--u) * 1.7) calc(var(--u) * .65); border-radius: 999px;
+  background: #fff; color: #f27a1f; font: 800 calc(var(--u) * 2.9)/1 var(--font); font-style: normal; letter-spacing: .02em; text-shadow: none;
+  box-shadow: 0 calc(var(--u) * .5) calc(var(--u) * 1.2) rgba(40,120,50,.3); }
+#app.stepup .next .up { display: flex; }
+.next .up .st, .lvtag .st { letter-spacing: .04em; }
+.next .up .st b, .lvtag .st b { color: #ffb21e; text-shadow: 0 calc(var(--u) * .2) 0 #e08a12; font-weight: 800; }
+.next .up .st i, .lvtag .st i { color: #e3d6c4; font-style: normal; }
 
 /* the level (= FPR K lesson) under the game logo */
 .lvtag { position: absolute; left: calc(var(--u) * 2.4); top: calc(var(--u) * 13.2); display: flex; align-items: center; gap: calc(var(--u) * .9);
@@ -542,6 +553,7 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 .lvtag .n { padding: calc(var(--u) * .5) calc(var(--u) * 1.2) calc(var(--u) * .6); border-radius: 999px; color: #fff;
   background: linear-gradient(#93e38c, #4fbf5a); text-shadow: 0 calc(var(--u) * .2) 0 rgba(25,105,40,.4); }
 #app[data-screen="title"] .lvtag, #app[data-screen="result"] .lvtag { opacity: 0; }
+.lvtag .st { margin-left: calc(var(--u) * -.2); }          /* the game step in the lesson (game.js STEPS), display only */
 
 /* level up: between rounds, a banner with the new level and its letter (its sound is said) */
 .lvup { position: absolute; left: 50%; top: 42%; z-index: 30; display: grid; justify-items: center; gap: calc(var(--u) * 1.4); pointer-events: none;

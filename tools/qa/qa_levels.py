@@ -4,9 +4,10 @@ usage: uv run --with playwright --with pillow python tools/qa/qa_levels.py <outd
   1  every level: on the title the teeth show the levels' letters (one per tooth; its own letter is checked in its
      round), its sound clip + every word's clip exist, every card picture loads; a round
      deals 10 teeth from its words with the trap word on exactly one; the trap card's pill letter and bold letter(s)
-  2  1180x820 + 820x1180: level 1 → the trap tooth → result (Play Again + Next Level) → Next Level → banner → level 2's
-     round (teeth 'a', level tag) → result → Play Again stays on level 2
-  3  the last level's result has no Next Level
+  2  1180x820 + 820x1180: level 1 → the trap tooth, counted as ★★★ done well (GOOD3) → result (Play Again + Next
+     Level) → Next Level → banner → level 2's round (teeth 'a', level tag) → result → Play Again stays on level 2
+  3  the last level's result (★★★ done well too) has no Next Level
+  (Next shows only after a round done well — game.js STEPS / planNext; a trap pressed first is a poor round)
 """
 import sys, time, pathlib, json
 from playwright.sync_api import sync_playwright
@@ -29,8 +30,13 @@ def start(pg):
     pg.wait_for_function("document.querySelector('#turn').classList.contains('show')", timeout=30000)
 
 
-def bite(pg):
-    pg.evaluate("() => { const G = __croco.G; __croco.onTooth(G.teeth.indexOf(G.target)); }")
+# good3: this round counts as ★★★ done well → Next Level shows. Set right after the press (onTooth checks the step's
+# first-tooth rule before its first await), so the trap still bites at once
+GOOD3 = "__croco.G.step = 3; __croco.G.stat.said = 3;"
+
+
+def bite(pg, good3=False):
+    pg.evaluate("() => { const G = __croco.G; __croco.onTooth(G.teeth.indexOf(G.target)); " + (GOOD3 if good3 else '') + " }")
     pg.wait_for_function("document.querySelector('#app').dataset.screen === 'result'", timeout=30000)
     time.sleep(2.3)                                    # the buttons come in at 1.1 / 1.25 s
 
@@ -83,7 +89,7 @@ with sync_playwright() as p:
     for W, H in ((1180, 820), (820, 1180)):
         pg = page(W, H, '&level=1')
         start(pg)
-        bite(pg)
+        bite(pg, good3=True)
         pg.screenshot(path=str(out / f'result_L1_{W}x{H}.png'))
         print(f'2 {W}x{H} result buttons', pg.evaluate(BTN))
         pg.click('#next', force=True)
@@ -110,7 +116,7 @@ with sync_playwright() as p:
     # ── 3. the last level: no Next Level ──
     pg = page(1180, 820, f'&level={n}')
     start(pg)
-    bite(pg)
+    bite(pg, good3=True)
     pg.screenshot(path=str(out / f'result_last_L{n}.png'))
     r = pg.evaluate(BTN)
     print(f'3 last level {n} result buttons', r)
