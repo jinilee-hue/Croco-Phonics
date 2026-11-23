@@ -256,7 +256,6 @@
     const L = LV(), t = $('#lvTag'), b = $('#lvUp');
     t.querySelector('.n').textContent = tr('level', { n: G.level + 1 });
     t.querySelector('.s').textContent = L.title;
-    t.querySelector('.st').innerHTML = `<b>${'★'.repeat(G.step)}</b><i>${'☆'.repeat(STEPS.length - G.step)}</i>`;   // the step (display only)
     b.querySelector('.t').textContent = tr('levelup', { n: G.level + 1 });
     b.querySelector('.lv-ltr b').textContent = lvLabel(L);
     b.querySelector('.lv-sub').textContent = L.kind === 'short' ? L.title : '';
@@ -473,6 +472,8 @@
     croc.reopen();
     await sleep(450);
     if (tok !== G.token) return;
+    // steps 2–3: "Watch out! Two / Three trap teeth!" — said only, never shown (the user's call)
+    if (traps > 1 && A.has('t:trap' + traps)) { await say('t:trap' + traps); if (tok !== G.token) return; }
     t.classList.remove('intro');
     A.sfxPlay('whoosh');
     await sleep(650);
@@ -901,8 +902,9 @@
     await say(winner < 0 ? 't:great3' : winner ? 't:win2' : 't:win1');      // a tie: "Yes! You did it!" (no new line)
   }
   /* the round's verdict → the next game (STEPS): kept at once (START continues with it), and the result's buttons —
-     a step up: "Next" under "LEVEL UP! ★★☆" (+ Play Again at this step); the next lesson: "Next Level" (+ Play Again);
-     the same step or one down: Play Again only */
+     done well: "Next Level" (+ Play Again) — the next step of this lesson or the next lesson, the same button and words
+     (user 2026-11-23: no "LEVEL UP! ★★☆" tag on it — the level tag's stars show the step); the same step or one down:
+     Play Again only */
   function planNext(st) {
     const good = st.said >= 3 && st.missed + st.jumped <= 1, poor = st.said <= 1;
     let level = G.level, step = G.step, up = '';
@@ -914,11 +916,6 @@
     store(STEP_KEY, { lesson: level + 1, step, poor: G.poor });
     if (up === 'lesson' && PP) PP.setLevel(GAME_ID, level + 1);
     app.classList.toggle('go-next', !!up);
-    app.classList.toggle('stepup', up === 'step');
-    const nl = $('#next .nl');
-    nl.dataset.i18n = up === 'step' ? 'nextstep' : 'next';
-    nl.textContent = tr(nl.dataset.i18n);
-    $('#next .up .st').innerHTML = `<b>${'★'.repeat(step)}</b><i>${'☆'.repeat(STEPS.length - step)}</i>`;
   }
   /* the plan taken without Next: Exit to the title takes it as kept (START continues there); Play Again stays in this
      lesson at the planned step, never up */
@@ -976,7 +973,7 @@
   //    audio.js plays 'k:x' for 't:x' in Korean.
   const LANG_KEY = 'croco.lang.v1';
   let LANG = (() => { try { return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'ko'; } catch (e) { return 'ko'; } })();
-  const UI = { p1: 'Player 1', p2: 'Player 2', turn: 'Your turn!', wins: 'Player {n} Wins!', tie: "It's a Tie!", again: 'Play Again', next: 'Next Level', nextstep: 'Next', stepup: 'LEVEL UP!', level: 'Level {n}', levelup: 'Level {n}!', skip: 'Skip',
+  const UI = { p1: 'Player 1', p2: 'Player 2', turn: 'Your turn!', wins: 'Player {n} Wins!', tie: "It's a Tie!", again: 'Play Again', next: 'Next Level', level: 'Level {n}', levelup: 'Level {n}!', skip: 'Skip',
     a_skip: 'Skip the explanation', a_lang: 'Language: English or Korean', a_sound: 'Sound on/off', a_exit: 'Exit', a_jump: 'Jump', a_levels: 'Levels', a_locked: 'locked',
     chars: 'CHARACTERS', a_chars: 'Characters', a_close: 'Close', a_wallet: 'Cards' };
   const tr = (k, v = {}) => (UI[k] || k).replace(/\{(\w+)\}/g, (_, x) => (v[x] != null ? v[x] : ''));
@@ -1582,15 +1579,16 @@
     say('t:playagain');
     startRound();
   });
-  // Next Level (user: "다시하기가 있고 다음레벨로 넘어가는 버튼이 있어야"): the next lesson's sound and words — or "Next":
-  // the next step of this lesson (STEPS); shown only after a round done well (planNext)
+  // Next Level (user: "다시하기가 있고 다음레벨로 넘어가는 버튼이 있어야"): the next lesson's sound and words, or the next
+  // step of this lesson (STEPS); shown only after a round done well (planNext)
   $('#next').addEventListener('click', () => {
     const P = G.plan;
     if (G.screen !== 'result' || !P || !P.up) return;
     A.sfxPlay('pop');
     if (P.up === 'lesson') levelUp(P.level); else stepUp(P.step);
   });
-  /* "Next" at ★ / ★★: the same lesson with one more trap tooth; the level tag's stars pop as the game screen comes back */
+  /* Next Level at steps 1–2: the same lesson with one more trap tooth — the round's start says how many (t:trap2/3);
+     nothing on screen shows the step (user 2026-11-23: "함정 이빨 갯수는 안내만 해주고 화면에 표시 해줄 필요는 없어") */
   function stepUp(step) {
     G.plan = null;
     G.step = step;
@@ -1598,12 +1596,6 @@
     app.dataset.screen = 'game';
     levelText();
     A.sfxPlay('fanfare');
-    const st = $('#lvTag .st');
-    setTimeout(() => {
-      const r = st.getBoundingClientRect();
-      st.animate([{ scale: 0.4 }, { scale: 1.5, offset: 0.5 }, { scale: 1 }], { duration: 640, easing: 'ease-out' });
-      FX.burst(r.left + r.width / 2, r.top + r.height / 2, { kind: 'stars', n: 14, speed: 0.6 });
-    }, 420);
     startRound();
   }
   /* the croc snaps shut, the new lesson's letter goes onto its teeth, a banner shows the level and its sound is said,

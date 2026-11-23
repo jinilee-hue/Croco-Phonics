@@ -87,6 +87,9 @@ NEW = {
     # two wrong tries end it kindly; the JUMP button's guide on the first quiet turn of a round
     'goodtry': 'Good try!',
     'jump': 'Want to skip? Tap the jump button!',
+    # steps 2-3 of a lesson (game.js STEPS): how many teeth hide the trap word — said at the round's start, never shown
+    'trap2': 'Watch out! Two trap teeth!',
+    'trap3': 'Watch out! Three trap teeth!',
 }
 # Korean lines (the bubble text = what the voice reads; game.js TUT.ko holds the same tut* texts)
 NEW_KO = {
@@ -104,6 +107,8 @@ NEW_KO = {
     'tut8': '준비됐니? 시작하자!',
     'goodtry': '좋아, 잘했어!',
     'jump': '넘어가고 싶으면 점프 버튼을 눌러!',
+    'trap2': '조심해! 함정 이빨이 두 개야!',
+    'trap3': '조심해! 함정 이빨이 세 개야!',
 }
 assert set(NEW_KO) == set(NEW), f'Korean lines missing/extra: {set(NEW) ^ set(NEW_KO)}'
 

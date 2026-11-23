@@ -817,6 +817,18 @@ window.CROCO_VOICE = {
 1.044,
 2.568
 ],
+"t:trap2": [
+"t_trap2.mp3",
+0.0,
+0.907,
+2.424
+],
+"t:trap3": [
+"t_trap3.mp3",
+0.0,
+1.002,
+2.496
+],
 "k:hello": [
 "k_hello.mp3",
 0.0,
@@ -900,6 +912,18 @@ window.CROCO_VOICE = {
 0.02,
 1.254,
 2.284
+],
+"k:trap2": [
+"k_trap2.mp3",
+0.0,
+1.345,
+2.28
+],
+"k:trap3": [
+"k_trap3.mp3",
+0.0,
+1.336,
+2.304
 ]
 },
 "lines": {
@@ -930,7 +954,9 @@ window.CROCO_VOICE = {
 "tut7": "CHOMP! You lose two cards! Most cards wins!",
 "tut8": "Ready? Let's play!",
 "goodtry": "Good try!",
-"jump": "Want to skip? Tap the jump button!"
+"jump": "Want to skip? Tap the jump button!",
+"trap2": "Watch out! Two trap teeth!",
+"trap3": "Watch out! Three trap teeth!"
 },
 "lines_ko": {
 "turn1": "플레이어 1, 네 차례야!",
@@ -959,6 +985,8 @@ window.CROCO_VOICE = {
 "tut7": "덥석! 카드 두 장을 잃어! 카드가 많으면 이겨!",
 "tut8": "준비됐니? 시작하자!",
 "goodtry": "좋아, 잘했어!",
-"jump": "넘어가고 싶으면 점프 버튼을 눌러!"
+"jump": "넘어가고 싶으면 점프 버튼을 눌러!",
+"trap2": "조심해! 함정 이빨이 두 개야!",
+"trap3": "조심해! 함정 이빨이 세 개야!"
 }
 };
