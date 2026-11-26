@@ -643,3 +643,60 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 
 /* the language is chosen on the intro (title) screen only, in every phonics game (user 2026-11-20: "국기선택은 인트로에만 넣어") */
 #app:not([data-screen="title"]) .lang-tog { display: none; }
+
+/* ── phones held sideways (2026-11-26): the --u sizes left buttons at 17–34 px and labels at 9–11 px on a ~340 px-tall
+   screen. Only here: bigger tap targets (bars 42.6 px, listen / Skip / JUMP ≥ 40, START / Play Again / Next ≥ 52), labels
+   ≥ 12 px, edge HUD inside the notch (env safe-area). Tablets (≥ 768 tall) and PCs (fine pointer) never match. */
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  /* top bars: Toy Catch's proportions on a 5.6 px unit (button 7.6 tu = 42.6 px), close to the edges */
+  .sys { --tu: 5.6px; top: 10px; right: calc(12px + env(safe-area-inset-right)); }
+  .sys.sys-left { right: auto; left: calc(12px + env(safe-area-inset-left)); }
+  .title .start { font-size: 26px; padding: 12px 28px 14px; gap: 8px; bottom: 8px; }
+  .skip { right: calc(12px + env(safe-area-inset-right)); bottom: 10px; min-height: 42px; padding: 0 22px; font-size: 17px; }
+  /* listen-again buttons on the cards (target card 17 px, reveal card 31 px before) */
+  .card .snd { font-size: 21px; bottom: -24px; }
+  /* the target card's speaker (40 px) beside the card, on its right edge at mid-height: hanging under the card it reached
+     down over the croc's head */
+  .card.tgt .snd { font-size: 20px; left: calc(100% - var(--cw) * .05); top: 50%; bottom: auto; transform: translateY(-50%); }
+  .card.tgt.say-m .snd { animation-name: pillPulseSide; }
+  .jump { --js: 46px; }
+  .mic { --ms: 52px; }
+  /* HUD labels */
+  .glogo { left: calc(var(--u) * 2.4 + env(safe-area-inset-left)); }
+  .lvtag { left: calc(var(--u) * 2.4 + env(safe-area-inset-left)); font-size: 12.5px; }
+  .player.p1 { left: calc(var(--u) * 3.2 + env(safe-area-inset-left)); }
+  .player.p2 { right: calc(var(--u) * 3.2 + env(safe-area-inset-right)); }
+  .turn { left: calc(var(--u) * 1.6 + env(safe-area-inset-left)); }
+  #app[data-turn="1"] .turn { left: auto; right: calc(var(--u) * 1.6 + env(safe-area-inset-right)); }
+  .player .name { font-size: 12.5px; }
+  .wchip { font-size: 12.5px; height: calc(12.5px * 1.1 + var(--u) * .9); }
+  .wchip img { width: 13px; }
+  .stack .count { width: 20px; height: 20px; font-size: 12px; }
+  .bubble.narrow p { font-size: 12.5px; }
+  .lvup .lv-sub { font-size: 12.5px; }
+  /* result: Play Again / Next Level */
+  .r-btns { gap: 10px; bottom: 16px; }
+  .again { font-size: 22px; padding: 13px 24px 17px; }
+  /* CHARACTERS */
+  .ch-panel { padding-top: calc(var(--u) * 8); padding-bottom: calc(var(--u) * 7); gap: calc(var(--u) * 3.4); }
+  .ch-tab { height: 40px; font-size: 14px; gap: 6px; padding: 0 14px 0 5px; }
+  .ch-mini { width: 30px; height: 30px; }
+  .ch-who { font-size: 13px; }
+  .ch-close { width: 42px; height: 42px; right: -14px; top: -14px; }
+  .ch-wallet { right: 34px; }
+}
+
+@keyframes pillPulseSide { to { transform: translateY(-50%) scale(1.1); } }   /* (the phone's side speaker, above) */
+
+/* rotate hint: phones held upright only (tablets / PCs never match) */
+.rotate-hint { display: none; }
+@media (orientation: portrait) and (max-width: 500px) and (pointer: coarse) {
+  .rotate-hint { --rh-bg: rgba(44, 86, 58, .9);
+    display: flex; position: fixed; inset: 0; z-index: 2147483647; flex-direction: column; align-items: center; justify-content: center;
+    gap: 18px; padding: 24px; background: var(--rh-bg); color: #fff; text-align: center; pointer-events: auto; touch-action: none;
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .rotate-hint svg { width: 112px; height: 112px; display: block; }
+  .rotate-hint .rh-phone { transform-origin: 48px 48px; animation: rhTurn 2s ease-in-out infinite; }
+  .rotate-hint p { margin: 0; font: 800 20px/1.3 var(--font, system-ui), system-ui, sans-serif; letter-spacing: .02em; }
+}
+@keyframes rhTurn { 0%, 18% { transform: rotate(0deg); } 50%, 78% { transform: rotate(90deg); } 100% { transform: rotate(0deg); } }

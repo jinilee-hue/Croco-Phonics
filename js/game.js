@@ -39,6 +39,11 @@
   // camera framing: croc centre (fraction from the top), its height fraction, camera elevation (°). In the game the
   // camera swings up to look into the mouth so every tooth shows (user: "화면 돌려서 악어 이빨이 다 잘 보이게")
   const FRAME = { title: { y: 0.68, h: 0.6, el: 12 }, game: { y: 0.635, h: 0.64, el: 35 } };
+  // phones held sideways (tablets / PCs never match): the title croc a little smaller and higher, so the bigger START
+  // under it stays clear of the front teeth's letters (css: the phone block)
+  const PHONE_L = window.matchMedia('(orientation: landscape) and (max-height: 500px) and (pointer: coarse)');
+  FRAME.titlePhone = { y: 0.635, h: 0.53, el: 12 };
+  const titleFrame = () => (PHONE_L.matches ? FRAME.titlePhone : FRAME.title);
   const OPEN_REST = { title: 1, game: 1.32 };          // the game opens the mouth wider: the back teeth clear the upper jaw
   const portrait = () => window.innerWidth < window.innerHeight;
   const u = () => Math.min(window.innerHeight / 100, window.innerWidth * (portrait() ? 0.0095 : 0.0062));
@@ -62,7 +67,8 @@
   const croc = Stage.view(Croc.build(Stage.scene));
   croc.lively(true);                              // steam puffs + toe taps (user: "콧김이 난다던가 … 발가락을 움직인다던가")
   Stage.setCroc(croc);
-  croc.setFrame(FRAME.title);
+  croc.setFrame(titleFrame());
+  PHONE_L.addEventListener('change', () => { if (G.screen === 'title') croc.setFrame(titleFrame()); });   // (turned sideways / upright)
   // the playroom tilts with the camera: css .room reads --tilt (0 = the title's 12°, 1 = the game's 35°) (user: "게임화면에서 악어가 기울어졌을때 뒤에 배경도 같이 기울어지면 안돼?")
   let tiltWas = -1;
   Stage.onTick.push(() => {
@@ -956,7 +962,7 @@
     $('#lvUp').classList.remove('show', 'say');
     $('#target').classList.remove('alarm', 'intro');
     document.querySelectorAll('.player').forEach(p => p.classList.remove('win', 'lose', 'on'));
-    croc.setFrame(FRAME.title, 900);
+    croc.setFrame(titleFrame(), 900);
     croc.rest(OPEN_REST.title);
     croc.reopen();
     croc.resetTeeth(0.04);
