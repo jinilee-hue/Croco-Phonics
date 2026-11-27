@@ -9,6 +9,10 @@
 <link rel="stylesheet" href="css/font.css">
 <link rel="stylesheet" href="css/font-ko.css">
 <link rel="stylesheet" href="css/style.css">
+<!-- the "turn your phone sideways" hint is for phones only: an iPad's narrow Split View / Slide Over pane looks like an
+     upright phone to the CSS query, so a screen whose short side is over 500 px (every tablet) never shows it -->
+<style>.not-phone .rotate-hint { display: none !important; }</style>
+<script>try { if (Math.min(screen.width, screen.height) > 500) document.documentElement.classList.add('not-phone'); } catch (e) { /* no screen info */ }</script>
 </head>
 <body>
 <div id="app" data-screen="title" data-turn="0">

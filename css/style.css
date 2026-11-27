@@ -649,25 +649,37 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
    ≥ 12 px, edge HUD inside the notch (env safe-area). Tablets (≥ 768 tall) and PCs (fine pointer) never match. */
 @media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
   /* top bars: Toy Catch's proportions on a 5.6 px unit (button 7.6 tu = 42.6 px), close to the edges */
-  .sys { --tu: 5.6px; top: 10px; right: calc(12px + env(safe-area-inset-right)); }
+  /* edges (round 2): 12 px off the top / sides, 14 px off the bottom (+ the safe areas), buttons 8 px apart */
+  .sys { --tu: 5.6px; top: calc(14px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); gap: 8px; }
   .sys.sys-left { right: auto; left: calc(12px + env(safe-area-inset-left)); }
-  .title .start { font-size: 26px; padding: 12px 28px 14px; gap: 8px; bottom: 8px; }
-  .skip { right: calc(12px + env(safe-area-inset-right)); bottom: 10px; min-height: 42px; padding: 0 22px; font-size: 17px; }
-  /* listen-again buttons on the cards (target card 17 px, reveal card 31 px before) */
-  .card .snd { font-size: 21px; bottom: -24px; }
-  /* the target card's speaker (40 px) beside the card, on its right edge at mid-height: hanging under the card it reached
+  /* START 64 px tall (round 2), 16 from the bottom (≥ 14 at its breathing's peak); the title croc a little smaller so the
+     front teeth's letters stay clear of it (game.js FRAME.titlePhone) */
+  .title .start { font-size: 30px; padding: 16px 32px 18px; gap: 9px; bottom: calc(16px + env(safe-area-inset-bottom)); }
+  /* (≥ 12 px off the top at its bob's peak; 8 % smaller, so the croc's head under it stays clear of it) */
+  .title .logo { top: calc(var(--u) * 4.2 + 2px + env(safe-area-inset-top)); width: min(40.5vw, calc(var(--u) * 46)); }
+  .skip { right: calc(12px + env(safe-area-inset-right)); bottom: calc(14px + env(safe-area-inset-bottom)); min-height: 42px; padding: 0 22px; font-size: 17px; }
+  /* the target card 12 px off the top, its croc badge tucked into its top-left corner (it stuck up .0947 cw) — the croc
+     keeps its size and place under it */
+  .target, #app.howto .target { top: calc(12px + env(safe-area-inset-top)); }
+  .target .bite { top: 0; }
+  .ribbon { top: calc(12px + env(safe-area-inset-top)); }
+  /* listen-again buttons on the cards: 64 px (round 2; target card 17 px, reveal card 31 px at first) — the reveal card's
+     hangs under the card's middle as before (game.js revealSlot nudges the card so it clears the "Your turn!" pill) */
+  .card .snd { font-size: 32px; bottom: -44px; }
+  /* the target card's speaker beside the card, on its right edge at mid-height: hanging under the card it reached
      down over the croc's head */
-  .card.tgt .snd { font-size: 20px; left: calc(100% - var(--cw) * .05); top: 50%; bottom: auto; transform: translateY(-50%); }
+  .card.tgt .snd { font-size: 32px; left: calc(100% - var(--cw) * .05); top: 50%; bottom: auto; transform: translateY(-50%); }
   .card.tgt.say-m .snd { animation-name: pillPulseSide; }
-  .jump { --js: 46px; }
+  .jump { --js: 64px; }        /* JUMP on the reveal card's top corner toward the croc, as before */
   .mic { --ms: 52px; }
   /* HUD labels */
-  .glogo { left: calc(var(--u) * 2.4 + env(safe-area-inset-left)); }
-  .lvtag { left: calc(var(--u) * 2.4 + env(safe-area-inset-left)); font-size: 12.5px; }
-  .player.p1 { left: calc(var(--u) * 3.2 + env(safe-area-inset-left)); }
-  .player.p2 { right: calc(var(--u) * 3.2 + env(safe-area-inset-right)); }
-  .turn { left: calc(var(--u) * 1.6 + env(safe-area-inset-left)); }
-  #app[data-turn="1"] .turn { left: auto; right: calc(var(--u) * 1.6 + env(safe-area-inset-right)); }
+  .glogo { left: calc(14px + env(safe-area-inset-left)); top: calc(14px + env(safe-area-inset-top)); }   /* (14: out of the rounded corner) */
+  .lvtag { left: calc(14px + env(safe-area-inset-left)); top: calc(14px + env(safe-area-inset-top) + var(--u) * 11.8); font-size: 12.5px; }
+  .player { bottom: calc(14px + env(safe-area-inset-bottom)); }
+  .player.p1 { left: calc(12px + env(safe-area-inset-left)); }
+  .player.p2 { right: calc(12px + env(safe-area-inset-right)); }
+  .turn { left: calc(12px + env(safe-area-inset-left)); bottom: calc(var(--u) * 24.8 + 6px + env(safe-area-inset-bottom)); }
+  #app[data-turn="1"] .turn { left: auto; right: calc(12px + env(safe-area-inset-right)); }
   .player .name { font-size: 12.5px; }
   .wchip { font-size: 12.5px; height: calc(12.5px * 1.1 + var(--u) * .9); }
   .wchip img { width: 13px; }
@@ -675,8 +687,13 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
   .bubble.narrow p { font-size: 12.5px; }
   .lvup .lv-sub { font-size: 12.5px; }
   /* result: Play Again / Next Level */
-  .r-btns { gap: 10px; bottom: 16px; }
-  .again { font-size: 22px; padding: 13px 24px 17px; }
+  /* result: Play Again / Next Level under the bitten card as before, as tall as fits between it and the 14 px bottom
+     margin (54-58 px); the win chips wrap upward before they reach the buttons */
+  .r-btns { gap: 18px; bottom: calc(16px + env(safe-area-inset-bottom)); }   /* (16: ≥ 14 at their breathing's peak) */
+  .player .wins { max-width: calc(var(--u) * 28); }
+  /* as tall as fits between the bitten card (bottom .53 H + 24.6 u) + 8 px and the bottom margin: 53 px on iPhone 13,
+     57 on Pixel 7 at rest */
+  .again { font-size: 22px; padding: 0 24px 2px; height: clamp(48px, calc(47vh - var(--u) * 24.6 - 24px), 64px); }
   /* CHARACTERS */
   .ch-panel { padding-top: calc(var(--u) * 8); padding-bottom: calc(var(--u) * 7); gap: calc(var(--u) * 3.4); }
   .ch-tab { height: 40px; font-size: 14px; gap: 6px; padding: 0 14px 0 5px; }
@@ -687,6 +704,7 @@ button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight
 }
 
 @keyframes pillPulseSide { to { transform: translateY(-50%) scale(1.1); } }   /* (the phone's side speaker, above) */
+@keyframes pillPulseFlat { to { transform: scale(1.1); } }                    /* (the phone's say-turn card speaker) */
 
 /* rotate hint: phones held upright only (tablets / PCs never match) */
 .rotate-hint { display: none; }

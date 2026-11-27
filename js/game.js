@@ -42,7 +42,7 @@
   // phones held sideways (tablets / PCs never match): the title croc a little smaller and higher, so the bigger START
   // under it stays clear of the front teeth's letters (css: the phone block)
   const PHONE_L = window.matchMedia('(orientation: landscape) and (max-height: 500px) and (pointer: coarse)');
-  FRAME.titlePhone = { y: 0.635, h: 0.53, el: 12 };
+  FRAME.titlePhone = { y: 0.607, h: 0.455, el: 12 };   // (round 2: START 64 px tall, 16 px off the bottom — the front teeth's letters still clear it)
   const titleFrame = () => (PHONE_L.matches ? FRAME.titlePhone : FRAME.title);
   const OPEN_REST = { title: 1, game: 1.32 };          // the game opens the mouth wider: the back teeth clear the upper jaw
   const portrait = () => window.innerWidth < window.innerHeight;
@@ -357,6 +357,14 @@
     if (portrait()) return { x: W / 2 + (p ? 1 : -1) * Math.min(W * 0.22, cw * 0.62), y: H * 0.42, r: p ? 6 : -6 };
     const box = croc.screenBox(), left = box.left, right = box.right;
     const x = p === 0 ? Math.max(cw * 0.5 + 2 * u(), Math.min(left - cw * 0.45, left * 0.52)) : Math.min(W - cw * 0.5 - 2 * u(), Math.max(right + cw * 0.45, right + (W - right) * 0.48));
+    if (PHONE_L.matches) {
+      // phones held sideways (round 2): the same spot, nudged toward the croc just enough that the card clears the level
+      // tag (top left) and its 64 px speaker hanging under it clears the "Your turn!" pill (8 px each)
+      const tag = $('.lvtag').getBoundingClientRect(), tn = $('#turn').getBoundingClientRect(), half = cw * 0.56, sp = 32 + 8;
+      const mine = tn.width > 0 && (tn.left + tn.width / 2 > W / 2 ? 1 : 0) === p;      // (the pill on this player's side)
+      const xp = p === 0 ? Math.max(x, tag.right + 8 + half, mine ? tn.right + sp : 0) : Math.min(x, mine ? tn.left - sp : x);
+      return { x: xp, y: H * 0.42, r: p === 0 ? -6 : 6 };
+    }
     return { x, y: H * 0.42, r: p === 0 ? -6 : 6 };          // .42: clear of the turn pill above the bottom-corner player
   }
   function stackPoint(p) {
@@ -1730,7 +1738,14 @@
       const front = s > 0, z = String(Math.round(depth * 100));
       // behind START a front letter fades out, so its foot never pokes out under the button
       const hw = 0.3 * LS * sc, low = stOn && front && y + 0.5 * LS * sc > st.bottom;
-      c.f.style.opacity = low ? smooth01(stW - hw * 0.2, stW + hw, Math.abs(x - stX)).toFixed(3) : '1';
+      let op = low ? smooth01(stW - hw * 0.2, stW + hw, Math.abs(x - stX)) : 1;
+      // phones held sideways: START is bigger there — a front letter also fades out before its box would touch it
+      if (PHONE_L.matches && stOn && front) {
+        const bw = 0.45 * LS * sc, bh2 = 0.6 * LS * sc;                // (the puffy sprite's box, spin and tilt included)
+        const gap = Math.max(st.left - (x + bw), x - bw - st.right, st.top - (y + bh2), y - bh2 - st.bottom);
+        op = Math.min(op, smooth01(0, 12, gap));
+      }
+      c.f.style.opacity = low || op < 1 ? op.toFixed(3) : '1';
       c.f.style.transform = c.b.style.transform = tf;
       c.f.style.zIndex = c.b.style.zIndex = z;
       c.f.style.visibility = front ? 'visible' : 'hidden';
